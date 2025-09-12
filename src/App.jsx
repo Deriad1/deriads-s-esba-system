@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
 import { getLearners } from "./api";
+import ProjectRoutes from "./Routes";
 import LoginPage from "./pages/LoginPage";
-import AdminDashboardPage from "./pages/AdminDashboardPage";
-import TeacherDashboardPage from "./pages/TeacherDashboardPage";
-import SchoolSetupPage from "./pages/SchoolSetupPage";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   const [learners, setLearners] = useState([]);
@@ -68,45 +64,7 @@ function App() {
         </button>
         <hr style={{ margin: "20px 0" }} />
         <h3>Continue to Login (Offline Mode)</h3>
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/setup" element={
-            <ProtectedRoute role="admin">
-              <SchoolSetupPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin" element={
-            <ProtectedRoute role="admin">
-              <AdminDashboardPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/teacher" element={
-            <ProtectedRoute role="teacher">
-              <TeacherDashboardPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/teacher/head-teacher" element={
-            <ProtectedRoute role="teacher">
-              <TeacherDashboardPage role="head_teacher" />
-            </ProtectedRoute>
-          } />
-          <Route path="/teacher/class-teacher" element={
-            <ProtectedRoute role="teacher">
-              <TeacherDashboardPage role="class_teacher" />
-            </ProtectedRoute>
-          } />
-          <Route path="/teacher/subject-teacher" element={
-            <ProtectedRoute role="teacher">
-              <TeacherDashboardPage role="subject_teacher" />
-            </ProtectedRoute>
-          } />
-          <Route path="/teacher/form-master" element={
-            <ProtectedRoute role="teacher">
-              <TeacherDashboardPage role="form_master" />
-            </ProtectedRoute>
-          } />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <ProjectRoutes />
       </div>
     );
   }
@@ -121,45 +79,7 @@ function App() {
         )}
       </div>
       
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/setup" element={
-          <ProtectedRoute role="admin">
-            <SchoolSetupPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin" element={
-          <ProtectedRoute role="admin">
-            <AdminDashboardPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/teacher" element={
-          <ProtectedRoute role="teacher">
-            <TeacherDashboardPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/teacher/head-teacher" element={
-          <ProtectedRoute role="teacher">
-            <TeacherDashboardPage role="head_teacher" />
-          </ProtectedRoute>
-        } />
-        <Route path="/teacher/class-teacher" element={
-          <ProtectedRoute role="teacher">
-            <TeacherDashboardPage role="class_teacher" />
-          </ProtectedRoute>
-        } />
-        <Route path="/teacher/subject-teacher" element={
-          <ProtectedRoute role="teacher">
-            <TeacherDashboardPage role="subject_teacher" />
-          </ProtectedRoute>
-        } />
-        <Route path="/teacher/form-master" element={
-          <ProtectedRoute role="teacher">
-            <TeacherDashboardPage role="form_master" />
-          </ProtectedRoute>
-        } />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+      <ProjectRoutes />
     </div>
   );
 }

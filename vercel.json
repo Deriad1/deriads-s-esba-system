@@ -1,15 +1,15 @@
 {
   "name": "deriads-s-esba-system",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
   "builds": [
     {
-      "src": "dist/**/*",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/dist/$1"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
   ]
 }
