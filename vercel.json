@@ -1,5 +1,5 @@
 {
-  "name": "deriads-esba",
+  "name": "deriads-s-esba-system",
   "builds": [
     {
       "src": "dist/**/*",
