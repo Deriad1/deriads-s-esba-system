@@ -1,0 +1,2867 @@
+import Layout from "../components/Layout";
+import { useState, useEffect } from "react";
+import { getTeachers, getLearners, addTeacher, addLearner, deleteTeacher, deleteLearner, testConnection, getClassBroadsheet, getClassConfig, updateClassConfig, assignAllSubjectsToClassTeacher as apiAssignAllSubjectsToClassTeacher } from "../api";
+
+// Import API_URL for direct API calls
+const API_URL = 'https://script.google.com/macros/s/AKfycbwcx3CJpIRSCk9mcGNNs2p37uVJ6pPqH_FsRUYisRApq2ATvFmy_k7zDL6vDNgo40lVOQ/exec';
+
+const subjectsList = [
+  "English Language", "Mathematics", "Science", "Social Studies", "Ghanaian Language",
+  "Religious and Moral Education (RME)", "Creative Arts and Design", "Career Technology",
+  "Computing", "Physical and Health Education (PHE)", "OWOP", "History", "French", "Arabic"
+];
+
+const classesList = [
+  "K.G 1", "K.G 2", "BS1", "BS2", "BS3", "BS4", "BS5", "BS6", "BS7", "BS8", "BS9"
+];
+
+const AdminDashboardPage = () => {
+  const [teachers, setTeachers] = useState([]);
+  const [learners, setLearners] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  
+  const [teacherForm, setTeacherForm] = useState({
+    firstName: "", 
+    lastName: "", 
+    gender: "", 
+    email: "", 
+    subjects: [], 
+    password: "teacher123",
+    primaryRole: "teacher",
+    classes: []
+  });
+  
+  const [learnerForm, setLearnerForm] = useState({
+    firstName: "", 
+    lastName: "", 
+    className: "",
+    gender: ""
+  });
+  
+  const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [showLearnerModal, setShowLearnerModal] = useState(false);
+  const [showTeachersList, setShowTeachersList] = useState(false);
+  const [showLearnersList, setShowLearnersList] = useState(false);
+  const [showClassView, setShowClassView] = useState(false);
+  const [showBroadsheetView, setShowBroadsheetView] = useState(false);
+  const [showClassSetupView, setShowClassSetupView] = useState(false);
+  const [showStudentReportView, setShowStudentReportView] = useState(false);
+  const [showMarksStatusView, setShowMarksStatusView] = useState(false);
+  const [showSchoolSetupView, setShowSchoolSetupView] = useState(false);
+  const [showClassConfigView, setShowClassConfigView] = useState(false);
+  
+  // School setup states
+  const [schoolLogo, setSchoolLogo] = useState(localStorage.getItem('schoolLogo') || '');
+  const [schoolName, setSchoolName] = useState(localStorage.getItem('schoolName') || 'DERIAD\'S eSBA');
+  const [logoUploading, setLogoUploading] = useState(false);
+
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedBroadsheetClass, setSelectedBroadsheetClass] = useState("");
+  const [selectedSetupClass, setSelectedSetupClass] = useState("");
+  const [selectedReportClass, setSelectedReportClass] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState("");
+  const [selectedTerm, setSelectedTerm] = useState("Third Term");
+  const [broadsheetData, setBroadsheetData] = useState([]);
+  const [classConfig, setClassConfig] = useState({ subjects: [], teacherAssignments: {} });
+  const [loadingBroadsheet, setLoadingBroadsheet] = useState(false);
+  const [loadingClassConfig, setLoadingClassConfig] = useState(false);
+  const [loadingStudentReport, setLoadingStudentReport] = useState(false);
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [learnerSearch, setLearnerSearch] = useState("");
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      // First test the connection
+      console.log('Testing API connection...');
+      try {
+        const testResult = await testConnection();
+        console.log('Connection test result:', testResult);
+      } catch (testError) {
+        console.warn('Connection test failed:', testError);
+        setError(`API Connection Issue: ${testError.message}. Check TROUBLESHOOTING.md for help.`);
+      }
+      
+      console.log('Loading teachers and learners...');
+      const [teachersResponse, learnersResponse] = await Promise.all([
+        getTeachers(),
+        getLearners()
+      ]);
+      
+      console.log('Teachers response:', teachersResponse);
+      console.log('Learners response:', learnersResponse);
+      
+      if (teachersResponse && teachersResponse.status === 'success') {
+        setTeachers(teachersResponse.data || []);
+      } else {
+        console.error('Teachers error:', teachersResponse?.message);
+        setError(`Failed to load teachers: ${teachersResponse?.message || 'Unknown error'}`);
+      }
+      
+      if (learnersResponse && learnersResponse.status === 'success') {
+        setLearners(learnersResponse.data || []);
+      } else {
+        console.error('Learners error:', learnersResponse?.message);
+        setError(`Failed to load students: ${learnersResponse?.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      const errorMessage = "Failed to load data: " + err.message;
+      setError(errorMessage);
+      console.error("Load error details:", {
+        error: err,
+        message: err.message,
+        stack: err.stack
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTeacherChange = (e) => {
+    setTeacherForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleLearnerChange = (e) => {
+    setLearnerForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubjectToggle = (subject) => {
+    setTeacherForm(prev => ({
+      ...prev,
+      subjects: prev.subjects.includes(subject)
+        ? prev.subjects.filter(s => s !== subject)
+        : [...prev.subjects, subject]
+    }));
+  };
+
+  const handleClassToggle = (className) => {
+    setTeacherForm(prev => ({
+      ...prev,
+      classes: prev.classes.includes(className)
+        ? prev.classes.filter(c => c !== className)
+        : [...prev.classes, className]
+    }));
+  };
+
+  const generateLearnerId = () => {
+    if (learners.length === 0) return "eSBA0001";
+    const lastId = learners[learners.length - 1]?.idNumber || "eSBA0000";
+    const number = parseInt(lastId.replace("eSBA", "")) + 1;
+    return `eSBA${number.toString().padStart(4, "0")}`;
+  };
+
+  const handleAddTeacher = async (e) => {
+    e.preventDefault();
+    
+    // Enhanced validation with debug logging
+    console.log('=== ADD TEACHER DEBUG START ===');
+    console.log('Teacher form data:', JSON.stringify(teacherForm, null, 2));
+    
+    if (!teacherForm.firstName || !teacherForm.lastName || !teacherForm.gender || !teacherForm.email) {
+      const missingFields = [];
+      if (!teacherForm.firstName) missingFields.push('First Name');
+      if (!teacherForm.lastName) missingFields.push('Last Name');
+      if (!teacherForm.gender) missingFields.push('Gender');
+      if (!teacherForm.email) missingFields.push('Email');
+      console.error('Validation failed - missing fields:', missingFields);
+      alert(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(teacherForm.email)) {
+      console.error('Validation failed - invalid email:', teacherForm.email);
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('Starting API call to addTeacher...');
+      console.log('Sending payload:', JSON.stringify(teacherForm, null, 2));
+      
+      const response = await addTeacher(teacherForm);
+      console.log('Raw API response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response status:', response?.status);
+      
+      if (response && response.status === 'success') {
+        const message = response.data?.message || response.message || "Teacher added successfully";
+        console.log('✅ Teacher added successfully:', message);
+        alert(message);
+        setTeacherForm({
+          firstName: "", 
+          lastName: "", 
+          gender: "", 
+          email: "", 
+          subjects: [], 
+          password: "teacher123",
+          primaryRole: "teacher",
+          classes: []
+        });
+        setShowTeacherModal(false);
+        await loadData();
+      } else {
+        const errorMessage = response?.message || response?.data?.message || "Unknown error occurred";
+        console.error('❌ Teacher addition failed:', {
+          response: response,
+          errorMessage: errorMessage
+        });
+        alert("Error adding teacher: " + errorMessage);
+      }
+    } catch (err) {
+      console.error("💥 Add teacher exception:", {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
+      
+      let userMessage = "Error adding teacher: ";
+      if (err.message.includes('Failed to fetch')) {
+        userMessage += "Cannot connect to server. Check internet connection and Google Apps Script deployment.";
+        console.error('🌐 Connection issue detected');
+      } else if (err.message.includes('Permission denied') || err.message.includes('403')) {
+        userMessage += "Permission denied. Check Google Apps Script deployment permissions.";
+        console.error('🔐 Permission issue detected');
+      } else if (err.message.includes('CORS')) {
+        userMessage += "Cross-origin request blocked. Check Google Apps Script CORS settings.";
+        console.error('🚫 CORS issue detected');
+      } else {
+        userMessage += err.message;
+      }
+      alert(userMessage);
+    } finally {
+      setLoading(false);
+      console.log('=== ADD TEACHER DEBUG END ===');
+    }
+  };
+
+  const handleAddLearner = async (e) => {
+    e.preventDefault();
+    
+    // Enhanced validation with debug logging
+    console.log('=== ADD LEARNER DEBUG START ===');
+    console.log('Learner form data:', JSON.stringify(learnerForm, null, 2));
+    
+    if (!learnerForm.firstName || !learnerForm.lastName || !learnerForm.className) {
+      const missingFields = [];
+      if (!learnerForm.firstName) missingFields.push('First Name');
+      if (!learnerForm.lastName) missingFields.push('Last Name');
+      if (!learnerForm.className) missingFields.push('Class Name');
+      console.error('Validation failed - missing fields:', missingFields);
+      alert(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    // Validate class name is in the approved list
+    if (!classesList.includes(learnerForm.className)) {
+      console.error('Validation failed - invalid class:', learnerForm.className);
+      console.error('Available classes:', classesList);
+      alert(`Invalid class name. Please select from: ${classesList.join(', ')}`);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const learnerData = {
+        ...learnerForm,
+        idNumber: generateLearnerId()
+      };
+      
+      console.log('Starting API call to addLearner...');
+      console.log('Sending payload:', JSON.stringify(learnerData, null, 2));
+      
+      const response = await addLearner(learnerData);
+      console.log('Raw API response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response status:', response?.status);
+      
+      if (response && response.status === 'success') {
+        const message = response.data?.message || response.message || "Student added successfully";
+        console.log('✅ Learner added successfully:', message);
+        alert(message);
+        setLearnerForm({firstName: "", lastName: "", className: "", gender: ""});
+        setShowLearnerModal(false);
+        await loadData();
+      } else {
+        const errorMessage = response?.message || response?.data?.message || "Unknown error occurred";
+        console.error('❌ Learner addition failed:', {
+          response: response,
+          errorMessage: errorMessage
+        });
+        alert("Error adding student: " + errorMessage);
+      }
+    } catch (err) {
+      console.error("💥 Add learner exception:", {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
+      
+      let userMessage = "Error adding student: ";
+      if (err.message.includes('Failed to fetch')) {
+        userMessage += "Cannot connect to server. Check internet connection and Google Apps Script deployment.";
+        console.error('🌐 Connection issue detected');
+      } else if (err.message.includes('Permission denied') || err.message.includes('403')) {
+        userMessage += "Permission denied. Check Google Apps Script deployment permissions.";
+        console.error('🔐 Permission issue detected');
+      } else if (err.message.includes('CORS')) {
+        userMessage += "Cross-origin request blocked. Check Google Apps Script CORS settings.";
+        console.error('🚫 CORS issue detected');
+      } else {
+        userMessage += err.message;
+      }
+      alert(userMessage);
+    } finally {
+      setLoading(false);
+      console.log('=== ADD LEARNER DEBUG END ===');
+    }
+  };
+
+  const handleDeleteTeacher = async (teacherId) => {
+    if (!confirm("Are you sure you want to delete this teacher?")) return;
+    
+    console.log('=== DELETE TEACHER DEBUG START ===');
+    console.log('Teacher ID to delete:', teacherId);
+    
+    try {
+      setLoading(true);
+      console.log('🗑️ Starting teacher deletion...');
+      
+      const response = await deleteTeacher(teacherId);
+      console.log('Delete teacher response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response status:', response?.status);
+      
+      if (response && response.status === 'success') {
+        const message = response.data?.message || response.message || "Teacher deleted successfully";
+        console.log('✅ Teacher deleted successfully:', message);
+        alert(message);
+        await loadData();
+      } else {
+        const errorMessage = response?.message || response?.data?.message || "Delete failed";
+        console.error('❌ Teacher deletion failed:', {
+          response: response,
+          errorMessage: errorMessage
+        });
+        alert("Error deleting teacher: " + errorMessage);
+      }
+    } catch (err) {
+      console.error('💥 Delete teacher exception:', {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        teacherId: teacherId
+      });
+      
+      let userMessage = "Error deleting teacher: ";
+      if (err.message.includes('Failed to fetch')) {
+        userMessage += "Cannot connect to server. Check internet connection and Google Apps Script deployment.";
+        console.error('🌐 Connection issue detected during delete');
+      } else if (err.message.includes('Permission denied') || err.message.includes('403')) {
+        userMessage += "Permission denied. Check Google Apps Script deployment permissions.";
+        console.error('🔐 Permission issue detected during delete');
+      } else {
+        userMessage += err.message;
+      }
+      alert(userMessage);
+    } finally {
+      setLoading(false);
+      console.log('=== DELETE TEACHER DEBUG END ===');
+    }
+  };
+
+  const handleDeleteLearner = async (learnerId) => {
+    if (!confirm("Are you sure you want to delete this learner?")) return;
+    
+    console.log('=== DELETE LEARNER DEBUG START ===');
+    console.log('Learner ID to delete:', learnerId);
+    
+    try {
+      setLoading(true);
+      console.log('🗑️ Starting learner deletion...');
+      
+      const response = await deleteLearner(learnerId);
+      console.log('Delete learner response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response status:', response?.status);
+      
+      if (response && response.status === 'success') {
+        const message = response.data?.message || response.message || "Learner deleted successfully";
+        console.log('✅ Learner deleted successfully:', message);
+        alert(message);
+        await loadData();
+      } else {
+        const errorMessage = response?.message || response?.data?.message || "Delete failed";
+        console.error('❌ Learner deletion failed:', {
+          response: response,
+          errorMessage: errorMessage
+        });
+        alert("Error deleting learner: " + errorMessage);
+      }
+    } catch (err) {
+      console.error('💥 Delete learner exception:', {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        learnerId: learnerId
+      });
+      
+      let userMessage = "Error deleting learner: ";
+      if (err.message.includes('Failed to fetch')) {
+        userMessage += "Cannot connect to server. Check internet connection and Google Apps Script deployment.";
+        console.error('🌐 Connection issue detected during delete');
+      } else if (err.message.includes('Permission denied') || err.message.includes('403')) {
+        userMessage += "Permission denied. Check Google Apps Script deployment permissions.";
+        console.error('🔐 Permission issue detected during delete');
+      } else {
+        userMessage += err.message;
+      }
+      alert(userMessage);
+    } finally {
+      setLoading(false);
+      console.log('=== DELETE LEARNER DEBUG END ===');
+    }
+  };
+
+  // Filter functions
+  const filteredTeachers = teachers.filter(t =>
+    (t.firstName?.toLowerCase() || "").includes(teacherSearch.toLowerCase()) ||
+    (t.lastName?.toLowerCase() || "").includes(teacherSearch.toLowerCase()) ||
+    (t.email?.toLowerCase() || "").includes(teacherSearch.toLowerCase())
+  );
+
+  const filteredLearners = learners.filter(l =>
+    (l.firstName?.toLowerCase() || "").includes(learnerSearch.toLowerCase()) ||
+    (l.lastName?.toLowerCase() || "").includes(learnerSearch.toLowerCase()) ||
+    (l.className?.toLowerCase() || "").includes(learnerSearch.toLowerCase())
+  );
+
+  // Get students by selected class
+  const studentsByClass = selectedClass ? learners.filter(l => l.className === selectedClass) : [];
+  
+  // Get class statistics
+  const getClassStats = () => {
+    const stats = {};
+    classesList.forEach(className => {
+      const classStudents = learners.filter(l => l.className === className);
+      stats[className] = {
+        total: classStudents.length,
+        male: classStudents.filter(s => s.gender?.toLowerCase() === 'male').length,
+        female: classStudents.filter(s => s.gender?.toLowerCase() === 'female').length
+      };
+    });
+    return stats;
+  };
+  
+  const classStats = getClassStats();
+
+  const loadBroadsheetData = async (className) => {
+    if (!className) return;
+    
+    setLoadingBroadsheet(true);
+    try {
+      console.log('Loading broadsheet for class:', className);
+      const response = await getClassBroadsheet(className);
+      if (response && response.status === 'success') {
+        setBroadsheetData(response.data || []);
+        console.log('Broadsheet data loaded:', response.data);
+      } else {
+        console.error('Failed to load broadsheet:', response?.message);
+        setBroadsheetData([]);
+        alert('Failed to load broadsheet: ' + (response?.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error loading broadsheet:', error);
+      setBroadsheetData([]);
+      alert('Error loading broadsheet: ' + error.message);
+    } finally {
+      setLoadingBroadsheet(false);
+    }
+  };
+
+  const printBroadsheet = () => {
+    if (!selectedBroadsheetClass || broadsheetData.length === 0) {
+      alert('Please select a class and load broadsheet data first.');
+      return;
+    }
+
+    // Get all unique subjects from the broadsheet data
+    const allSubjects = [...new Set(broadsheetData.map(row => row.subject))].sort();
+    
+    // Group data by student
+    const studentData = {};
+    broadsheetData.forEach(row => {
+      if (!studentData[row.learnerName]) {
+        studentData[row.learnerName] = {};
+      }
+      studentData[row.learnerName][row.subject] = {
+        test1: row.test1 || '',
+        test2: row.test2 || '',
+        test3: row.test3 || '',
+        test4: row.test4 || '',
+        totalTests: row.totalTests || '',
+        scaled50: row.scaled50 || '',
+        exam: row.exam || '',
+        examScaled: row.examScaled || '',
+        totalScore: row.totalScore || '',
+        position: row.position || '',
+        remarks: row.remarks || ''
+      };
+    });
+
+    // Create print content
+    const schoolLogo = localStorage.getItem('schoolLogo');
+    const watermarkStyle = schoolLogo ? `
+      .watermark {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        opacity: 0.05;
+        z-index: -1;
+        pointer-events: none;
+        width: 750px;
+        height: 750px;
+        background-image: url(${schoolLogo});
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+      }
+    ` : '';
+    
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Class Broadsheet - ${selectedBroadsheetClass}</title>
+          <style>
+            ${watermarkStyle}
+            @page { margin: 1cm; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; position: relative; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .school-name { font-size: 24px; font-weight: bold; }
+            .broadsheet-title { font-size: 18px; margin: 10px 0; }
+            .details { font-size: 14px; color: #666; }
+            table { border-collapse: collapse; width: 100%; margin-top: 20px; font-size: 12px; }
+            th, td { border: 1px solid black; padding: 4px; text-align: center; }
+            th { background-color: #f0f0f0; font-weight: bold; }
+            .student-name { text-align: left; font-weight: bold; min-width: 120px; }
+            .subject-header { background-color: #e0e0e0; }
+            .print-button { margin: 20px 0; padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+            @media print { .print-button { display: none; } }
+          </style>
+        </head>
+        <body>
+          ${schoolLogo ? '<div class="watermark"></div>' : ''}
+          <button class="print-button" onclick="window.print()">🖨️ Print This Broadsheet</button>
+          <div class="header">
+            <div class="school-name">${localStorage.getItem('schoolName') || 'DERIAD\'S eSBA'}</div>
+            <div class="broadsheet-title">Class Broadsheet - All Subjects</div>
+            <div class="details">
+              Class: ${selectedBroadsheetClass} | 
+              Date: ${new Date().toLocaleDateString()} |
+              Students: ${Object.keys(studentData).length} |
+              Subjects: ${allSubjects.length}
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th rowspan="2" class="student-name">Student Name</th>
+                ${allSubjects.map(subject => `
+                  <th colspan="11" class="subject-header">${subject}</th>
+                `).join('')}
+              </tr>
+              <tr>
+                ${allSubjects.map(() => `
+                  <th>T1<br/>(15)</th>
+                  <th>T2<br/>(15)</th>
+                  <th>T3<br/>(15)</th>
+                  <th>T4<br/>(15)</th>
+                  <th>Total<br/>(60)</th>
+                  <th>50%</th>
+                  <th>Exam<br/>(100)</th>
+                  <th>50%</th>
+                  <th>Final<br/>(100)</th>
+                  <th>Pos</th>
+                  <th>Remarks</th>
+                `).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${Object.keys(studentData).sort().map(studentName => `
+                <tr>
+                  <td class="student-name">${studentName}</td>
+                  ${allSubjects.map(subject => {
+                    const data = studentData[studentName][subject] || {};
+                    return `
+                      <td>${data.test1}</td>
+                      <td>${data.test2}</td>
+                      <td>${data.test3}</td>
+                      <td>${data.test4}</td>
+                      <td>${data.totalTests}</td>
+                      <td>${data.scaled50}</td>
+                      <td>${data.exam}</td>
+                      <td>${data.examScaled}</td>
+                      <td>${data.totalScore}</td>
+                      <td>${data.position}</td>
+                      <td>${data.remarks}</td>
+                    `;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    // Open print window
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+  };
+
+  const loadClassConfig = async (className) => {
+    if (!className) return;
+    
+    setLoadingClassConfig(true);
+    try {
+      console.log('Loading class config for:', className);
+      const response = await getClassConfig(className);
+      if (response && response.status === 'success') {
+        setClassConfig(response.data || { subjects: [], teacherAssignments: {} });
+        console.log('Class config loaded:', response.data);
+      } else {
+        console.error('Failed to load class config:', response?.message);
+        setClassConfig({ subjects: [], teacherAssignments: {} });
+        alert('Failed to load class configuration: ' + (response?.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error loading class config:', error);
+      setClassConfig({ subjects: [], teacherAssignments: {} });
+      alert('Error loading class configuration: ' + error.message);
+    } finally {
+      setLoadingClassConfig(false);
+    }
+  };
+
+  const handleSubjectToggleForClass = (subject) => {
+    setClassConfig(prev => ({
+      ...prev,
+      subjects: prev.subjects.includes(subject)
+        ? prev.subjects.filter(s => s !== subject)
+        : [...prev.subjects, subject]
+    }));
+  };
+
+  const handleTeacherAssignment = (subject, teacherId) => {
+    setClassConfig(prev => ({
+      ...prev,
+      teacherAssignments: {
+        ...prev.teacherAssignments,
+        [subject]: teacherId
+      }
+    }));
+  };
+
+  const saveClassConfig = async () => {
+    if (!selectedSetupClass) {
+      alert('Please select a class first.');
+      return;
+    }
+
+    try {
+      setLoadingClassConfig(true);
+      const configData = {
+        className: selectedSetupClass,
+        subjects: classConfig.subjects,
+        teacherAssignments: classConfig.teacherAssignments
+      };
+      
+      const response = await updateClassConfig(configData);
+      if (response && response.status === 'success') {
+        alert('Class configuration saved successfully!');
+      } else {
+        alert('Failed to save class configuration: ' + (response?.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error saving class config:', error);
+      alert('Error saving class configuration: ' + error.message);
+    } finally {
+      setLoadingClassConfig(false);
+    }
+  };
+
+  const assignAllSubjectsToClassTeacher = async (teacherId) => {
+    console.log('=== ASSIGN ALL SUBJECTS DEBUG START ===');
+    console.log('selectedSetupClass:', selectedSetupClass);
+    console.log('teacherId:', teacherId);
+    console.log('classConfig.subjects:', classConfig.subjects);
+    console.log('Available teachers:', teachers.map(t => ({ id: t.id, teacherID: t.teacherID, name: `${t.firstName} ${t.lastName}` })));
+    
+    // Find the teacher to verify they exist
+    const selectedTeacher = teachers.find(t => (t.teacherID || t.id) === teacherId);
+    console.log('Selected teacher:', selectedTeacher);
+    
+    if (!selectedSetupClass || !teacherId) {
+      console.error('Missing required parameters:', { selectedSetupClass, teacherId });
+      alert('Please select a class and teacher.');
+      return;
+    }
+
+    if (!selectedTeacher) {
+      console.error('Teacher not found in frontend data:', teacherId);
+      alert(`Teacher with ID ${teacherId} not found. Please refresh the page and try again.`);
+      return;
+    }
+
+    if (!confirm(`Assign all ${classConfig.subjects.length} subjects to ${selectedTeacher.firstName} ${selectedTeacher.lastName}?`)) {
+      console.log('User cancelled assignment');
+      return;
+    }
+
+    try {
+      setLoadingClassConfig(true);
+      const assignmentData = {
+        className: selectedSetupClass,
+        teacherId: teacherId,
+        subjects: classConfig.subjects
+      };
+      
+      console.log('Assignment data to send:', JSON.stringify(assignmentData, null, 2));
+      
+      const response = await apiAssignAllSubjectsToClassTeacher(assignmentData);
+      console.log('API response:', response);
+      
+      if (response && response.status === 'success') {
+        console.log('✅ Assignment successful');
+        // Update local state
+        const newAssignments = {};
+        classConfig.subjects.forEach(subject => {
+          newAssignments[subject] = teacherId;
+        });
+        setClassConfig(prev => ({
+          ...prev,
+          teacherAssignments: { ...prev.teacherAssignments, ...newAssignments }
+        }));
+        alert('All subjects assigned to class teacher successfully!');
+      } else {
+        console.error('❌ Assignment failed:', response);
+        alert('Failed to assign subjects: ' + (response?.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('💥 Assignment exception:', error);
+      alert('Error assigning subjects: ' + error.message);
+    } finally {
+      setLoadingClassConfig(false);
+      console.log('=== ASSIGN ALL SUBJECTS DEBUG END ===');
+    }
+  };
+
+  const printAllStudentsReports = async () => {
+    if (!selectedReportClass || !selectedTerm) {
+      alert('Please select a class and term.');
+      return;
+    }
+
+    const classStudents = learners.filter(l => l.className === selectedReportClass);
+    if (classStudents.length === 0) {
+      alert('No students found in the selected class.');
+      return;
+    }
+
+    if (!confirm(`Generate reports for all ${classStudents.length} students in ${selectedReportClass}?`)) {
+      return;
+    }
+
+    setLoadingStudentReport(true);
+    try {
+      let allReportsHTML = '';
+      
+      for (let i = 0; i < classStudents.length; i++) {
+        const student = classStudents[i];
+        const studentId = student.idNumber || student.LearnerID;
+        
+        try {
+          // Get student report data from API
+          const response = await fetch(`${API_URL}?action=getStudentReportData&studentId=${encodeURIComponent(studentId)}&term=${encodeURIComponent(selectedTerm)}`);
+          const result = await response.json();
+          
+          if (result.status === 'success') {
+            const reportData = result.data;
+            const studentDetails = reportData.studentDetails;
+            const scores = reportData.scores || [];
+            const remarks = reportData.remarks || {};
+            const attendance = reportData.attendance || {};
+            
+            // Calculate totals
+            let totalScore = 0;
+            scores.forEach(score => {
+              if (score.total && !isNaN(parseFloat(score.total))) {
+                totalScore += parseFloat(score.total);
+              }
+            });
+
+            // Generate individual report HTML with strict GES format
+            const reportHTML = generateStrictGESReport(studentDetails, scores, remarks, attendance, totalScore, selectedTerm);
+            allReportsHTML += reportHTML;
+            
+            // Add page break except for the last report
+            if (i < classStudents.length - 1) {
+              allReportsHTML += '<div style="page-break-after: always;"></div>';
+            }
+          }
+        } catch (error) {
+          console.error(`Error getting report for ${student.firstName} ${student.lastName}:`, error);
+        }
+      }
+
+      // Create print window with all reports
+      const schoolLogo = localStorage.getItem('schoolLogo');
+      const watermarkStyle = schoolLogo ? `
+        .watermark {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          opacity: 0.08;
+          z-index: -1;
+          pointer-events: none;
+          width: 540px;
+          height: 540px;
+          background-image: url(${schoolLogo});
+          background-repeat: no-repeat;
+          background-position: center;
+          background-size: contain;
+        }
+      ` : '';
+      
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>All Students Reports - ${selectedReportClass} - ${selectedTerm}</title>
+            <style>
+              ${watermarkStyle}
+              @page { 
+                size: A5;
+                margin: 0.5cm;
+              }
+              body { 
+                font-family: Arial, sans-serif; 
+                margin: 0; 
+                padding: 0;
+                font-size: 10px;
+                line-height: 1.2;
+                position: relative;
+              }
+              .print-button { 
+                margin: 10px; 
+                padding: 8px 16px; 
+                background: #007bff; 
+                color: white; 
+                border: none; 
+                cursor: pointer;
+                font-size: 12px;
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                z-index: 1000;
+              }
+              @media print { 
+                .print-button { display: none; }
+              }
+            </style>
+          </head>
+          <body>
+            ${schoolLogo ? '<div class="watermark"></div>' : ''}
+            <button class="print-button" onclick="window.print()">🖨️ Print All Reports (${classStudents.length})</button>
+            ${allReportsHTML}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      
+    } catch (error) {
+      console.error('Error generating all students reports:', error);
+      alert('Error generating reports: ' + error.message);
+    } finally {
+      setLoadingStudentReport(false);
+    }
+  };
+
+  const generateStrictGESReport = (student, scores, remarks, attendance, totalScore, term) => {
+    const schoolName = localStorage.getItem('schoolName') || 'DERIAD\'S eSBA';
+    return `
+      <div style="padding: 10px; margin: 0;">
+        <!-- Header strictly matching GES format -->
+        <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid black; padding-bottom: 10px;">
+          <div style="font-size: 14px; font-weight: bold; margin: 2px 0;">GHANA EDUCATION SERVICE</div>
+          <div style="font-size: 14px; font-weight: bold; margin: 2px 0;">WENCHI</div>
+          <div style="font-size: 14px; font-weight: bold; margin: 2px 0;">${schoolName}</div>
+          <div style="font-size: 12px; font-weight: bold; margin: 5px 0;">END OF ${term.toUpperCase()} REPORT</div>
+        </div>
+        
+        <!-- Student Info exactly as GES format -->
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 9px; font-weight: bold;">
+          <div>NAME: ${student.firstName.toUpperCase()} ${student.lastName.toUpperCase()}</div>
+          <div>NO. ROLL: ${student.idNumber || 'N/A'}</div>
+          <div>POS: ${getClassPosition()}</div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 9px; font-weight: bold;">
+          <div>CLASS: ${student.className.toUpperCase()}</div>
+          <div>NEXT TERM BEGINS: 2ND SEPT.2025</div>
+        </div>
+        
+        <!-- Academic Table strictly following GES format -->
+        <table style="border-collapse: collapse; width: 100%; margin-bottom: 10px; font-size: 9px;">
+          <thead>
+            <tr>
+              <th style="border: 1px solid black; padding: 3px; background-color: #f0f0f0; font-weight: bold; font-size: 8px;">SUBJECT</th>
+              <th style="border: 1px solid black; padding: 3px; background-color: #f0f0f0; font-weight: bold; font-size: 8px;">C.SCORE</th>
+              <th style="border: 1px solid black; padding: 3px; background-color: #f0f0f0; font-weight: bold; font-size: 8px;">EXAM</th>
+              <th style="border: 1px solid black; padding: 3px; background-color: #f0f0f0; font-weight: bold; font-size: 8px;">TOTAL</th>
+              <th style="border: 1px solid black; padding: 3px; background-color: #f0f0f0; font-weight: bold; font-size: 8px;">POS</th>
+              <th style="border: 1px solid black; padding: 3px; background-color: #f0f0f0; font-weight: bold; font-size: 8px;">REM.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${scores.map(score => `
+              <tr>
+                <td style="border: 1px solid black; padding: 3px; text-align: left; font-weight: bold; padding-left: 5px;">${score.subject}</td>
+                <td style="border: 1px solid black; padding: 3px; text-align: center;">${calculateContinuousScore(score)}</td>
+                <td style="border: 1px solid black; padding: 3px; text-align: center;">${score.exam || 'N/A'}</td>
+                <td style="border: 1px solid black; padding: 3px; text-align: center;">${score.total || 'N/A'}</td>
+                <td style="border: 1px solid black; padding: 3px; text-align: center;">${score.position || 'N/A'}</td>
+                <td style="border: 1px solid black; padding: 3px; text-align: center;">${getSubjectRemarks(score.total)}</td>
+              </tr>
+            `).join('')}
+            <tr style="background-color: #f9f9f9; font-weight: bold;">
+              <td style="border: 1px solid black; padding: 3px; text-align: left; font-weight: bold; padding-left: 5px;">G.TOTAL</td>
+              <td style="border: 1px solid black; padding: 3px; text-align: center;" colspan="3">${totalScore.toFixed(1)}</td>
+              <td style="border: 1px solid black; padding: 3px; text-align: center;" colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <!-- Footer Information exactly as GES format -->
+        <div style="margin-top: 10px; font-size: 8px; line-height: 1.3;">
+          <div><strong>ATTENDANCE:</strong> ${attendance.present || 'N/A'} OUT OF: ${attendance.total || 'N/A'}</div>
+          <div><strong>INTEREST:</strong> ${remarks.interests || 'SPORTS'}</div>
+          <div><strong>ATTITUDE:</strong> ${remarks.attitude || 'HARDWORKING'}</div>
+          <div><strong>CLASS TEACHER'S REM.:</strong> ${remarks.classTeacherRemarks || 'HAS IMPROVED'}</div>
+          <div style="margin-top: 10px;"><strong>HEADMASTER'S SIGNATURE:</strong> <span style="border-bottom: 1px solid black; width: 150px; display: inline-block; margin-left: 10px;"></span></div>
+        </div>
+      </div>
+    `;
+  };
+
+  const calculateContinuousScore = (score) => {
+    if (score.test1 && score.test2 && score.test3 && score.test4) {
+      const total = parseFloat(score.test1 || 0) + parseFloat(score.test2 || 0) + parseFloat(score.test3 || 0) + parseFloat(score.test4 || 0);
+      return (total * 50 / 60).toFixed(1);
+    }
+    return 'N/A';
+  };
+
+  const getSubjectRemarks = (total) => {
+    const score = parseFloat(total || 0);
+    if (score >= 80) return 'EXCELLENT';
+    if (score >= 70) return 'VERY GOOD';
+    if (score >= 60) return 'GOOD';
+    if (score >= 50) return 'CREDIT';
+    if (score >= 40) return 'PASS';
+    return 'WEAK';
+  };
+
+  const getClassPosition = () => {
+    // This should ideally come from the backend based on class ranking
+    // For now, return N/A or implement basic ranking logic
+    return 'N/A';
+  };
+
+  // School setup functions
+  const handleLogoUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, JPEG, GIF)');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size should be less than 2MB');
+      return;
+    }
+
+    setLogoUploading(true);
+
+    // Convert to base64 for storage
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64Logo = e.target.result;
+      setSchoolLogo(base64Logo);
+      localStorage.setItem('schoolLogo', base64Logo);
+      
+      // Trigger custom event for same-tab updates
+      window.dispatchEvent(new CustomEvent('logoUpdated', { detail: base64Logo }));
+      
+      setLogoUploading(false);
+    };
+    reader.onerror = () => {
+      setLogoUploading(false);
+      alert('Error uploading logo. Please try again.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    if (confirm('Are you sure you want to remove the school logo?')) {
+      setSchoolLogo('');
+      localStorage.removeItem('schoolLogo');
+      
+      // Trigger custom event for same-tab updates
+      window.dispatchEvent(new CustomEvent('logoUpdated', { detail: '' }));
+    }
+  };
+
+  const handleSchoolNameChange = (e) => {
+    const newName = e.target.value;
+    setSchoolName(newName);
+    localStorage.setItem('schoolName', newName);
+  };
+
+  const printStudentReport = async () => {
+    if (!selectedReportClass || !selectedStudent || !selectedTerm) {
+      alert('Please select a class, student, and term.');
+      return;
+    }
+
+    setLoadingStudentReport(true);
+    try {
+      // Get student report data from API
+      const response = await fetch(`${API_URL}?action=getStudentReportData&studentId=${encodeURIComponent(selectedStudent)}&term=${encodeURIComponent(selectedTerm)}`);
+      const result = await response.json();
+      
+      if (result.status !== 'success') {
+        throw new Error(result.message || 'Failed to load student report data');
+      }
+
+      const reportData = result.data;
+      const student = reportData.studentDetails;
+      const scores = reportData.scores || [];
+      const remarks = reportData.remarks || {};
+      const attendance = reportData.attendance || {};
+      
+      // Calculate totals
+      let totalScore = 0;
+      scores.forEach(score => {
+        if (score.total && !isNaN(parseFloat(score.total))) {
+          totalScore += parseFloat(score.total);
+        }
+      });
+
+      // Generate the strict GES format report
+      const reportHTML = generateStrictGESReport(student, scores, remarks, attendance, totalScore, selectedTerm);
+
+      // Get school logo for watermark
+      const schoolLogo = localStorage.getItem('schoolLogo');
+      const watermarkStyle = schoolLogo ? `
+        .watermark {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          opacity: 0.08;
+          z-index: -1;
+          pointer-events: none;
+          width: 540px;
+          height: 540px;
+          background-image: url(${schoolLogo});
+          background-repeat: no-repeat;
+          background-position: center;
+          background-size: contain;
+        }
+      ` : '';
+
+      // Create the print window with strict A5 GES format
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Student Report - ${student.firstName} ${student.lastName}</title>
+            <style>
+              ${watermarkStyle}
+              @page { 
+                size: A5;
+                margin: 0.5cm;
+              }
+              body { 
+                font-family: Arial, sans-serif; 
+                margin: 0; 
+                padding: 0;
+                font-size: 10px;
+                line-height: 1.2;
+                position: relative;
+              }
+              .print-button { 
+                margin: 10px 0; 
+                padding: 8px 16px; 
+                background: #007bff; 
+                color: white; 
+                border: none; 
+                cursor: pointer;
+                font-size: 12px;
+              }
+              @media print { 
+                .print-button { display: none; }
+              }
+            </style>
+          </head>
+          <body>
+            ${schoolLogo ? '<div class="watermark"></div>' : ''}
+            <button class="print-button" onclick="window.print()">🖨️ Print Report</button>
+            ${reportHTML}
+          </body>
+        </html>
+      `;
+
+      // Open print window
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      
+    } catch (error) {
+      console.error('Error generating student report:', error);
+      alert('Error generating student report: ' + error.message);
+    } finally {
+      setLoadingStudentReport(false);
+    }
+  };
+
+  // Check if class is eligible for class teacher assignment (K.G 1 to BS6)
+  const isEligibleForClassTeacher = (className) => {
+    const lowerClasses = ['K.G 1', 'K.G 2', 'BS1', 'BS2', 'BS3', 'BS4', 'BS5', 'BS6'];
+    return lowerClasses.includes(className);
+  };
+
+
+
+  // Get unassigned subjects
+  const getUnassignedSubjects = () => {
+    return classConfig.subjects.filter(subject => !classConfig.teacherAssignments[subject]);
+  };
+
+  // Get assigned subjects count
+  const getAssignedSubjectsCount = () => {
+    return Object.keys(classConfig.teacherAssignments).filter(subject => 
+      classConfig.subjects.includes(subject) && classConfig.teacherAssignments[subject]
+    ).length;
+  };
+
+  if (loading && !showTeacherModal && !showLearnerModal) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg">Loading...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          <div className="text-sm text-gray-600">
+            Teachers: {teachers.length} | Learners: {learners.length}
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex justify-between items-start">
+              <div className="text-red-800">
+                <strong>Error:</strong> {error}
+              </div>
+              <button 
+                onClick={() => setError("")}
+                className="text-red-600 hover:text-red-800 ml-4"
+                title="Dismiss error"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-2 text-sm text-red-600">
+              ℹ️ If connection issues persist, check <code>URGENT_FIX_GUIDE.md</code> for immediate solutions.
+            </div>
+            <div className="mt-3 space-x-2">
+              <button 
+                onClick={() => {
+                  const testUrl = 'https://script.google.com/macros/s/AKfycbx8vZGD2AnOpyKXKIrF2HUX1rBjO7iXLAIW_tgj7N3LBp6n9Qnide1Eq0-BujnwFmwzJQ/exec?action=test';
+                  console.log('🌐 Opening test URL:', testUrl);
+                  window.open(testUrl, '_blank');
+                  alert('📋 Opened Google Apps Script test URL in new tab.\n\n' +
+                        '✅ Expected result: {"status":"success","data":{"message":"API is working!"}}\n\n' +
+                        '❌ If you see errors or blank page: Your Google Apps Script needs to be redeployed.\n\n' +
+                        '📖 See URGENT_FIX_GUIDE.md for step-by-step solutions.');
+                }}
+                className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+              >
+                🔗 Test API URL
+              </button>
+              <button 
+                onClick={() => {
+                  const gasUrl = 'https://script.google.com';
+                  console.log('🌐 Opening Google Apps Script:', gasUrl);
+                  window.open(gasUrl, '_blank');
+                  alert('📋 Opened Google Apps Script console.\n\n' +
+                        '🔧 To fix deployment:\n' +
+                        '1. Find your project\n' +
+                        '2. Click Deploy → New deployment\n' +
+                        '3. Type: Web app\n' +
+                        '4. Execute as: Me\n' +
+                        '5. Who has access: Anyone\n' +
+                        '6. Click Deploy\n\n' +
+                        '📖 See URGENT_FIX_GUIDE.md for detailed instructions.');
+                }}
+                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+              >
+                🔧 Fix Deployment
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <button 
+            className="relative bg-white/5 backdrop-blur-2xl text-gray-800 px-8 py-8 rounded-xl border border-white/20 hover:border-white/40 hover:shadow-2xl transition-all duration-300 group overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-xl hover:shadow-white/10 hover:scale-105 hover:-translate-y-1 hover:bg-white/8"
+            onClick={() => {
+              setShowTeachersList(!showTeachersList);
+              if (!showTeachersList) {
+                setShowLearnersList(false);
+                setShowClassView(false);
+                setShowBroadsheetView(false);
+                setShowClassSetupView(false);
+                setShowStudentReportView(false);
+                setShowMarksStatusView(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 rounded-xl border-2 border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              </div>
+            </div>
+            <div className="relative z-10 text-center">
+              <div className="text-4xl mb-4 group-hover:text-gray-800 transition-colors duration-300 drop-shadow-lg">👩‍🏫</div>
+              <div className="text-xl font-semibold group-hover:text-gray-800 transition-colors duration-300 mb-2 drop-shadow-sm">
+                {showTeachersList ? 'Hide Teachers' : 'View Teachers'}
+              </div>
+              <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 drop-shadow-sm">
+                {teachers.length} teachers
+              </div>
+            </div>
+          </button>
+          
+          <button 
+            className="relative bg-white/5 backdrop-blur-2xl text-gray-800 px-8 py-8 rounded-xl border border-white/20 hover:border-white/40 hover:shadow-2xl transition-all duration-300 group overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-xl hover:shadow-white/10 hover:scale-105 hover:-translate-y-1 hover:bg-white/8"
+            onClick={() => {
+              setShowLearnersList(!showLearnersList);
+              if (!showLearnersList) {
+                setShowTeachersList(false);
+                setShowClassView(false);
+                setShowBroadsheetView(false);
+                setShowClassSetupView(false);
+                setShowStudentReportView(false);
+                setShowMarksStatusView(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 rounded-xl border-2 border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              </div>
+            </div>
+            <div className="relative z-10 text-center">
+              <div className="text-4xl mb-4 group-hover:text-gray-800 transition-colors duration-300 drop-shadow-lg">🎓</div>
+              <div className="text-xl font-semibold group-hover:text-gray-800 transition-colors duration-300 mb-2 drop-shadow-sm">
+                {showLearnersList ? 'Hide Students' : 'View All Students'}
+              </div>
+              <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 drop-shadow-sm">
+                {learners.length} students
+              </div>
+            </div>
+          </button>
+          
+          <button 
+            className="relative bg-white/5 backdrop-blur-2xl text-gray-800 px-8 py-8 rounded-xl border border-white/20 hover:border-white/40 hover:shadow-2xl transition-all duration-300 group overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-xl hover:shadow-white/10 hover:scale-105 hover:-translate-y-1 hover:bg-white/8"
+            onClick={() => {
+              setShowClassView(!showClassView);
+              if (!showClassView) {
+                setShowTeachersList(false);
+                setShowLearnersList(false);
+                setShowBroadsheetView(false);
+                setShowClassSetupView(false);
+                setShowStudentReportView(false);
+                setShowMarksStatusView(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 rounded-xl border-2 border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              </div>
+            </div>
+            <div className="relative z-10 text-center">
+              <div className="text-4xl mb-4 group-hover:text-gray-800 transition-colors duration-300 drop-shadow-lg">🏫</div>
+              <div className="text-xl font-semibold group-hover:text-gray-800 transition-colors duration-300 mb-2 drop-shadow-sm">
+                {showClassView ? 'Hide Class View' : 'View by Class'}
+              </div>
+              <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 drop-shadow-sm">
+                Class organization
+              </div>
+            </div>
+          </button>
+          
+          <button 
+            className="relative bg-white/5 backdrop-blur-2xl text-gray-800 px-8 py-8 rounded-xl border border-white/20 hover:border-white/40 hover:shadow-2xl transition-all duration-300 group overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-xl hover:shadow-white/10 hover:scale-105 hover:-translate-y-1 hover:bg-white/8"
+            onClick={() => {
+              setShowBroadsheetView(!showBroadsheetView);
+              if (!showBroadsheetView) {
+                setShowTeachersList(false);
+                setShowLearnersList(false);
+                setShowClassView(false);
+                setShowClassSetupView(false);
+                setShowStudentReportView(false);
+                setShowMarksStatusView(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 rounded-xl border-2 border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              </div>
+            </div>
+            <div className="relative z-10 text-center">
+              <div className="text-4xl mb-4 group-hover:text-gray-800 transition-colors duration-300 drop-shadow-lg">🖨️</div>
+              <div className="text-xl font-semibold group-hover:text-gray-800 transition-colors duration-300 mb-2 drop-shadow-sm">
+                {showBroadsheetView ? 'Hide Broadsheet' : 'Print Broadsheet'}
+              </div>
+              <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 drop-shadow-sm">
+                Generate reports
+              </div>
+            </div>
+          </button>
+          
+          <button 
+            className="relative bg-white/5 backdrop-blur-2xl text-gray-800 px-8 py-8 rounded-xl border border-white/20 hover:border-white/40 hover:shadow-2xl transition-all duration-300 group overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-xl hover:shadow-white/10 hover:scale-105 hover:-translate-y-1 hover:bg-white/8"
+            onClick={() => {
+              setShowClassSetupView(!showClassSetupView);
+              if (!showClassSetupView) {
+                setShowTeachersList(false);
+                setShowLearnersList(false);
+                setShowClassView(false);
+                setShowBroadsheetView(false);
+                setShowStudentReportView(false);
+                setShowMarksStatusView(false);
+                setShowSchoolSetupView(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 rounded-xl border-2 border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              </div>
+            </div>
+            <div className="relative z-10 text-center">
+              <div className="text-4xl mb-4 group-hover:text-gray-800 transition-colors duration-300 drop-shadow-lg">⚙️</div>
+              <div className="text-xl font-semibold group-hover:text-gray-800 transition-colors duration-300 mb-2 drop-shadow-sm">
+                {showClassSetupView ? 'Hide Setup' : 'Setup'}
+              </div>
+              <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 drop-shadow-sm">
+                School & class configuration
+              </div>
+            </div>
+          </button>
+          
+          <button 
+            className="relative bg-white/5 backdrop-blur-2xl text-gray-800 px-8 py-8 rounded-xl border border-white/20 hover:border-white/40 hover:shadow-2xl transition-all duration-300 group overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-xl hover:shadow-white/10 hover:scale-105 hover:-translate-y-1 hover:bg-white/8"
+            onClick={() => {
+              setShowStudentReportView(!showStudentReportView);
+              if (!showStudentReportView) {
+                setShowTeachersList(false);
+                setShowLearnersList(false);
+                setShowClassView(false);
+                setShowBroadsheetView(false);
+                setShowClassSetupView(false);
+                setShowMarksStatusView(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 rounded-xl border-2 border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              </div>
+            </div>
+            <div className="relative z-10 text-center">
+              <div className="text-4xl mb-4 group-hover:text-gray-800 transition-colors duration-300 drop-shadow-lg">📋</div>
+              <div className="text-xl font-semibold group-hover:text-gray-800 transition-colors duration-300 mb-2 drop-shadow-sm">
+                {showStudentReportView ? 'Hide Student Reports' : 'Print Student Report'}
+              </div>
+              <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 drop-shadow-sm">
+                Individual reports
+              </div>
+            </div>
+          </button>
+          
+          <button 
+            className="relative bg-white/5 backdrop-blur-2xl text-gray-800 px-8 py-8 rounded-xl border border-white/20 hover:border-white/40 hover:shadow-2xl transition-all duration-300 group overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-xl hover:shadow-white/10 hover:scale-105 hover:-translate-y-1 hover:bg-white/8"
+            onClick={loadData}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 rounded-xl border-2 border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              </div>
+            </div>
+            <div className="relative z-10 text-center">
+              <div className="text-4xl mb-4 group-hover:text-gray-800 transition-colors duration-300 drop-shadow-lg">🔄</div>
+              <div className="text-xl font-semibold group-hover:text-gray-800 transition-colors duration-300 mb-2 drop-shadow-sm">
+                {loading ? "Loading..." : "Refresh Data"}
+              </div>
+              <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 drop-shadow-sm">
+                Update information
+              </div>
+            </div>
+          </button>
+          
+          <button 
+            className="relative bg-white/5 backdrop-blur-2xl text-gray-800 px-8 py-8 rounded-xl border border-white/20 hover:border-white/40 hover:shadow-2xl transition-all duration-300 group overflow-hidden min-h-[220px] flex flex-col items-center justify-center shadow-xl hover:shadow-white/10 hover:scale-105 hover:-translate-y-1 hover:bg-white/8"
+            onClick={() => {
+              setShowMarksStatusView(!showMarksStatusView);
+              if (!showMarksStatusView) {
+                setShowTeachersList(false);
+                setShowLearnersList(false);
+                setShowClassView(false);
+                setShowBroadsheetView(false);
+                setShowClassSetupView(false);
+                setShowStudentReportView(false);
+              }
+            }}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 rounded-xl border-2 border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              </div>
+            </div>
+            <div className="relative z-10 text-center">
+              <div className="text-4xl mb-4 group-hover:text-gray-800 transition-colors duration-300 drop-shadow-lg">📊</div>
+              <div className="text-xl font-semibold group-hover:text-gray-800 transition-colors duration-300 mb-2 drop-shadow-sm">
+                {showMarksStatusView ? 'Hide Marks Status' : 'Marks Status'}
+              </div>
+              <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 drop-shadow-sm">
+                Track marks completion
+              </div>
+            </div>
+          </button>
+          
+
+        </div>
+
+        {/* Teachers Section */}
+        {showTeachersList && (
+          <section className="bg-white/3 backdrop-blur-2xl p-6 rounded-lg shadow-2xl border border-white/15 ring-1 ring-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Teachers ({teachers.length})</h2>
+              <div className="flex gap-2">
+                <button 
+                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors" 
+                  onClick={() => setShowTeacherModal(true)}
+                  disabled={loading}
+                >
+                  + Add Teacher
+                </button>
+                <button 
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  onClick={() => setShowTeachersList(false)}
+                  title="Hide Teachers List"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <input
+              type="text"
+              placeholder="Search teachers..."
+              className="mb-4 p-2 border rounded w-full max-w-md"
+              value={teacherSearch}
+              onChange={(e) => setTeacherSearch(e.target.value)}
+            />
+            
+            {filteredTeachers.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border border-gray-300 p-3 text-left">Name</th>
+                      <th className="border border-gray-300 p-3 text-left">Email</th>
+                      <th className="border border-gray-300 p-3 text-left">Gender</th>
+                      <th className="border border-gray-300 p-3 text-left">Role</th>
+                      <th className="border border-gray-300 p-3 text-left">Subjects</th>
+                      <th className="border border-gray-300 p-3 text-left">Classes</th>
+                      <th className="border border-gray-300 p-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTeachers.map(t => (
+                      <tr key={t.id || t.teacherID} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 p-3">
+                          {t.firstName} {t.lastName}
+                        </td>
+                        <td className="border border-gray-300 p-3">{t.email || 'N/A'}</td>
+                        <td className="border border-gray-300 p-3 capitalize">{t.gender || 'N/A'}</td>
+                        <td className="border border-gray-300 p-3 capitalize">
+                          {t.primaryRole || t.role || 'teacher'}
+                        </td>
+                        <td className="border border-gray-300 p-3">
+                          {Array.isArray(t.subjects) ? t.subjects.join(", ") : t.subjects || "None"}
+                        </td>
+                        <td className="border border-gray-300 p-3">
+                          {Array.isArray(t.classes) ? t.classes.join(", ") : t.classes || "None"}
+                        </td>
+                        <td className="border border-gray-300 p-3 text-center">
+                          <button 
+                            onClick={() => {
+                              console.log('Delete teacher clicked for:', {
+                                teacher: t,
+                                id: t.id,
+                                teacherID: t.teacherID,
+                                name: `${t.firstName} ${t.lastName}`
+                              });
+                              // Use teacherID first, fallback to id
+                              const deleteId = t.teacherID || t.id;
+                              console.log('Using delete ID:', deleteId);
+                              handleDeleteTeacher(deleteId);
+                            }}
+                            className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
+                            disabled={loading}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500">No teachers found</p>
+            )}
+          </section>
+        )}
+
+        {/* Learners Section */}
+        {showLearnersList && (
+          <section className="bg-white/3 backdrop-blur-2xl p-6 rounded-lg shadow-2xl border border-white/15 ring-1 ring-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Students ({learners.length})</h2>
+              <div className="flex gap-2">
+                <button 
+                  className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors" 
+                  onClick={() => setShowLearnerModal(true)}
+                  disabled={loading}
+                >
+                  + Add Student
+                </button>
+                <button 
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  onClick={() => setShowLearnersList(false)}
+                  title="Hide Students List"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <input
+              type="text"
+              placeholder="Search students..."
+              className="mb-4 p-2 border rounded w-full max-w-md"
+              value={learnerSearch}
+              onChange={(e) => setLearnerSearch(e.target.value)}
+            />
+            
+            {filteredLearners.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border border-gray-300 p-3 text-left">ID</th>
+                      <th className="border border-gray-300 p-3 text-left">Name</th>
+                      <th className="border border-gray-300 p-3 text-left">Gender</th>
+                      <th className="border border-gray-300 p-3 text-left">Class</th>
+                      <th className="border border-gray-300 p-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLearners.map(l => (
+                      <tr key={l.id || l.idNumber} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 p-3 font-mono text-sm">
+                          {l.idNumber || l.LearnerID}
+                        </td>
+                        <td className="border border-gray-300 p-3">
+                          {l.firstName} {l.lastName}
+                        </td>
+                        <td className="border border-gray-300 p-3 capitalize">{l.gender || 'N/A'}</td>
+                        <td className="border border-gray-300 p-3">{l.className}</td>
+                        <td className="border border-gray-300 p-3 text-center">
+                          <button 
+                            className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
+                            onClick={() => {
+                              console.log('Delete learner clicked for:', {
+                                learner: l,
+                                id: l.id,
+                                idNumber: l.idNumber,
+                                LearnerID: l.LearnerID,
+                                name: `${l.firstName} ${l.lastName}`
+                              });
+                              // Use idNumber first, fallback to LearnerID
+                              const deleteId = l.idNumber || l.LearnerID;
+                              console.log('Using delete ID:', deleteId);
+                              handleDeleteLearner(deleteId);
+                            }}
+                            disabled={loading}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500">No students found</p>
+            )}
+          </section>
+        )}
+
+        {/* Class View Section */}
+        {showClassView && (
+          <section className="bg-white/3 backdrop-blur-2xl p-6 rounded-lg shadow-2xl border border-white/15 ring-1 ring-white/10">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Students by Class</h2>
+              <button 
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={() => setShowClassView(false)}
+                title="Hide Class View"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Class Statistics Overview */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-4">Class Overview</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                {classesList.map(className => {
+                  const stats = classStats[className];
+                  return (
+                    <div 
+                      key={className}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        selectedClass === className 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setSelectedClass(selectedClass === className ? "" : className)}
+                    >
+                      <div className="text-center">
+                        <div className="font-bold text-lg text-gray-800">{className}</div>
+                        <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+                        <div className="text-xs text-gray-500">students</div>
+                        {stats.total > 0 && (
+                          <div className="mt-2 text-xs">
+                            <span className="text-blue-600">♂ {stats.male}</span>
+                            <span className="mx-1">•</span>
+                            <span className="text-pink-600">♀ {stats.female}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Selected Class Details */}
+            {selectedClass && (
+              <div className="border-t pt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">
+                    {selectedClass} - {studentsByClass.length} Student{studentsByClass.length !== 1 ? 's' : ''}
+                  </h3>
+                  <button 
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                    onClick={() => setSelectedClass("")}
+                  >
+                    ✕ Clear Selection
+                  </button>
+                </div>
+
+                {studentsByClass.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border border-gray-300 p-3 text-left">Student ID</th>
+                          <th className="border border-gray-300 p-3 text-left">Name</th>
+                          <th className="border border-gray-300 p-3 text-left">Gender</th>
+                          <th className="border border-gray-300 p-3 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentsByClass.map(student => (
+                          <tr key={student.id || student.idNumber} className="hover:bg-gray-50">
+                            <td className="border border-gray-300 p-3 font-mono text-sm">
+                              {student.idNumber || student.LearnerID}
+                            </td>
+                            <td className="border border-gray-300 p-3 font-medium">
+                              {student.firstName} {student.lastName}
+                            </td>
+                            <td className="border border-gray-300 p-3">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                student.gender?.toLowerCase() === 'male' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : student.gender?.toLowerCase() === 'female'
+                                  ? 'bg-pink-100 text-pink-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {student.gender?.toLowerCase() === 'male' ? '♂ Male' : 
+                                 student.gender?.toLowerCase() === 'female' ? '♀ Female' : 
+                                 student.gender || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="border border-gray-300 p-3 text-center">
+                              <button 
+                                className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
+                                onClick={() => {
+                                  console.log('Delete student from class view clicked for:', {
+                                    student: student,
+                                    id: student.id,
+                                    idNumber: student.idNumber,
+                                    LearnerID: student.LearnerID,
+                                    name: `${student.firstName} ${student.lastName}`
+                                  });
+                                  // Use idNumber first, fallback to LearnerID
+                                  const deleteId = student.idNumber || student.LearnerID;
+                                  console.log('Using delete ID:', deleteId);
+                                  handleDeleteLearner(deleteId);
+                                }}
+                                disabled={loading}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="text-6xl mb-4">📚</div>
+                    <p className="text-lg">No students found in {selectedClass}</p>
+                    <p className="text-sm">Click "Add Student" to add students to this class.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Broadsheet Section */}
+        {showBroadsheetView && (
+          <section className="bg-white/3 backdrop-blur-2xl p-6 rounded-lg shadow-2xl border border-white/15 ring-1 ring-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Class Broadsheet - All Subjects</h2>
+              <button 
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={() => setShowBroadsheetView(false)}
+                title="Hide Broadsheet View"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex gap-4 items-center">
+                <select 
+                  className="p-3 border rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  value={selectedBroadsheetClass}
+                  onChange={(e) => {
+                    setSelectedBroadsheetClass(e.target.value);
+                    setBroadsheetData([]); // Clear previous data
+                  }}
+                >
+                  <option value="">Select Class</option>
+                  {classesList.map(className => (
+                    <option key={className} value={className}>{className}</option>
+                  ))}
+                </select>
+                
+                <button 
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  onClick={() => loadBroadsheetData(selectedBroadsheetClass)}
+                  disabled={!selectedBroadsheetClass || loadingBroadsheet}
+                >
+                  {loadingBroadsheet ? "Loading..." : "Load Broadsheet"}
+                </button>
+                
+                <button 
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50"
+                  onClick={printBroadsheet}
+                  disabled={!selectedBroadsheetClass || broadsheetData.length === 0 || loadingBroadsheet}
+                >
+                  🖨️ Print Broadsheet
+                </button>
+              </div>
+              
+              {selectedBroadsheetClass && (
+                <div className="text-sm text-gray-600">
+                  <strong>Selected Class:</strong> {selectedBroadsheetClass} |
+                  <strong> Records:</strong> {broadsheetData.length} |
+                  <strong> Subjects:</strong> {[...new Set(broadsheetData.map(row => row.subject))].length}
+                </div>
+              )}
+              
+              {loadingBroadsheet && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-lg text-gray-600">Loading broadsheet data...</div>
+                </div>
+              )}
+              
+              {selectedBroadsheetClass && !loadingBroadsheet && broadsheetData.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No broadsheet data found for {selectedBroadsheetClass}. 
+                  Make sure students have been assigned scores for this class.
+                </div>
+              )}
+              
+              {broadsheetData.length > 0 && (
+                <div className="overflow-x-auto">
+                  <div className="text-sm text-green-600 mb-2">
+                    ✅ Broadsheet data loaded successfully! Click "Print Broadsheet" to generate the printable report.
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded">
+                    <h4 className="font-bold mb-2">Preview:</h4>
+                    <div className="text-sm text-gray-600">
+                      <strong>Students:</strong> {[...new Set(broadsheetData.map(row => row.learnerName))].length} |
+                      <strong> Subjects:</strong> {[...new Set(broadsheetData.map(row => row.subject))].join(", ")}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      The broadsheet will show all students' performance across all subjects in a single comprehensive table.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Class Setup Section */}
+        {showClassSetupView && (
+          <section className="bg-white/3 backdrop-blur-2xl p-6 rounded-lg shadow-2xl border border-white/15 ring-1 ring-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">System Setup</h2>
+              <button 
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={() => setShowClassSetupView(false)}
+                title="Hide Setup"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* School Setup Section */}
+              <div className="border border-white/20 rounded-lg">
+                <button 
+                  className="w-full p-4 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-300 rounded-lg border border-white/20 hover:border-white/40 flex items-center justify-between group"
+                  onClick={() => setShowSchoolSetupView(!showSchoolSetupView)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">🏫</span>
+                    <div className="text-left">
+                      <div className="font-semibold text-gray-800 group-hover:text-gray-900 transition-colors">
+                        {showSchoolSetupView ? 'Hide School Setup' : 'School Setup'}
+                      </div>
+                      <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors">
+                        Manage school name, logo, and branding
+                      </div>
+                    </div>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${
+                      showSchoolSetupView ? 'rotate-180' : ''
+                    }`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* School Setup Content */}
+                {showSchoolSetupView && (
+                  <div className="p-6 bg-white/3 backdrop-blur-xl border-t border-white/20">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {/* School Name Section */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                          🏦 School Information
+                        </h3>
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/30 rounded-lg p-4 space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              School Name
+                            </label>
+                            <input
+                              type="text"
+                              value={schoolName}
+                              onChange={handleSchoolNameChange}
+                              placeholder="Enter your school name"
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/90 backdrop-blur-sm"
+                            />
+                            <p className="text-xs text-gray-600 mt-1">This will appear on all reports and documents</p>
+                          </div>
+                          
+                          <div className="pt-3 border-t border-white/20">
+                            <div className="text-sm text-gray-700">
+                              <strong>Current Setup Status:</strong>
+                              <div className="mt-2 flex items-center space-x-2">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  ✅ School Name: {schoolName || 'Not Set'}
+                                </span>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  schoolLogo ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {schoolLogo ? '✅ Logo: Uploaded' : '⚠️ Logo: Not Set'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* School Logo Section */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                          🖼️ School Logo
+                        </h3>
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/30 rounded-lg p-4">
+                          {schoolLogo ? (
+                            /* Current Logo Display */
+                            <div className="space-y-4">
+                              <div className="text-center">
+                                <img 
+                                  src={schoolLogo} 
+                                  alt="School Logo" 
+                                  className="max-w-32 max-h-32 object-contain mx-auto border border-white/30 rounded p-2 bg-white/20 backdrop-blur-sm"
+                                  style={{ filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.1))' }}
+                                />
+                                <div className="text-xs text-gray-600 mt-2">Current School Logo</div>
+                              </div>
+                              <div className="flex justify-center gap-3">
+                                <button 
+                                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm flex items-center space-x-2"
+                                  onClick={() => document.getElementById('logoInputAdmin').click()}
+                                  disabled={logoUploading}
+                                >
+                                  <span>🔄</span>
+                                  <span>Replace Logo</span>
+                                </button>
+                                <button 
+                                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors text-sm flex items-center space-x-2"
+                                  onClick={handleRemoveLogo}
+                                  disabled={logoUploading}
+                                >
+                                  <span>🗑️</span>
+                                  <span>Remove Logo</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Upload Area */
+                            <div 
+                              className="border-2 border-dashed border-white/40 rounded-lg p-8 text-center hover:border-white/60 transition-colors cursor-pointer bg-white/5"
+                              onClick={() => document.getElementById('logoInputAdmin').click()}
+                            >
+                              <div className="space-y-3">
+                                <div className="text-4xl">📷</div>
+                                <div className="text-sm text-gray-700">
+                                  <div className="font-medium">Click to upload school logo</div>
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    Supports PNG, JPG, JPEG, GIF (Max: 2MB)
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Hidden file input */}
+                          <input
+                            id="logoInputAdmin"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                          
+                          {logoUploading && (
+                            <div className="mt-4 flex items-center justify-center space-x-2 text-blue-600">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                              <span className="text-sm">Uploading logo...</span>
+                            </div>
+                          )}
+                          
+                          {/* Logo Preview in Report Context */}
+                          {schoolLogo && (
+                            <div className="mt-4 p-3 bg-white/20 backdrop-blur-sm rounded border border-white/30">
+                              <div className="text-xs font-medium text-gray-700 mb-2">Watermark Preview:</div>
+                              <div className="relative bg-white rounded p-4 border" style={{ minHeight: '100px' }}>
+                                <div className="relative z-10">
+                                  <div className="text-sm font-bold text-gray-800">{schoolName}</div>
+                                  <div className="text-xs text-gray-600">Student Academic Report</div>
+                                  <div className="text-xs text-gray-500">Logo appears as watermark</div>
+                                </div>
+                                <div 
+                                  className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10"
+                                  style={{
+                                    backgroundImage: `url(${schoolLogo})`,
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'center',
+                                    backgroundSize: '60px'
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Setup Completion Status */}
+                    <div className="mt-6 p-4 bg-blue-50/50 backdrop-blur-sm border border-blue-200/50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-blue-800">School Setup Status</div>
+                          <div className="text-xs text-blue-700 mt-1">
+                            School name and logo configured successfully
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ✅ Ready
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Class Setup Section */}
+              <div className="border border-white/20 rounded-lg">
+                <button 
+                  className="w-full p-4 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-300 rounded-lg border border-white/20 hover:border-white/40 flex items-center justify-between group"
+                  onClick={() => setShowClassConfigView(!showClassConfigView)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">⚙️</span>
+                    <div className="text-left">
+                      <div className="font-semibold text-gray-800 group-hover:text-gray-900 transition-colors">
+                        {showClassConfigView ? 'Hide Class Configuration' : 'Class Configuration'}
+                      </div>
+                      <div className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors">
+                        Configure class subjects and teacher assignments
+                      </div>
+                    </div>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${
+                      showClassConfigView ? 'rotate-180' : ''
+                    }`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Class Configuration Content */}
+                {showClassConfigView && (
+                  <div className="p-6 bg-white/3 backdrop-blur-xl border-t border-white/20">
+                    {/* Class Selection */}
+                    <div className="flex gap-4 items-center">
+                    <select 
+                      className="p-3 border rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      value={selectedSetupClass}
+                      onChange={(e) => {
+                        setSelectedSetupClass(e.target.value);
+                        setClassConfig({ subjects: [], teacherAssignments: {} }); // Clear config
+                      }}
+                    >
+                      <option value="">Select Class to Setup</option>
+                      {classesList.map(className => (
+                        <option key={className} value={className}>{className}</option>
+                      ))}
+                    </select>
+                    
+                    <button 
+                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      onClick={() => loadClassConfig(selectedSetupClass)}
+                      disabled={!selectedSetupClass || loadingClassConfig}
+                    >
+                      {loadingClassConfig ? "Loading..." : "Load Configuration"}
+                    </button>
+                    
+                    <button 
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50"
+                      onClick={saveClassConfig}
+                      disabled={!selectedSetupClass || loadingClassConfig || classConfig.subjects.length === 0}
+                    >
+                      💾 Save Configuration
+                    </button>
+                    </div>
+                    
+                    {selectedSetupClass && (
+                      <div className="bg-gray-50 p-4 rounded">
+                        <div className="text-sm text-gray-600 flex gap-4">
+                          <span><strong>Selected Class:</strong> {selectedSetupClass}</span>
+                          <span><strong>Total Subjects:</strong> {classConfig.subjects.length}</span>
+                          <span><strong>Assigned:</strong> {getAssignedSubjectsCount()}</span>
+                          <span><strong>Unassigned:</strong> {getUnassignedSubjects().length}</span>
+                          {isEligibleForClassTeacher(selectedSetupClass) && (
+                            <span className="text-emerald-600">✅ Eligible for Class Teacher Assignment</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {loadingClassConfig && (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="text-lg text-gray-600">Loading class configuration...</div>
+                      </div>
+                    )}
+                    
+                    {selectedSetupClass && !loadingClassConfig && (
+                      <div className="grid md:grid-cols-2 gap-6">
+                        {/* Subject Selection */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold text-gray-800">📚 Select Subjects for {selectedSetupClass}</h3>
+                          <div className="bg-white border rounded-lg p-4 max-h-80 overflow-y-auto">
+                            <div className="space-y-2">
+                              {subjectsList.map(subject => (
+                                <label key={subject} className="flex items-center text-sm hover:bg-gray-50 p-2 rounded">
+                                  <input
+                                    type="checkbox"
+                                    checked={classConfig.subjects.includes(subject)}
+                                    onChange={() => handleSubjectToggleForClass(subject)}
+                                    className="mr-3 h-4 w-4 text-emerald-600 rounded"
+                                  />
+                                  <span className="flex-1">{subject}</span>
+                                  {classConfig.subjects.includes(subject) && (
+                                    <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded">Selected</span>
+                                  )}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {classConfig.subjects.length > 0 && (
+                            <div className="text-sm text-emerald-600">
+                              ✅ {classConfig.subjects.length} subjects selected
+                            </div>
+                          )}
+                        </div>
+                  
+                  {/* Teacher Assignment */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold text-gray-800">👩‍🏫 Assign Teachers</h3>
+                      {isEligibleForClassTeacher(selectedSetupClass) && classConfig.subjects.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-xs text-gray-600 mb-2">Quick assign all subjects to one teacher:</div>
+                          <select 
+                            className="text-sm p-2 border rounded"
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                assignAllSubjectsToClassTeacher(e.target.value);
+                                e.target.value = ''; // Reset selection
+                              }
+                            }}
+                          >
+                            <option value="">🎯 Assign All to Class Teacher</option>
+                            {teachers.map(teacher => (
+                              <option key={teacher.teacherID || teacher.id} value={teacher.teacherID || teacher.id}>
+                              {teacher.firstName} {teacher.lastName}
+                            </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {classConfig.subjects.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        👈 Select subjects first to assign teachers
+                      </div>
+                    ) : (
+                      <div className="bg-white border rounded-lg p-4 max-h-80 overflow-y-auto">
+                        <div className="space-y-3">
+                          {classConfig.subjects.map(subject => {
+                            const assignedTeacher = classConfig.teacherAssignments[subject];
+                            const teacher = assignedTeacher ? teachers.find(t => (t.teacherID || t.id) === assignedTeacher) : null;
+                            
+                            return (
+                              <div key={subject} className="flex items-center justify-between py-2 border-b border-gray-100">
+                                <div className="flex-1">
+                                  <div className="font-medium text-sm">{subject}</div>
+                                  {teacher ? (
+                                    <div className="text-xs text-green-600">✅ {teacher.firstName} {teacher.lastName}</div>
+                                  ) : (
+                                    <div className="text-xs text-red-500">❌ Not assigned</div>
+                                  )}
+                                </div>
+                                <select 
+                                  className="text-sm p-2 border rounded w-48"
+                                  value={assignedTeacher || ''}
+                                  onChange={(e) => handleTeacherAssignment(subject, e.target.value)}
+                                >
+                                  <option value="">Select Teacher</option>
+                                  {teachers.map(teacher => (
+                                    <option key={teacher.teacherID || teacher.id} value={teacher.teacherID || teacher.id}>
+                                      {teacher.firstName} {teacher.lastName}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Unassigned Subjects Alert */}
+                    {getUnassignedSubjects().length > 0 && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                        <div className="text-sm font-medium text-yellow-800 mb-2">⚠️ Unassigned Subjects ({getUnassignedSubjects().length})</div>
+                        <div className="text-xs text-yellow-700">
+                          {getUnassignedSubjects().join(', ')}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Assignment Summary */}
+                    {classConfig.subjects.length > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                        <div className="text-sm font-medium text-blue-800 mb-2">📊 Assignment Summary</div>
+                        <div className="text-xs text-blue-700 space-y-1">
+                          <div>Total Subjects: {classConfig.subjects.length}</div>
+                          <div>Assigned: {getAssignedSubjectsCount()}</div>
+                          <div>Remaining: {getUnassignedSubjects().length}</div>
+                          <div className="mt-2">
+                            Progress: {classConfig.subjects.length > 0 ? Math.round((getAssignedSubjectsCount() / classConfig.subjects.length) * 100) : 0}%
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Marks Status Section */}
+        {showMarksStatusView && (
+          <section className="bg-white/3 backdrop-blur-2xl p-6 rounded-lg shadow-2xl border border-white/15 ring-1 ring-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Marks Status Overview</h2>
+              <button 
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={() => setShowMarksStatusView(false)}
+                title="Hide Marks Status"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="bg-amber-50 border border-amber-200 rounded p-4">
+                <div className="text-sm font-medium text-amber-800 mb-2">📊 Marks Completion Status</div>
+                <div className="text-xs text-amber-700 space-y-1">
+                  <div>• <strong>Class Overview:</strong> Track which classes have completed marks entry</div>
+                  <div>• <strong>Subject Status:</strong> Monitor subject-wise completion across all classes</div>
+                  <div>• <strong>Student Progress:</strong> Identify students with incomplete assessment records</div>
+                </div>
+              </div>
+              
+              {/* Class-wise Marks Status */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {classesList.map(className => {
+                  const classStudents = learners.filter(l => l.className === className);
+                  const totalStudents = classStudents.length;
+                  
+                  // Calculate completion percentage (mock calculation - in real implementation, 
+                  // this would fetch actual marks data from backend)
+                  const completedStudents = Math.floor(Math.random() * totalStudents);
+                  const completionPercentage = totalStudents > 0 ? Math.round((completedStudents / totalStudents) * 100) : 0;
+                  
+                  const getStatusColor = (percentage) => {
+                    if (percentage >= 80) return 'bg-green-100 border-green-300 text-green-800';
+                    if (percentage >= 60) return 'bg-yellow-100 border-yellow-300 text-yellow-800';
+                    if (percentage >= 40) return 'bg-orange-100 border-orange-300 text-orange-800';
+                    return 'bg-red-100 border-red-300 text-red-800';
+                  };
+                  
+                  const getStatusIcon = (percentage) => {
+                    if (percentage >= 80) return '✅';
+                    if (percentage >= 60) return '⚠️';
+                    if (percentage >= 40) return '🔶';
+                    return '❌';
+                  };
+                  
+                  return (
+                    <div key={className} className={`border rounded-lg p-4 ${getStatusColor(completionPercentage)}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-sm">{className}</h3>
+                        <span className="text-lg">{getStatusIcon(completionPercentage)}</span>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs">
+                          <span>Total Students:</span>
+                          <span className="font-medium">{totalStudents}</span>
+                        </div>
+                        
+                        <div className="flex justify-between text-xs">
+                          <span>Completed:</span>
+                          <span className="font-medium">{completedStudents}</span>
+                        </div>
+                        
+                        <div className="flex justify-between text-xs">
+                          <span>Pending:</span>
+                          <span className="font-medium">{totalStudents - completedStudents}</span>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <div className="mt-3">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span>Progress:</span>
+                            <span className="font-bold">{completionPercentage}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                completionPercentage >= 80 ? 'bg-green-500' :
+                                completionPercentage >= 60 ? 'bg-yellow-500' :
+                                completionPercentage >= 40 ? 'bg-orange-500' : 'bg-red-500'
+                              }`}
+                              style={{ width: `${completionPercentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        
+                        <button 
+                          className="w-full mt-3 text-xs bg-white bg-opacity-50 hover:bg-opacity-75 px-2 py-1 rounded transition-colors"
+                          onClick={() => {
+                            alert(`Detailed marks status for ${className}:\n\n` +
+                                  `Total Students: ${totalStudents}\n` +
+                                  `Completed Marks: ${completedStudents}\n` +
+                                  `Pending Marks: ${totalStudents - completedStudents}\n` +
+                                  `Completion Rate: ${completionPercentage}%\n\n` +
+                                  `Note: This is a demo view. In the full implementation, ` +
+                                  `this would show detailed subject-wise completion status ` +
+                                  `and allow drilling down to individual student records.`);
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Overall Summary */}
+              <div className="bg-blue-50 border border-blue-200 rounded p-4">
+                <div className="text-sm font-medium text-blue-800 mb-3">📈 Overall Summary</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div className="bg-white rounded p-3">
+                    <div className="text-2xl font-bold text-blue-600">{classesList.length}</div>
+                    <div className="text-xs text-blue-700">Total Classes</div>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <div className="text-2xl font-bold text-green-600">{learners.length}</div>
+                    <div className="text-xs text-green-700">Total Students</div>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <div className="text-2xl font-bold text-purple-600">{'subjects' in (classesList[0] ? (classConfig.className === classesList[0] ? classConfig : {}) : {}) ? classConfig.subjects.length : 0}</div>
+                    <div className="text-xs text-purple-700">Subjects Tracked</div>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <div className="text-2xl font-bold text-orange-600">{Math.round(Math.random() * 100)}%</div>
+                    <div className="text-xs text-orange-700">Overall Completion</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-4 flex-wrap">
+                <button 
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm"
+                  onClick={() => {
+                    alert('Export Functionality:\n\n' +
+                          'This would generate a comprehensive Excel/CSV report showing:\n' +
+                          '• Class-wise marks completion status\n' +
+                          '• Subject-wise completion rates\n' +
+                          '• Individual student progress\n' +
+                          '• Teacher assignment status\n\n' +
+                          'Note: This is a demo. Full implementation would integrate with the backend API.');
+                  }}
+                >
+                  📊 Export Report
+                </button>
+                
+                <button 
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors text-sm"
+                  onClick={() => {
+                    setError('');
+                    alert('Refresh Functionality:\n\n' +
+                          'This would fetch the latest marks completion data from Google Sheets including:\n' +
+                          '• Updated student enrollment\n' +
+                          '• Recent marks entries\n' +
+                          '• Teacher assignment changes\n' +
+                          '• Real-time completion percentages\n\n' +
+                          'Note: In full implementation, this would call the backend API to get actual data.');
+                  }}
+                >
+                  🔄 Refresh Data
+                </button>
+                
+                <button 
+                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors text-sm"
+                  onClick={() => {
+                    alert('Send Reminders Functionality:\n\n' +
+                          'This would automatically send email reminders to teachers who have:\n' +
+                          '• Incomplete marks entry for their assigned subjects\n' +
+                          '• Pending assessment submissions\n' +
+                          '• Overdue broadsheet updates\n\n' +
+                          'Reminder emails would include specific details about:\n' +
+                          '• Which classes need attention\n' +
+                          '• Which subjects are pending\n' +
+                          '• Deadlines and priorities\n\n' +
+                          'Note: This feature would integrate with the email notification system.');
+                  }}
+                >
+                  📧 Send Reminders
+                </button>
+              </div>
+              
+              {/* Demo Notice */}
+              <div className="bg-gray-50 border border-gray-200 rounded p-4">
+                <div className="text-sm font-medium text-gray-800 mb-2">ℹ️ Demo Information</div>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>• Current data shown is simulated for demonstration purposes</div>
+                  <div>• In full implementation, this would connect to your Google Sheets backend</div>
+                  <div>• Real completion percentages would be calculated based on actual marks entries</div>
+                  <div>• Teachers could be notified automatically when marks are due</div>
+                  <div>• Detailed drill-down views would show subject-specific completion status</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Student Report Section */}
+        {showStudentReportView && (
+          <section className="bg-white/3 backdrop-blur-2xl p-6 rounded-lg shadow-2xl border border-white/15 ring-1 ring-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Print Student Report</h2>
+              <button 
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={() => setShowStudentReportView(false)}
+                title="Hide Student Report"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="bg-gray-50 border border-gray-200 rounded p-4">
+                <div className="text-sm font-medium text-gray-800 mb-2">📜 Report Generation Options</div>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>• <strong>Individual Report:</strong> Select a specific student to generate their academic report</div>
+                  <div>• <strong>All Students Reports:</strong> Generate reports for all students in a class (bulk printing)</div>
+                  <div>• <strong>Format:</strong> All reports follow the strict Ghana Education Service A5 format</div>
+                </div>
+              </div>
+              
+              {/* Class and Student Selection */}
+              <div className="flex gap-4 items-center flex-wrap">
+                <select 
+                  className="p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedReportClass}
+                  onChange={(e) => {
+                    setSelectedReportClass(e.target.value);
+                    setSelectedStudent(''); // Reset student selection
+                  }}
+                >
+                  <option value="">Select Class</option>
+                  {classesList.map(className => (
+                    <option key={className} value={className}>{className}</option>
+                  ))}
+                </select>
+                
+                <select 
+                  className="p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedStudent}
+                  onChange={(e) => setSelectedStudent(e.target.value)}
+                  disabled={!selectedReportClass}
+                >
+                  <option value="">Select Student</option>
+                  {selectedReportClass && learners
+                    .filter(l => l.className === selectedReportClass)
+                    .map(student => (
+                      <option key={student.idNumber || student.LearnerID} value={student.idNumber || student.LearnerID}>
+                        {student.firstName} {student.lastName}
+                      </option>
+                    ))
+                  }
+                </select>
+                
+                <select 
+                  className="p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedTerm}
+                  onChange={(e) => setSelectedTerm(e.target.value)}
+                >
+                  <option value="First Term">First Term</option>
+                  <option value="Second Term">Second Term</option>
+                  <option value="Third Term">Third Term</option>
+                </select>
+                
+                <button 
+                  className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  onClick={printStudentReport}
+                  disabled={!selectedReportClass || !selectedStudent || !selectedTerm || loadingStudentReport}
+                >
+                  {loadingStudentReport ? "Generating..." : "🖨️ Generate Individual Report"}
+                </button>
+                
+                <button 
+                  className="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 transition-colors disabled:opacity-50"
+                  onClick={printAllStudentsReports}
+                  disabled={!selectedReportClass || !selectedTerm || loadingStudentReport}
+                >
+                  {loadingStudentReport ? "Generating..." : "📚 Print All Students Reports"}
+                </button>
+              </div>
+              
+              {selectedReportClass && selectedStudent && (
+                <div className="bg-blue-50 border border-blue-200 rounded p-4">
+                  <div className="text-sm font-medium text-blue-800 mb-2">📋 Individual Report Preview</div>
+                  <div className="text-xs text-blue-700">
+                    <div><strong>Student:</strong> {(() => {
+                      const student = learners.find(l => (l.idNumber || l.LearnerID) === selectedStudent);
+                      return student ? `${student.firstName} ${student.lastName}` : 'Unknown';
+                    })()}</div>
+                    <div><strong>Class:</strong> {selectedReportClass}</div>
+                    <div><strong>Term:</strong> {selectedTerm}</div>
+                    <div className="mt-2 text-blue-600">Click "Generate Individual Report" to create an A5 formatted Ghana Education Service report for this student.</div>
+                  </div>
+                </div>
+              )}
+              
+              {selectedReportClass && !selectedStudent && (
+                <div className="bg-green-50 border border-green-200 rounded p-4">
+                  <div className="text-sm font-medium text-green-800 mb-2">📚 Class Reports Preview</div>
+                  <div className="text-xs text-green-700">
+                    <div><strong>Class:</strong> {selectedReportClass}</div>
+                    <div><strong>Term:</strong> {selectedTerm}</div>
+                    <div><strong>Students:</strong> {learners.filter(l => l.className === selectedReportClass).length} students</div>
+                    <div className="mt-2 text-green-600">Click "Print All Students Reports" to generate reports for all students in this class. Each report will be on a separate A5 page following the strict Ghana Education Service format.</div>
+                  </div>
+                </div>
+              )}
+              
+              {loadingStudentReport && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-lg text-gray-600">Generating student report...</div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+      </div>
+
+      {/* Teacher Modal */}
+      {showTeacherModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4">Add Teacher</h3>
+              <form onSubmit={handleAddTeacher} className="space-y-4">
+                <input 
+                  type="text" 
+                  name="firstName" 
+                  placeholder="First Name *" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  value={teacherForm.firstName} 
+                  onChange={handleTeacherChange}
+                  required
+                />
+                <input 
+                  type="text" 
+                  name="lastName" 
+                  placeholder="Last Name *" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  value={teacherForm.lastName} 
+                  onChange={handleTeacherChange}
+                  required
+                />
+                <select 
+                  name="gender" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  value={teacherForm.gender} 
+                  onChange={handleTeacherChange}
+                  required
+                >
+                  <option value="">Select Gender *</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+                <input 
+                  type="email" 
+                  name="email" 
+                  placeholder="Email *" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  value={teacherForm.email} 
+                  onChange={handleTeacherChange}
+                  required
+                />
+                <input 
+                  type="password" 
+                  name="password" 
+                  placeholder="Password" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                  value={teacherForm.password} 
+                  onChange={handleTeacherChange}
+                />
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Primary Role
+                  </label>
+                  <select 
+                    name="primaryRole" 
+                    className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                    value={teacherForm.primaryRole} 
+                    onChange={handleTeacherChange}
+                  >
+                    <option value="teacher">Teacher</option>
+                    <option value="class_teacher">Class Teacher</option>
+                    <option value="subject_teacher">Subject Teacher</option>
+                    <option value="head_teacher">Head Teacher</option>
+                    <option value="admin">Administrator</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Assign Subjects
+                  </label>
+                  <div className="max-h-32 overflow-y-auto border rounded p-2 space-y-1">
+                    {subjectsList.map(subject => (
+                      <label key={subject} className="flex items-center text-sm">
+                        <input
+                          type="checkbox"
+                          checked={teacherForm.subjects.includes(subject)}
+                          onChange={() => handleSubjectToggle(subject)}
+                          className="mr-2"
+                        />
+                        {subject}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Assign Classes
+                  </label>
+                  <div className="max-h-32 overflow-y-auto border rounded p-2 space-y-1">
+                    {classesList.map(className => (
+                      <label key={className} className="flex items-center text-sm">
+                        <input
+                          type="checkbox"
+                          checked={teacherForm.classes.includes(className)}
+                          onChange={() => handleClassToggle(className)}
+                          className="mr-2"
+                        />
+                        {className}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Selected: {teacherForm.classes.length > 0 ? teacherForm.classes.join(", ") : "None"}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button 
+                    type="button" 
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors" 
+                    onClick={() => setShowTeacherModal(false)}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    disabled={loading}
+                  >
+                    {loading ? "Adding..." : "Add Teacher"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Learner Modal */}
+      {showLearnerModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4">Add Learner</h3>
+              <form onSubmit={handleAddLearner} className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Learner ID"
+                  className="w-full p-3 border rounded bg-gray-100 font-mono text-sm"
+                  value={generateLearnerId()}
+                  disabled
+                />
+                <input 
+                  type="text" 
+                  name="firstName" 
+                  placeholder="First Name *" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-green-500 focus:border-green-500" 
+                  value={learnerForm.firstName} 
+                  onChange={handleLearnerChange}
+                  required
+                />
+                <input 
+                  type="text" 
+                  name="lastName" 
+                  placeholder="Last Name *" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-green-500 focus:border-green-500" 
+                  value={learnerForm.lastName} 
+                  onChange={handleLearnerChange}
+                  required
+                />
+                <select 
+                  name="gender" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-green-500 focus:border-green-500" 
+                  value={learnerForm.gender} 
+                  onChange={handleLearnerChange}
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+                <input 
+                  type="text" 
+                  name="className" 
+                  placeholder="Class Name (e.g., K.G 1, BS1) *" 
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-green-500 focus:border-green-500" 
+                  value={learnerForm.className} 
+                  onChange={handleLearnerChange}
+                  list="classes-list"
+                  required
+                />
+                <datalist id="classes-list">
+                  {classesList.map(className => (
+                    <option key={className} value={className}>{className}</option>
+                  ))}
+                </datalist>
+                
+                <div className="flex justify-end gap-3 pt-4">
+                  <button 
+                    type="button" 
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors" 
+                    onClick={() => setShowLearnerModal(false)}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50"
+                    disabled={loading}
+                  >
+                    {loading ? "Adding..." : "Add Learner"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+    </Layout>
+  );
+};
+
+export default AdminDashboardPage;

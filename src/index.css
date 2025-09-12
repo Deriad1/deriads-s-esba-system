@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+  }
+
+  #print-area {
+    width: 100%;
+  }
+
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  #print-area table {
+    page-break-inside: auto;
+    width: 100%;
+  }
+
+  #print-area tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
