@@ -9,6 +9,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  // Add error state
+  const [error, setError] = useState(null);
 
   // Check for existing user data on app load
   useEffect(() => {
@@ -33,6 +35,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     setLoading(true);
+    setError(null); // Clear any previous errors
     try {
       console.log('Attempting login with:', email);
       const response = await loginUser(email, password);
@@ -62,15 +65,19 @@ export const AuthProvider = ({ children }) => {
           // } else {
             navigate("/admin");
           // }
-        } else if (roleToCheck === 'teacher' || roleToCheck === 'class_teacher' || roleToCheck === 'subject_teacher' || roleToCheck === 'head_teacher') {
+        } else if (roleToCheck === 'teacher' || roleToCheck === 'class_teacher' || roleToCheck === 'subject_teacher') {
           console.log('Teacher login - navigating to /teacher');
           navigate("/teacher");
+        } else if (roleToCheck === 'head_teacher') {
+          console.log('Head teacher login - navigating to /teacher/head-teacher');
+          navigate("/teacher/head-teacher");
         } else if (roleToCheck === 'form_master') {
-          console.log('Form master login - navigating to /teacher');
-          navigate("/teacher");
+          console.log('Form master login - navigating to /teacher/form-master');
+          navigate("/teacher/form-master");
         } else {
           console.log('Unknown role:', roleToCheck);
           console.error('User data:', userData);
+          setError("Unknown user role: " + roleToCheck);
           alert("Unknown user role: " + roleToCheck);
         }
       } else {
@@ -186,12 +193,18 @@ export const AuthProvider = ({ children }) => {
           }
           
           navigate("/admin");
+        } else if (roleToCheck === 'head_teacher') {
+          console.log('Head teacher fallback - navigating to /teacher/head-teacher');
+          navigate("/teacher/head-teacher");
         } else {
           console.log('Teacher fallback - navigating to /teacher');
           navigate("/teacher");
         }
       } else {
         console.log('No user found for:', email);
+        // Set error message to be displayed in the UI
+        setError("Invalid email or password.");
+        // Also show alert for immediate feedback
         alert("Invalid email or password.");
       }
     } finally {
@@ -252,8 +265,11 @@ export const AuthProvider = ({ children }) => {
         }
         
         navigate("/admin");
+      } else if (newRole === 'head_teacher') {
+        // Navigate to head teacher dashboard
+        navigate("/teacher/head-teacher");
       } else {
-        // For all teacher roles, navigate to teacher dashboard
+        // For all other teacher roles, navigate to teacher dashboard
         navigate("/teacher");
       }
       
@@ -321,6 +337,8 @@ export const AuthProvider = ({ children }) => {
       login, 
       logout, 
       loading, 
+      error,
+      setError,
       switchUserRole 
     }}>
       {children}

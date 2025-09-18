@@ -3,10 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import LogoWatermark from '../components/LogoWatermark';
 
 const LoginPage = () => {
-  const { login, loading } = useAuth();
+  const { login, loading, error, setError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [schoolName, setSchoolName] = useState('DERIAD\'S eSBA');
   const [schoolLogo, setSchoolLogo] = useState('');
 
@@ -26,7 +25,7 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     
     if (!email || !password) {
       setError('Please enter both email and password');
@@ -36,7 +35,9 @@ const LoginPage = () => {
     try {
       await login(email, password);
     } catch (err) {
-      setError(err.message || 'Login failed');
+      // The error should be handled in the AuthContext now, but we'll set it here as well for safety
+      const errorMessage = err.message || 'Login failed';
+      setError(errorMessage);
     }
   };
 
@@ -77,7 +78,7 @@ const LoginPage = () => {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             {schoolName}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-gray-900">
             eSBA System Login
           </p>
         </div>
@@ -94,7 +95,7 @@ const LoginPage = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white/50 backdrop-blur-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-700 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white/50 backdrop-blur-sm"
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -110,7 +111,7 @@ const LoginPage = () => {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white/50 backdrop-blur-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-700 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white/50 backdrop-blur-sm"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -118,9 +119,9 @@ const LoginPage = () => {
             </div>
           </div>
 
-          {error && (
+          {(error) && (
             <div className="bg-red-50/70 border border-red-200 rounded-md p-4 backdrop-blur-sm">
-              <div className="text-red-800 text-sm">{error}</div>
+              <div className="text-red-900 text-sm">{error}</div>
             </div>
           )}
 
@@ -135,10 +136,10 @@ const LoginPage = () => {
           </div>
           
           <div className="text-center backdrop-blur-sm bg-white/30 p-4 rounded-lg">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-900">
               <strong>Demo Accounts:</strong>
             </div>
-            <div className="text-xs text-gray-500 mt-2 space-y-1">
+            <div className="text-xs text-gray-800 mt-2 space-y-1">
               <div>Admin: admin@school.com / admin123</div>
               <div>Teacher: teacher1@example.com / teacher123</div>
             </div>

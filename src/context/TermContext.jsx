@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getTermKey, getCurrentTermKey } from "../utils/termHelpers";
 
 const TermContext = createContext();
 
@@ -13,17 +14,6 @@ export const useTermContext = () => {
 export const TermContextProvider = ({ children }) => {
   const [currentTerm, setCurrentTerm] = useState('First Term');
   const [currentYear, setCurrentYear] = useState('2024/2025');
-
-  // Generate term-specific storage keys
-  const getTermKey = (term, year, dataType) => {
-    const termKey = `${year.replace('/', '_')}_${term.replace(' ', '_')}`;
-    return `${termKey}_${dataType}`;
-  };
-
-  // Get current term-specific key for data storage
-  const getCurrentTermKey = (dataType) => {
-    return getTermKey(currentTerm, currentYear, dataType);
-  };
 
   // Term-specific data operations
   const getTermData = (dataType) => {

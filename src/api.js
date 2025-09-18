@@ -75,30 +75,11 @@ const apiCall = async (action, data = {}) => {
  * @param {string} dataType - The type of data (teachers, learners, etc.)
  * @returns {string} The storage key
  */
-const getTermKey = (term, year, dataType) => {
-  const termKey = `${year.replace('/', '_')}_${term.replace(' ', '_')}`;
-  return `${termKey}_${dataType}`;
-};
+// Import helper functions for term-specific storage operations
+import { getCurrentTermInfo, getTermKey, getCurrentTermKey } from "./utils/termHelpers";
 
-/**
- * Get current term and year from localStorage
- * @returns {Object} Current term and year
- */
-const getCurrentTermInfo = () => {
-  const currentTerm = localStorage.getItem('currentTerm') || 'First Term';
-  const currentYear = localStorage.getItem('currentAcademicYear') || '2024/2025';
-  return { currentTerm, currentYear };
-};
-
-/**
- * Get current term-specific storage key
- * @param {string} dataType - The type of data (teachers, learners, etc.)
- * @returns {string} The storage key for current term
- */
-const getCurrentTermKey = (dataType) => {
-  const { currentTerm, currentYear } = getCurrentTermInfo();
-  return getTermKey(currentTerm, currentYear, dataType);
-};
+// Import validation utilities
+import { validateStudentData, validateTeacherData, validateScoreData, validateRemarkData, validateClassConfig, validateSubjectData, validateRoleData } from "./utils/validation";
 
 /**
  * Fetch all learners for current term
@@ -136,8 +117,11 @@ export const addLearner = async (learnerData) => {
     console.log('👶 addLearner API call started');
     console.log('Learner data to add:', learnerData);
     
-    if (!learnerData || !learnerData.firstName || !learnerData.className) {
-      throw new Error('Learner data with firstName and className is required');
+    // Validate learner data
+    const validation = validateStudentData(learnerData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid learner data: ${errorMessages}`);
     }
     
     const termKey = getCurrentTermKey('learners');
@@ -166,8 +150,11 @@ export const addTeacher = async (teacherData) => {
     console.log('👩‍🏫 addTeacher API call started');
     console.log('Teacher data to add:', teacherData);
     
-    if (!teacherData || !teacherData.firstName || !teacherData.email) {
-      throw new Error('Teacher data with firstName and email is required');
+    // Validate teacher data
+    const validation = validateTeacherData(teacherData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid teacher data: ${errorMessages}`);
     }
     
     const termKey = getCurrentTermKey('teachers');
@@ -380,6 +367,13 @@ export const getClassConfig = async (className) => {
  */
 export const updateClassConfig = async (classConfigData) => {
   try {
+    // Validate class configuration data
+    const validation = validateClassConfig(classConfigData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid class configuration data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('classConfigs');
     const configs = JSON.parse(localStorage.getItem(termKey) || '[]');
     const existingIndex = configs.findIndex(config => 
@@ -421,6 +415,13 @@ export const assignAllSubjectsToClassTeacher = async (assignmentData) => {
  */
 export const assignRole = async (roleData) => {
   try {
+    // Validate role data
+    const validation = validateRoleData(roleData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid role data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('roleAssignments');
     const assignments = JSON.parse(localStorage.getItem(termKey) || '[]');
     assignments.push(roleData);
@@ -437,6 +438,13 @@ export const assignRole = async (roleData) => {
  */
 export const removeRole = async (roleData) => {
   try {
+    // Validate role data
+    const validation = validateRoleData(roleData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid role data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('roleAssignments');
     const assignments = JSON.parse(localStorage.getItem(termKey) || '[]');
     const updatedAssignments = assignments.filter(assignment => 
@@ -505,6 +513,13 @@ export const getUserRoles = async (email) => {
  */
 export const addStudent = async (studentData) => {
   try {
+    // Validate student data
+    const validation = validateStudentData(studentData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid student data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('learners');
     const learners = JSON.parse(localStorage.getItem(termKey) || '[]');
     const newStudent = {
@@ -542,6 +557,13 @@ export const deleteStudent = async (studentId) => {
  */
 export const updateTeacher = async (teacherData) => {
   try {
+    // Validate teacher data
+    const validation = validateTeacherData(teacherData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid teacher data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('teachers');
     const teachers = JSON.parse(localStorage.getItem(termKey) || '[]');
     const existingIndex = teachers.findIndex(teacher => teacher.id === teacherData.id);
@@ -564,14 +586,35 @@ export const updateTeacher = async (teacherData) => {
  */
 export const updateStudentScores = async (scoreData) => {
   try {
+    // Validate score data
+    const validation = validateScoreData(scoreData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid score data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('marks');
     const marks = JSON.parse(localStorage.getItem(termKey) || '[]');
-    marks.push(scoreData);
+    
+    // Check if we already have scores for this student/subject/term combination
+    const existingIndex = marks.findIndex(mark => 
+      mark.studentId === scoreData.studentId && 
+      mark.subject === scoreData.subject && 
+      mark.term === scoreData.term
+    );
+    
+    // If existing record found, update it; otherwise, add new record
+    if (existingIndex >= 0) {
+      marks[existingIndex] = { ...marks[existingIndex], ...scoreData };
+    } else {
+      marks.push(scoreData);
+    }
+    
     localStorage.setItem(termKey, JSON.stringify(marks));
-    return { status: 'success', data: scoreData };
+    return { status: 'success', data: scoreData, message: 'Student scores saved successfully' };
   } catch (error) {
     console.error('Update student scores error:', error);
-    throw error;
+    return { status: 'error', message: 'Failed to save student scores: ' + error.message };
   }
 };
 
@@ -580,14 +623,35 @@ export const updateStudentScores = async (scoreData) => {
  */
 export const updateFormMasterRemarks = async (remarkData) => {
   try {
+    // Validate remark data
+    const validation = validateRemarkData(remarkData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid remark data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('remarks');
     const remarks = JSON.parse(localStorage.getItem(termKey) || '[]');
-    remarks.push(remarkData);
+    
+    // Check if we already have remarks for this student/class/term combination
+    const existingIndex = remarks.findIndex(remark => 
+      remark.studentId === remarkData.studentId && 
+      remark.className === remarkData.className && 
+      remark.term === remarkData.term
+    );
+    
+    // If existing record found, update it; otherwise, add new record
+    if (existingIndex >= 0) {
+      remarks[existingIndex] = { ...remarks[existingIndex], ...remarkData };
+    } else {
+      remarks.push(remarkData);
+    }
+    
     localStorage.setItem(termKey, JSON.stringify(remarks));
-    return { status: 'success', data: remarkData };
+    return { status: 'success', data: remarkData, message: 'Form master remarks saved successfully' };
   } catch (error) {
     console.error('Update form master remarks error:', error);
-    throw error;
+    return { status: 'error', message: 'Failed to save form master remarks: ' + error.message };
   }
 };
 
@@ -596,16 +660,91 @@ export const updateFormMasterRemarks = async (remarkData) => {
  */
 export const loginUser = async (email, password) => {
   try {
-    // In a term-specific system, login is handled by AuthContext
-    // This function is kept for API compatibility
+    // First check if there's a teacher with this email and password in localStorage
+    const { currentTerm, currentYear } = getCurrentTermInfo();
+    const termKey = getTermKey(currentTerm, currentYear, 'teachers');
+    const teachers = JSON.parse(localStorage.getItem(termKey) || '[]');
+    
+    // Find teacher with matching email and password
+    const foundTeacher = teachers.find(
+      (teacher) => teacher.email.toLowerCase() === email.toLowerCase() && teacher.password === password
+    );
+    
+    if (foundTeacher) {
+      // Return teacher user object
+      return { 
+        status: 'success', 
+        data: { 
+          id: foundTeacher.id,
+          email: foundTeacher.email,
+          name: `${foundTeacher.firstName} ${foundTeacher.lastName}`,
+          primaryRole: foundTeacher.primaryRole || "teacher",
+          allRoles: foundTeacher.allRoles || ["teacher"],
+          currentRole: foundTeacher.primaryRole || "teacher",
+          gender: foundTeacher.gender,
+          classes: foundTeacher.classes || [],
+          subjects: foundTeacher.subjects || []
+        } 
+      };
+    }
+    
+    // If no teacher found, check fallback users
+    const fallbackUsers = [
+      { 
+        id: 'U001', 
+        email: "admin@example.com", 
+        password: "admin123", 
+        name: "Admin User", 
+        primaryRole: "admin",
+        allRoles: ["admin", "subject_teacher", "head_teacher"],
+        currentRole: "admin",
+        gender: "male",
+        classes: ["ALL"],
+        subjects: ["Mathematics", "Science"]
+      },
+      { 
+        id: 'U002', 
+        email: "admin@school.com", 
+        password: "admin123", 
+        name: "School Admin", 
+        primaryRole: "admin",
+        allRoles: ["admin", "subject_teacher", "head_teacher"],
+        currentRole: "admin",
+        gender: "male",
+        classes: ["ALL"],
+        subjects: ["Mathematics", "Science"]
+      },
+      { 
+        id: 'U003', 
+        email: "teacher1@example.com", 
+        password: "teacher123", 
+        name: "John Doe", 
+        primaryRole: "teacher",
+        allRoles: ["teacher", "class_teacher", "subject_teacher"],
+        currentRole: "teacher",
+        gender: "male",
+        classes: ["5A", "6A"],
+        subjects: ["Mathematics", "Science"]
+      }
+    ];
+    
+    const foundUser = fallbackUsers.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+    );
+    
+    if (foundUser) {
+      // Return the found fallback user
+      const { password: _, ...userWithoutPassword } = foundUser;
+      return { 
+        status: 'success', 
+        data: userWithoutPassword
+      };
+    }
+    
+    // If no user found, return error
     return { 
-      status: 'success', 
-      data: { 
-        email,
-        name: 'Administrator',
-        primaryRole: 'admin',
-        allRoles: ['admin', 'head_teacher', 'class_teacher', 'subject_teacher', 'form_master']
-      } 
+      status: 'error', 
+      message: 'Invalid email or password'
     };
   } catch (error) {
     console.error('Login API error:', error);
@@ -625,6 +764,13 @@ export const loginUser = async (email, password) => {
  */
 export const saveClass = async (classData) => {
   try {
+    // Validate class configuration data
+    const validation = validateClassConfig(classData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid class data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('classes');
     const classes = JSON.parse(localStorage.getItem(termKey) || '[]');
     
@@ -668,6 +814,13 @@ export const deleteClass = async (className) => {
  */
 export const saveSubject = async (subjectData) => {
   try {
+    // Validate subject data
+    const validation = validateSubjectData(subjectData);
+    if (!validation.isValid) {
+      const errorMessages = Object.values(validation.errors).join(', ');
+      throw new Error(`Invalid subject data: ${errorMessages}`);
+    }
+    
     const termKey = getCurrentTermKey('subjects');
     const subjects = JSON.parse(localStorage.getItem(termKey) || '[]');
     
@@ -1049,6 +1202,96 @@ export const getStorageStats = () => {
   } catch (error) {
     console.error('Get storage stats error:', error);
     return { error: error.message };
+  }
+};
+
+/**
+ * Get student marks across all terms for trend analysis
+ * @param {string} studentId - The student ID
+ * @param {string} subject - The subject name
+ * @param {string} className - The class name
+ * @returns {Object} Marks data organized by term
+ */
+export const getStudentMarksAcrossTerms = async (studentId, subject, className) => {
+  try {
+    const { currentYear } = getCurrentTermInfo();
+    const terms = ['First Term', 'Second Term', 'Third Term'];
+    const allMarks = {};
+    
+    // Get marks for each term
+    for (const term of terms) {
+      const termKey = getTermKey(term, currentYear, 'marks');
+      const marks = JSON.parse(localStorage.getItem(termKey) || '[]');
+      
+      // Find marks for this specific student, subject, and class
+      const studentMarks = marks.find(mark => 
+        mark.studentId === studentId && 
+        mark.subject === subject
+      );
+      
+      allMarks[term] = studentMarks || null;
+    }
+    
+    return { status: 'success', data: allMarks };
+  } catch (error) {
+    console.error('Get student marks across terms error:', error);
+    return { status: 'error', message: error.message };
+  }
+};
+
+/**
+ * Get class performance trends across all terms
+ * @param {string} className - The class name
+ * @param {string} subject - The subject name
+ * @returns {Object} Performance data organized by term
+ */
+export const getClassPerformanceTrends = async (className, subject) => {
+  try {
+    const { currentYear } = getCurrentTermInfo();
+    const terms = ['First Term', 'Second Term', 'Third Term'];
+    const trends = {};
+    
+    // Get performance data for each term
+    for (const term of terms) {
+      const termKey = getTermKey(term, currentYear, 'marks');
+      const marks = JSON.parse(localStorage.getItem(termKey) || '[]');
+      
+      // Filter marks for this class and subject
+      const classSubjectMarks = marks.filter(mark => 
+        mark.subject === subject
+      );
+      
+      // Calculate average performance for this term
+      if (classSubjectMarks.length > 0) {
+        const totalScore = classSubjectMarks.reduce((sum, mark) => {
+          // Calculate final total (50% tests + 50% exam)
+          const testsTotal = (parseFloat(mark.test1) || 0) + 
+                            (parseFloat(mark.test2) || 0) + 
+                            (parseFloat(mark.test3) || 0) + 
+                            (parseFloat(mark.test4) || 0);
+          const testsScaled = (testsTotal / 60) * 50;
+          const examScaled = ((parseFloat(mark.exam) || 0) / 100) * 50;
+          const finalTotal = testsScaled + examScaled;
+          return sum + finalTotal;
+        }, 0);
+        
+        const averageScore = totalScore / classSubjectMarks.length;
+        trends[term] = {
+          averageScore: parseFloat(averageScore.toFixed(1)),
+          studentCount: classSubjectMarks.length
+        };
+      } else {
+        trends[term] = {
+          averageScore: 0,
+          studentCount: 0
+        };
+      }
+    }
+    
+    return { status: 'success', data: trends };
+  } catch (error) {
+    console.error('Get class performance trends error:', error);
+    return { status: 'error', message: error.message };
   }
 };
 

@@ -174,8 +174,8 @@ const SchoolSetupPage = () => {
             
             <div className="space-y-6">
               <div className="bg-blue-500/15 backdrop-blur-sm border border-gray-500/40 rounded p-4 shadow-md">
-                <div className="text-sm font-medium text-blue-800 mb-2 drop-shadow-sm">🏫 School Information Setup</div>
-                <div className="text-xs text-blue-700 space-y-1">
+                <div className="text-sm font-medium text-blue-900 mb-2 drop-shadow-sm">🏫 School Information Setup</div>
+                <div className="text-xs text-blue-800 space-y-1">
                   <div>• <strong>School Name:</strong> Configure your institution's official name</div>
                   <div>• <strong>School Logo:</strong> Upload your official logo for branding</div>
                   <div>• <strong>Watermark Integration:</strong> Logo appears on all official documents</div>
@@ -184,7 +184,7 @@ const SchoolSetupPage = () => {
 
               {/* School Name Section */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3 drop-shadow-sm">
+                <label className="block text-sm font-medium text-gray-800 mb-3 drop-shadow-sm">
                   🏦 School Name
                 </label>
                 <input
@@ -194,12 +194,12 @@ const SchoolSetupPage = () => {
                   placeholder="Enter your school name"
                   className="w-full p-4 border border-gray-500/40 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg bg-white/25 backdrop-blur-sm placeholder-gray-600 shadow-md transition-all duration-200 hover:border-gray-400/60"
                 />
-                <p className="text-xs text-gray-600 mt-2 drop-shadow-sm">This will appear on all reports and documents</p>
+                <p className="text-xs text-gray-700 mt-2 drop-shadow-sm">This will appear on all reports and documents</p>
               </div>
 
               {/* School Logo Section */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3 drop-shadow-sm">
+                <label className="block text-sm font-medium text-gray-800 mb-3 drop-shadow-sm">
                   🖼️ School Logo
                 </label>
                 
@@ -215,7 +215,7 @@ const SchoolSetupPage = () => {
                           style={{ filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.1))' }}
                         />
                       </div>
-                      <div className="text-sm text-gray-700 drop-shadow-sm">Current School Logo</div>
+                      <div className="text-sm text-gray-800 drop-shadow-sm">Current School Logo</div>
                       <div className="flex justify-center gap-3">
                         <button 
                           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm"
@@ -242,13 +242,13 @@ const SchoolSetupPage = () => {
                   >
                     <div className="space-y-3">
                       <div className="text-5xl text-gray-500 drop-shadow-lg">🖼️</div>
-                      <div className="text-lg font-medium text-gray-700 drop-shadow-sm">
+                      <div className="text-lg font-medium text-gray-800 drop-shadow-sm">
                         {logoUploading ? 'Uploading Logo...' : 'Upload School Logo'}
                       </div>
-                      <div className="text-sm text-gray-600 drop-shadow-sm">
+                      <div className="text-sm text-gray-700 drop-shadow-sm">
                         Click here or drag and drop your school logo
                       </div>
-                      <div className="text-xs text-gray-500 drop-shadow-sm">
+                      <div className="text-xs text-gray-600 drop-shadow-sm">
                         PNG, JPG, JPEG, GIF | Max 2MB | Transparent background recommended
                       </div>
                       {logoUploading && (
@@ -274,12 +274,12 @@ const SchoolSetupPage = () => {
               {/* Watermark Preview */}
               {schoolLogo && (
                 <div className="bg-gray-50 border border-gray-200 rounded p-4">
-                  <div className="text-sm font-medium text-gray-800 mb-3">🔍 Watermark Preview</div>
+                  <div className="text-sm font-medium text-gray-900 mb-3">🔍 Watermark Preview</div>
                   <div className="relative bg-white border rounded p-4 min-h-24">
                     <div className="relative z-10">
-                      <h3 className="text-lg font-bold text-gray-800">{schoolName}</h3>
-                      <p className="text-sm text-gray-600">Student Academic Report</p>
-                      <p className="text-xs text-gray-500">Watermark appears behind content</p>
+                      <h3 className="text-lg font-bold text-gray-900">{schoolName}</h3>
+                      <p className="text-sm text-gray-800">Student Academic Report</p>
+                      <p className="text-xs text-gray-700">Watermark appears behind content</p>
                     </div>
                     
                     {/* Watermark */}

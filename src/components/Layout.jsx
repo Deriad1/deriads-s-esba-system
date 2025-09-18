@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import LogoWatermark from './LogoWatermark';
+import { useLoading } from '../context/LoadingContext';
+import LoadingSpinner from './LoadingSpinner';
+import TeacherNavbar from './TeacherNavbar'; // Import the new TeacherNavbar component
 
 const Layout = ({ children }) => {
   const { user, logout, switchUserRole, loading } = useAuth();
+  const { isLoading, getLoadingMessage } = useLoading();
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showSystemSetup, setShowSystemSetup] = useState(false);
   const [showTermManager, setShowTermManager] = useState(false);
@@ -18,6 +21,9 @@ const Layout = ({ children }) => {
   const [currentTerm, setCurrentTerm] = useState('First Term');
   const [currentYear, setCurrentYear] = useState('2024/2025');
   const [newAcademicYear, setNewAcademicYear] = useState('');
+
+  // State for responsive school name display
+  const [isMobileView, setIsMobileView] = useState(false);
 
   useEffect(() => {
     // Get school name, logo, and background from localStorage
@@ -50,6 +56,12 @@ const Layout = ({ children }) => {
       setCurrentYear(storedYear);
     }
 
+    // Check initial screen size
+    checkScreenSize();
+
+    // Add event listener for window resize
+    window.addEventListener('resize', checkScreenSize);
+    
     // Listen for school name updates
     const handleStorageChange = (e) => {
       if (e.key === 'schoolName') {
@@ -67,9 +79,14 @@ const Layout = ({ children }) => {
     window.addEventListener('storage', handleStorageChange);
     
     return () => {
+      window.removeEventListener('resize', checkScreenSize);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
+
+  const checkScreenSize = () => {
+    setIsMobileView(window.innerWidth < 640); // sm breakpoint in Tailwind
+  };
 
   const handleLogoUpload = (event) => {
     const file = event.target.files[0];
@@ -139,14 +156,16 @@ const Layout = ({ children }) => {
   };
 
   // Term and Academic Year Management Functions
-  const getTermKey = (term, year) => {
-    return `${year.replace('/', '_')}_${term.replace(' ', '_')}`;
-  };
 
   const switchTerm = (newTerm) => {
     if (newTerm !== currentTerm) {
       const confirmSwitch = confirm(
-        `Are you sure you want to switch to ${newTerm}? \n\nThis will:\n• Save current term data\n• Load ${newTerm} data (fresh if first time)\n• Clear any unsaved work`
+        `Are you sure you want to switch to ${newTerm}? 
+
+This will:
+• Save current term data
+• Load ${newTerm} data (fresh if first time)
+• Clear any unsaved work`
       );
       
       if (confirmSwitch) {
@@ -166,7 +185,15 @@ const Layout = ({ children }) => {
     }
     
     const confirmNewYear = confirm(
-      `Start new academic year: ${newAcademicYear}?\n\nThis will:\n• Archive all current year data\n• Create fresh system for new year\n• Reset to First Term\n• Clear all current data\n\nThis action cannot be undone!`
+      `Start new academic year: ${newAcademicYear}?
+
+This will:
+• Archive all current year data
+• Create fresh system for new year
+• Reset to First Term
+• Clear all current data
+
+This action cannot be undone!`
     );
     
     if (confirmNewYear) {
@@ -326,34 +353,21 @@ const Layout = ({ children }) => {
   // Get non-admin roles for the admin user
   const nonAdminRoles = user?.allRoles?.filter(role => role !== 'admin') || [];
 
+  // Check if user is admin
+  const isAdmin = user?.currentRole === 'admin' || user?.primaryRole === 'admin';
+
   return (
-    <div className="min-h-screen bg-gray-100 relative">
-      {/* Background image with overlay - only show if image exists */}
-      {backgroundImage && (
-        <div className="fixed inset-0 z-0">
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage: `url(${backgroundImage})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat'
-            }}
-          ></div>
-          
-          {/* White transparent overlay */}
-          <div 
-            className="absolute inset-0 bg-white"
-            style={{ opacity: 0.3 }}
-          ></div>
-        </div>
-      )}
-      
-      {/* Logo Watermark */}
-      <LogoWatermark opacity={0.08} size="450px" />
-      
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 relative overflow-x-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-40 left-40 w-80 h-80 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+      </div>
+
       {/* Header */}
-      <header className="bg-white/10 backdrop-blur-xl border-b border-white/40 ring-1 ring-white/20 shadow-2xl relative z-10">
+      {user?.role !== 'teacher' ? (
+        <header className="bg-white/10 backdrop-blur-xl border-b border-white/40 ring-1 ring-white/20 shadow-2xl relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo/Title */}
@@ -366,7 +380,7 @@ const Layout = ({ children }) => {
                 />
               )}
               <h1 className="text-xl font-semibold text-gray-900">
-                {schoolName} System
+                <span className={`transition-all duration-300 ease-in-out ${isMobileView ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-auto'}`}>{schoolName}</span>
               </h1>
             </div>
 
@@ -374,14 +388,14 @@ const Layout = ({ children }) => {
             <div className="flex items-center space-x-4">
               {/* Current Term Display */}
               <div className="hidden md:flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/30">
-                <span className="text-sm font-medium text-gray-800">{currentTerm}</span>
-                <span className="text-xs text-gray-700">{currentYear}</span>
+                <span className="text-sm font-medium text-gray-900">{currentTerm}</span>
+                <span className="text-xs text-gray-800">{currentYear}</span>
               </div>
               
               {/* Term Manager Button */}
               <button
                 onClick={() => setShowTermManager(true)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-green-500 backdrop-blur-sm border border-transparent hover:border-white/30"
+                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-900 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-green-500 backdrop-blur-sm border border-transparent hover:border-white/30"
                 title="Term & Year Manager"
               >
                 <span className="text-lg">📅</span>
@@ -391,7 +405,7 @@ const Layout = ({ children }) => {
               {/* System Setup Button */}
               <button
                 onClick={() => setShowSystemSetup(true)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 backdrop-blur-sm border border-transparent hover:border-white/30"
+                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-900 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 backdrop-blur-sm border border-transparent hover:border-white/30"
                 title="System Setup"
               >
                 <span className="text-lg">⚙️</span>
@@ -404,7 +418,7 @@ const Layout = ({ children }) => {
                   <button
                     onClick={() => handleRoleDropdownToggle(!showRoleDropdown)}
                     disabled={loading}
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 backdrop-blur-sm border border-transparent hover:border-white/30"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-900 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 backdrop-blur-sm border border-transparent hover:border-white/30"
                   >
                     <span className="text-lg">
                       {availableRoles.find(r => r.value === currentRole)?.icon || '👤'}
@@ -420,7 +434,7 @@ const Layout = ({ children }) => {
                   {showRoleDropdown && (
                     <div className="absolute right-0 mt-2 w-64 rounded-lg shadow-2xl bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 z-50">
                       <div className="py-1">
-                        <div className="px-4 py-2 text-xs font-semibold text-gray-700 uppercase tracking-wide border-b border-white/30 backdrop-blur-sm">
+                        <div className="px-4 py-2 text-xs font-semibold text-gray-800 uppercase tracking-wide border-b border-white/30 backdrop-blur-sm">
                           Switch Role
                         </div>
                         {availableRoles.map(role => (
@@ -428,7 +442,7 @@ const Layout = ({ children }) => {
                             key={role.value}
                             onClick={() => handleRoleSwitch(role.value)}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-3 hover:bg-white/20 backdrop-blur-sm ${
-                              role.value === currentRole ? 'bg-white/30 text-gray-900 font-medium' : 'text-gray-700'
+                              role.value === currentRole ? 'bg-white/30 text-gray-900 font-medium' : 'text-gray-900'
                             }`}
                           >
                             <span className="text-lg">{role.icon}</span>
@@ -462,7 +476,7 @@ const Layout = ({ children }) => {
                                 <button
                                   key={`direct-${role}`}
                                   onClick={() => handleDirectRoleAccess(role)}
-                                  className="w-full text-left px-4 py-2 text-sm flex items-center space-x-3 hover:bg-white/20 backdrop-blur-sm text-gray-700"
+                                  className="w-full text-left px-4 py-2 text-sm flex items-center space-x-3 hover:bg-white/20 backdrop-blur-sm text-gray-900"
                                 >
                                   <span className="text-lg">{roleIcon}</span>
                                   <span>Access as {roleLabel}</span>
@@ -484,7 +498,7 @@ const Layout = ({ children }) => {
                   <div className="text-sm font-medium text-gray-900">
                     {user?.name || 'User'}
                   </div>
-                  <div className="text-xs text-gray-700">
+                  <div className="text-xs text-gray-800">
                     {!hasMultipleRoles && getCurrentRoleDisplay()}
                   </div>
                 </div>
@@ -501,18 +515,16 @@ const Layout = ({ children }) => {
           </div>
         </div>
       </header>
+      ) : (
+        <TeacherNavbar />
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Loading Overlay */}
+        {/* Loading Overlay - Only show global loading */}
         {loading && (
           <div className="fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-40">
-            <div className="bg-white p-4 rounded-lg shadow-lg">
-              <div className="flex items-center space-x-3">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                <span className="text-gray-700">Loading...</span>
-              </div>
-            </div>
+            <LoadingSpinner message="Loading..." size="md" />
           </div>
         )}
 
@@ -530,7 +542,7 @@ const Layout = ({ children }) => {
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-blue-700">
+                <p className="text-sm text-gray-900">
                   You are currently acting as <strong>{getCurrentRoleDisplay()}</strong>. 
                   You can switch roles using the dropdown in the top-right corner.
                 </p>
@@ -551,7 +563,7 @@ const Layout = ({ children }) => {
       )}
 
       {/* Term Manager Modal */}
-      {showTermManager && (
+      {showTermManager && isAdmin && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white/10 backdrop-blur-xl rounded-lg shadow-2xl border border-white/40 ring-1 ring-white/20 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
@@ -570,12 +582,12 @@ const Layout = ({ children }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Current Session</h3>
-                    <p className="text-gray-800">
+                    <p className="text-gray-900">
                       <strong>{currentTerm}</strong> - Academic Year <strong>{currentYear}</strong>
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-gray-700 mb-1">Term Progress</div>
+                    <div className="text-sm text-gray-900 mb-1">Term Progress</div>
                     <div className="flex items-center space-x-2">
                       <div className="w-32 bg-white/30 rounded-full h-2">
                         <div 
@@ -583,7 +595,7 @@ const Layout = ({ children }) => {
                           style={{ width: `${getTermProgress().percentage}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium text-gray-800">
+                      <span className="text-sm font-medium text-gray-900">
                         {getTermProgress().current}/{getTermProgress().total}
                       </span>
                     </div>
@@ -595,11 +607,11 @@ const Layout = ({ children }) => {
                 {/* Term Switching */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Switch Term</h3>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-gray-900">
                     Each term maintains separate data. Switching will save current progress and load the selected term's data.
                   </p>
                   
-                  <div className="grid gap-3">
+                  <div className="grid gap-33">
                     {getAvailableTerms().map((term) => (
                       <button
                         key={term}
@@ -614,7 +626,7 @@ const Layout = ({ children }) => {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="font-medium">{term}</div>
-                            <div className="text-xs text-gray-700">
+                            <div className="text-xs text-gray-800">
                               {term === currentTerm ? 'Current Term' : 'Click to switch'}
                             </div>
                           </div>
@@ -634,14 +646,14 @@ const Layout = ({ children }) => {
                 {/* New Academic Year */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Start New Academic Year</h3>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-gray-900">
                     Starting a new academic year will archive all current data and create a fresh system.
                   </p>
                   
                   <div className="bg-yellow-500/20 border border-yellow-300/50 rounded-lg p-4 backdrop-blur-sm">
                     <div className="flex items-start space-x-2">
                       <span className="text-yellow-700 mt-0.5">⚠️</span>
-                      <div className="text-sm text-yellow-800">
+                      <div className="text-sm text-yellow-900">
                         <strong>Warning:</strong> This action will:
                         <ul className="list-disc list-inside mt-2 space-y-1">
                           <li>Archive all current year data</li>
@@ -655,7 +667,7 @@ const Layout = ({ children }) => {
                   
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium mb-2 text-gray-800">New Academic Year</label>
+                      <label className="block text-sm font-medium mb-2 text-gray-900">New Academic Year</label>
                       <input
                         type="text"
                         value={newAcademicYear}
@@ -679,7 +691,7 @@ const Layout = ({ children }) => {
               {/* Help Section */}
               <div className="mt-8 bg-white/20 border border-white/30 rounded-lg p-4 backdrop-blur-sm">
                 <h4 className="font-medium text-gray-900 mb-2">How It Works</h4>
-                <div className="text-sm text-gray-800 space-y-2">
+                <div className="text-sm text-gray-900 space-y-2">
                   <p><strong>Term System:</strong> Each of the 3 terms (First, Second, Third) maintains completely separate data including teachers, students, grades, and reports.</p>
                   <p><strong>Academic Year:</strong> Each academic year is independent. Starting a new year creates a fresh system while archiving the previous year's data.</p>
                   <p><strong>Data Isolation:</strong> Switching terms or years ensures you get a clean environment specific to that period.</p>
@@ -691,7 +703,7 @@ const Layout = ({ children }) => {
       )}
 
       {/* System Setup Modal */}
-      {showSystemSetup && (
+      {showSystemSetup && isAdmin && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white/10 backdrop-blur-xl rounded-lg shadow-2xl border border-white/40 ring-1 ring-white/20 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
@@ -717,7 +729,7 @@ const Layout = ({ children }) => {
                       className="h-16 w-16 object-contain border border-white/30 rounded"
                     />
                     <div className="flex-1">
-                      <p className="text-sm text-gray-800 mb-2">Current logo uploaded</p>
+                      <p className="text-sm text-gray-900 mb-2">Current logo uploaded</p>
                       <button
                         onClick={handleRemoveLogo}
                         className="bg-red-600/80 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors backdrop-blur-sm border border-red-500/30"
@@ -727,7 +739,7 @@ const Layout = ({ children }) => {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-700 mb-4">No logo uploaded</p>
+                  <p className="text-sm text-gray-900 mb-4">No logo uploaded</p>
                 )}
                 
                 <div className="border-2 border-dashed border-white/30 rounded-lg p-6 text-center backdrop-blur-sm bg-white/20">
@@ -747,7 +759,7 @@ const Layout = ({ children }) => {
                   >
                     {logoUploading ? 'Uploading...' : 'Choose Logo File'}
                   </label>
-                  <p className="text-xs text-gray-700 mt-2">Supported: JPG, PNG, GIF (Max 5MB)</p>
+                  <p className="text-xs text-gray-900 mt-2">Supported: JPG, PNG, GIF (Max 5MB)</p>
                 </div>
               </div>
 
@@ -767,7 +779,7 @@ const Layout = ({ children }) => {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm text-gray-800 mb-2">Current background uploaded</p>
+                      <p className="text-sm text-gray-900 mb-2">Current background uploaded</p>
                       <button
                         onClick={handleRemoveBackground}
                         className="bg-red-600/80 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors backdrop-blur-sm border border-red-500/30"
@@ -777,7 +789,7 @@ const Layout = ({ children }) => {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-700 mb-4">No background image uploaded</p>
+                  <p className="text-sm text-gray-900 mb-4">No background image uploaded</p>
                 )}
                 
                 <div className="border-2 border-dashed border-white/30 rounded-lg p-6 text-center backdrop-blur-sm bg-white/20">
@@ -797,7 +809,7 @@ const Layout = ({ children }) => {
                   >
                     {backgroundUploading ? 'Uploading...' : 'Choose Background Image'}
                   </label>
-                  <p className="text-xs text-gray-700 mt-2">Supported: JPG, PNG, GIF (Max 5MB)</p>
+                  <p className="text-xs text-gray-800 mt-2">Supported: JPG, PNG, GIF (Max 5MB)</p>
                 </div>
               </div>
 
@@ -806,7 +818,7 @@ const Layout = ({ children }) => {
                 <h3 className="text-lg font-semibold mb-4 text-gray-900">School Name</h3>
                 <form onSubmit={handleSchoolNameSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-800">Enter School Name</label>
+                    <label className="block text-sm font-medium mb-2 text-gray-900">Enter School Name</label>
                     <input
                       type="text"
                       value={tempSchoolName}
@@ -834,7 +846,7 @@ const Layout = ({ children }) => {
                 </form>
               </div>
               
-              <div className="text-xs text-gray-700 border-t border-white/30 pt-4 backdrop-blur-sm bg-white/20 p-2 rounded">
+              <div className="text-xs text-gray-900 border-t border-white/30 pt-4 backdrop-blur-sm bg-white/20 p-2 rounded">
                 <p><strong>Note:</strong> Changes are saved locally in your browser. Logo will appear in the header and system watermarks will be 3 times larger as per specifications.</p>
               </div>
             </div>
