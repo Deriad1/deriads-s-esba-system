@@ -68,7 +68,11 @@ async function apiCall(endpoint, options = {}) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || `API error: ${response.status}`);
+      // Create error with message and attach full response data
+      const error = new Error(data.message || `API error: ${response.status}`);
+      error.response = data; // Attach full response data including errors/details
+      error.status = response.status;
+      throw error;
     }
 
     return data;
@@ -413,6 +417,8 @@ export const updateTeacher = async (teacherData) => {
   try {
     const sanitized = sanitizeInput(teacherData);
 
+    console.log('Updating teacher with data:', sanitized);
+
     const result = await apiCall('/teachers', {
       method: 'PUT',
       body: JSON.stringify(sanitized),
@@ -421,6 +427,15 @@ export const updateTeacher = async (teacherData) => {
     return result;
   } catch (error) {
     console.error('Update teacher error:', error);
+    console.error('Teacher data that failed:', teacherData);
+
+    // If error has details from API, include them in the error message
+    if (error.response && error.response.details) {
+      const detailedError = new Error(error.message + ' - ' + JSON.stringify(error.response.details));
+      detailedError.details = error.response.details;
+      throw detailedError;
+    }
+
     throw error;
   }
 };

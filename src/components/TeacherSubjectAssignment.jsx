@@ -132,7 +132,20 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
       setSelectedTeacher(null);
     } catch (error) {
       console.error('Error updating teacher assignments:', error);
-      alert('Error updating teacher: ' + error.message);
+      console.error('Error response:', error.response);
+      console.error('Error details:', error.details);
+
+      // Show detailed error message if available
+      let errorMessage = 'Error updating teacher: ' + error.message;
+      if (error.response && error.response.errors) {
+        const errorFields = Object.keys(error.response.errors);
+        const errorDetails = errorFields.map(field =>
+          `${field}: ${error.response.errors[field]}`
+        ).join('\n');
+        errorMessage += '\n\nValidation errors:\n' + errorDetails;
+      }
+
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
