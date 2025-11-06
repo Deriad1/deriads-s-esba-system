@@ -5,8 +5,8 @@ import React from 'react';
  * Replaces table rows on small screens
  */
 const MobileTeacherCard = ({ teacher, isSelected, onSelect, onEdit, onResetPassword, onDelete }) => {
-  const firstName = teacher.first_name || '';
-  const lastName = teacher.last_name || '';
+  const firstName = teacher.firstName || '';
+  const lastName = teacher.lastName || '';
   const fullName = `${firstName} ${lastName}`.trim() || 'Unknown';
   const email = teacher.email || 'No email';
   const gender = teacher.gender || 'Not specified';
@@ -16,7 +16,7 @@ const MobileTeacherCard = ({ teacher, isSelected, onSelect, onEdit, onResetPassw
   const initials = `${firstName[0] || '?'}${lastName[0] || '?'}`.toUpperCase();
 
   // Get primary role display
-  const role = teacher.all_roles?.[0] || teacher.teacher_primary_role || 'subject_teacher';
+  const role = teacher.allRoles?.[0] || teacher.teacherPrimaryRole || 'subject_teacher';
   const roleMap = {
     'admin': 'Admin',
     'head_teacher': 'Head Teacher',

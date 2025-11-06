@@ -201,8 +201,8 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
     return teachers.filter(teacher => {
       const searchLower = teacherFilters.search.toLowerCase();
       const matchesSearch = !searchLower ||
-        teacher.first_name?.toLowerCase().includes(searchLower) ||
-        teacher.last_name?.toLowerCase().includes(searchLower) ||
+        teacher.firstName?.toLowerCase().includes(searchLower) ||
+        teacher.lastName?.toLowerCase().includes(searchLower) ||
         teacher.email?.toLowerCase().includes(searchLower);
       const matchesSubject = !teacherFilters.subject ||
         teacher.subjects?.includes(teacherFilters.subject);
@@ -621,9 +621,9 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                       <td className="px-6 py-4 text-sm font-medium text-white">
                         <div className="flex items-center gap-2">
                           <div className="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center text-white font-bold">
-                            {`${teacher.first_name?.[0] || '?'}${teacher.last_name?.[0] || '?'}`.toUpperCase()}
+                            {`${teacher.firstName?.[0] || '?'}${teacher.lastName?.[0] || '?'}`.toUpperCase()}
                           </div>
-                          <span>{teacher.first_name} {teacher.last_name}</span>
+                          <span>{teacher.firstName} {teacher.lastName}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-white/70">{teacher.email}</td>
@@ -636,7 +636,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                       </td>
                       <td className="px-6 py-4 text-sm text-white/70">
                         {(() => {
-                          const role = teacher.all_roles?.[0] || teacher.teacher_primary_role || 'subject_teacher';
+                          const role = teacher.allRoles?.[0] || teacher.teacherPrimaryRole || 'subject_teacher';
                           const roleMap = {
                             'admin': 'Admin',
                             'head_teacher': 'Head Teacher',
