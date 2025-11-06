@@ -86,7 +86,8 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // All remaining requests return the React app, so it can handle routing
 // Express v5 requires regex pattern instead of '*'
-app.get(/^\/(?!api).*/, (req, res) => {
+// Exclude: /api routes, /assets requests, and files with extensions (.js, .css, etc.)
+app.get(/^\/(?!api|assets)([^.]*|\/)$/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
