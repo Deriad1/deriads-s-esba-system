@@ -1937,6 +1937,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
               const studentClass = l.className || l.class_name;
               return studentClass === assignedClass;
             })}
+            userRole={user?.currentRole || user?.primaryRole}
+            currentTerm={settings.term || DEFAULT_TERM}
             onPromotionComplete={() => {
               setIsPromoteModalOpen(false);
               window.location.reload();

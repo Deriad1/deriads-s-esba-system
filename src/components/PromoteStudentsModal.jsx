@@ -19,7 +19,14 @@ const CLASS_PROGRESSION = {
   'UNASSIGNED': 'BS1'
 };
 
-const PromoteStudentsModal = ({ isOpen, onClose, students, onPromotionComplete }) => {
+const PromoteStudentsModal = ({
+  isOpen,
+  onClose,
+  students,
+  onPromotionComplete,
+  userRole = null,
+  currentTerm = 'Third Term'
+}) => {
   const { showNotification } = useNotification();
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [targetClass, setTargetClass] = useState('');
@@ -30,6 +37,9 @@ const PromoteStudentsModal = ({ isOpen, onClose, students, onPromotionComplete }
 
   // Available target classes (loaded dynamically from API)
   const [availableTargetClasses, setAvailableTargetClasses] = useState([]);
+
+  // Check if user is a form master
+  const isFormMaster = userRole === 'form_master';
 
   useEffect(() => {
     if (isOpen) {
@@ -44,16 +54,27 @@ const PromoteStudentsModal = ({ isOpen, onClose, students, onPromotionComplete }
       // Set suggested target class based on current class
       const firstStudentClass = students[0]?.className;
       if (firstStudentClass && CLASS_PROGRESSION[firstStudentClass]) {
-        setTargetClass(CLASS_PROGRESSION[firstStudentClass]);
+        const nextClass = CLASS_PROGRESSION[firstStudentClass];
+        setTargetClass(nextClass);
+
+        // For form masters, only allow the next class in progression
+        if (isFormMaster) {
+          setAvailableTargetClasses([nextClass]);
+        }
       }
 
       // Set default academic year (current year + 1)
       const currentYear = new Date().getFullYear();
       setAcademicYear(`${currentYear}/${currentYear + 1}`);
     }
-  }, [isOpen, students]);
+  }, [isOpen, students, isFormMaster]);
 
   const loadAvailableClasses = async () => {
+    // For form masters, classes are set in useEffect based on progression
+    if (isFormMaster) {
+      return;
+    }
+
     try {
       const response = await fetch('/api/classes');
       const result = await response.json();
@@ -174,6 +195,9 @@ const PromoteStudentsModal = ({ isOpen, onClose, students, onPromotionComplete }
   const selectedCount = selectedStudents.length;
   const totalCount = students.length;
 
+  // Check if form master can promote (only in Third Term)
+  const canPromote = !isFormMaster || currentTerm === 'Third Term';
+
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
@@ -206,6 +230,42 @@ const PromoteStudentsModal = ({ isOpen, onClose, students, onPromotionComplete }
           </button>
         </div>
 
+        {/* Third Term Restriction Warning for Form Masters */}
+        {isFormMaster && !canPromote && (
+          <div className="mb-6 p-4 bg-red-500/20 border-2 border-red-500/50 rounded-xl backdrop-blur-md">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="font-bold text-white text-lg mb-2">Promotion Restricted</h3>
+                <p className="text-white/90 text-sm mb-2">
+                  As a Form Master, you can only promote students during <strong>Third Term</strong>.
+                </p>
+                <p className="text-white/80 text-sm">
+                  Current term: <strong className="text-yellow-300">{currentTerm}</strong>
+                </p>
+                <p className="text-white/70 text-xs mt-2">
+                  Please wait until Third Term or contact an administrator for assistance.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Form Master Restrictions Info */}
+        {isFormMaster && canPromote && (
+          <div className="mb-6 p-4 bg-blue-500/20 border-2 border-blue-500/50 rounded-xl backdrop-blur-md">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">ℹ️</span>
+              <div>
+                <h3 className="font-bold text-white text-lg mb-2">Form Master Promotion</h3>
+                <p className="text-white/90 text-sm">
+                  You can only promote students from your assigned class to the next class: <strong className="text-green-300">{targetClass}</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Promotion Settings */}
         <div className="mb-6 p-4 bg-blue-500/20 border-2 border-blue-500/50 rounded-xl backdrop-blur-md space-y-4">
           <h3 className="font-bold text-white text-lg">⚙️ Promotion Settings</h3>
@@ -223,8 +283,8 @@ const PromoteStudentsModal = ({ isOpen, onClose, students, onPromotionComplete }
                   <button
                     key={cls}
                     onClick={() => setTargetClass(cls)}
-                    disabled={promoting}
-                    className={`p-3 rounded-xl border-2 transition-all font-bold backdrop-blur-sm cursor-pointer ${
+                    disabled={promoting || isFormMaster}
+                    className={`p-3 rounded-xl border-2 transition-all font-bold backdrop-blur-sm ${isFormMaster ? 'cursor-not-allowed' : 'cursor-pointer'} ${
                       isSelected
                         ? isGraduated
                           ? 'bg-gradient-to-br from-red-500/90 to-orange-600/90 text-white border-white/50 shadow-lg scale-105'
@@ -354,7 +414,7 @@ const PromoteStudentsModal = ({ isOpen, onClose, students, onPromotionComplete }
           </button>
           <button
             onClick={handlePromote}
-            disabled={promoting || selectedCount === 0 || !targetClass}
+            disabled={promoting || selectedCount === 0 || !targetClass || !canPromote}
             className="px-6 py-3 bg-gradient-to-r from-green-500/90 to-blue-600/90 border-2 border-white/50 text-white rounded-xl hover:from-green-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold shadow-lg"
             style={{ minHeight: '44px', minWidth: '180px' }}
           >
