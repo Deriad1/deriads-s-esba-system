@@ -666,38 +666,32 @@ body { background-color: #f6f7fb; }
    MOBILE MODAL SCROLLING FIX
    ============================================================================ */
 
-/* Enable smooth touch scrolling on all modal backdrops */
-.fixed.inset-0 {
+/* Only target modal backdrops with z-50 (modals typically use this) */
+.fixed.inset-0.z-50 {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
 
 /* Ensure modal containers are scrollable on mobile */
-.fixed.inset-0.overflow-y-auto {
+.fixed.inset-0.z-50.overflow-y-auto {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto !important;
   overscroll-behavior: contain;
 }
 
-/* Fix for modals with flex centering - allow scrolling */
-.fixed.inset-0.flex {
-  align-items: flex-start;
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-}
-
-@media (min-width: 640px) {
-  .fixed.inset-0.flex {
-    align-items: center;
-    padding-top: 0;
-    padding-bottom: 0;
+/* Fix for modals with flex centering - allow scrolling on mobile only */
+@media (max-width: 639px) {
+  .fixed.inset-0.z-50.flex {
+    align-items: flex-start !important;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
   }
 }
 
-/* Ensure modal content is scrollable */
-.glass-card-golden,
-.glass-modal-transparent,
-.bg-white.rounded-lg.shadow-2xl {
+/* Ensure modal content is scrollable - more specific selectors */
+.fixed.inset-0.z-50 .glass-card-golden,
+.fixed.inset-0.z-50 .glass-modal-transparent,
+.fixed.inset-0.z-50 .bg-white.rounded-lg {
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -706,20 +700,11 @@ body { background-color: #f6f7fb; }
 
 /* Mobile-specific modal fixes */
 @media (max-width: 639px) {
-  /* Make modals take full height on mobile if needed */
-  .fixed.inset-0 > div {
+  /* Make modal content scrollable on mobile */
+  .fixed.inset-0.z-50 .glass-card-golden,
+  .fixed.inset-0.z-50 .glass-modal-transparent,
+  .fixed.inset-0.z-50 > div > div {
     max-height: calc(100vh - 2rem);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Ensure modal backdrop doesn't block scrolling */
-  .backdrop-blur-sm {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
