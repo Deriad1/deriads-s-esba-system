@@ -89,12 +89,32 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
         updatedRoles = updatedRoles.filter(r => r !== 'subject_teacher');
       }
 
+      // Ensure required fields have valid values
+      const firstName = selectedTeacher.first_name || selectedTeacher.firstName || '';
+      const lastName = selectedTeacher.last_name || selectedTeacher.lastName || '';
+      const email = selectedTeacher.email || '';
+      const gender = selectedTeacher.gender || 'male';
+
+      // Validate before sending
+      if (!firstName.trim()) {
+        alert('Error: Teacher first name is missing');
+        return;
+      }
+      if (!lastName.trim()) {
+        alert('Error: Teacher last name is missing');
+        return;
+      }
+      if (!email.trim()) {
+        alert('Error: Teacher email is missing');
+        return;
+      }
+
       const updateData = {
         id: selectedTeacher.id,
-        firstName: selectedTeacher.first_name,
-        lastName: selectedTeacher.last_name,
-        email: selectedTeacher.email,
-        gender: selectedTeacher.gender,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        gender: gender,
         teachingLevel: selectedTeacher.teaching_level || selectedTeacher.teachingLevel || 'PRIMARY', // Preserve teaching level
         subjects: teacherSubjects,
         classes: teacherClasses,
@@ -103,6 +123,8 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
         all_roles: updatedRoles,
         allRoles: updatedRoles
       };
+
+      console.log('Sending teacher update:', updateData);
 
       await updateTeacher(updateData);
       alert('Teacher assignments updated successfully!');
