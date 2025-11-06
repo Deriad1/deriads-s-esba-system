@@ -3,6 +3,7 @@ import { getTermKey, getCurrentTermKey } from "../utils/termHelpers";
 
 const TermContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTermContext = () => {
   const context = useContext(TermContext);
   if (!context) {
