@@ -1,0 +1,67 @@
+# ========================================
+# Vercel Deployment Ignore File
+# ========================================
+# Files and directories to exclude from Vercel deployment
+
+# Documentation
+*.md
+!README.md
+
+# Development Scripts
+*.sql
+server/
+dev-server.js
+create-godmode-user.js
+delete-godmode-users.js
+create-beta-superadmin.js
+create-production-admin.js
+create-simple-user.js
+create-users.js
+
+# Test & Migration Scripts
+test-*.js
+check-*.js
+fix-*.js
+apply-*.js
+add-*.js
+reassign-*.js
+run-*.js
+update-*.js
+verify-*.js
+*.cjs
+
+# Database Files
+*.csv
+setup-database.sql
+
+# Archives & Temporary Files
+*.zip
+nul
+
+# Development Utilities
+start-local.bat
+start-testsprite.ps1
+fix-storage-now.html
+
+# AI Assistant
+.claude/
+
+# Godmode Components (disabled for production)
+src/components/GodmodePanel.jsx
+check-godmode.js
+
+# Editor
+.vscode/
+.idea/
+
+# Environment (handled by Vercel)
+.env.local
+.env*.local
+
+# Build outputs (generated during deployment)
+dist/
+node_modules/
+
+# Git
+.git/
+.gitignore

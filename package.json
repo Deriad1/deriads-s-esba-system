@@ -5,21 +5,54 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:api": "node dev-server.js",
+    "dev:full": "start /B node dev-server.js && npm run dev",
     "build": "vite build",
+    "start": "node server.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:init": "node src/lib/init-database.js",
+    "db:test": "node src/lib/test-connection.js",
+    "db:simple-test": "node src/lib/simple-test.js",
+    "db:check": "node src/lib/check-setup.js",
+    "db:crud-test": "node src/lib/test-crud.js",
+    "db:reset": "node src/lib/reset-database.js",
+    "db:migrate": "node src/lib/migrate-data.js",
+    "db:migrate-passwords": "node src/lib/migrate-passwords.js",
+    "db:add-teacher-level": "node src/lib/add-teacher-level.js",
+    "setup:env": "node src/lib/setup-env.js",
+    "setup:admin": "node create-production-admin.js",
+    "setup:godmode": "node create-godmode-user.js",
+    "test:all": "npm run db:test && npm run db:crud-test && node src/complete-system-test.js",
+    "test:comprehensive": "node src/lib/comprehensive-test-suite.js",
+    "test:validate": "npm run setup:env && npm run db:init && npm run test:comprehensive"
   },
   "dependencies": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "react-router-dom": "^7.8.2",
+    "@neondatabase/serverless": "^0.9.3",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dompurify": "^3.2.7",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "isomorphic-dompurify": "^2.28.0",
+    "jsonwebtoken": "^9.0.2",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+    "pdf-lib": "^1.17.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.23.1",
+    "recharts": "^2.12.7",
+    "sanitize-html": "^2.17.0",
+    "validator": "^13.15.15",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
-    "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7",
-    "@vitejs/plugin-react": "^5.0.0",
+    "@types/bcryptjs": "^2.4.2",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -27,6 +60,18 @@
     "globals": "^16.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.0",
-    "vite": "^7.1.2"
+    "vite": "^5.2.11"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
