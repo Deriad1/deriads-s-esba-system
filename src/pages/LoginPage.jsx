@@ -173,10 +173,10 @@ const LoginPage = () => {
               <div className="bg-gray-200 border-2 border-dashed rounded-xl w-20 h-20" />
             )}
           </div>
-          <h1 className="mt-6 text-center text-3xl font-extrabold text-gray-900 text-shadow">
+          <h1 className="mt-6 text-center text-3xl font-extrabold text-white drop-shadow-lg">
             {settings.schoolName}
           </h1>
-          <p className="mt-2 text-center text-lg text-gray-800 text-shadow">
+          <p className="mt-2 text-center text-lg text-white drop-shadow-md">
             Electronic School Based Assessment System
           </p>
         </div>
@@ -184,7 +184,7 @@ const LoginPage = () => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-white mb-1 drop-shadow-md">
                 Email Address
               </label>
               <input
@@ -200,7 +200,7 @@ const LoginPage = () => {
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-800 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-white mb-1 drop-shadow-md">
                 Password
               </label>
               <input
@@ -227,7 +227,7 @@ const LoginPage = () => {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-800">
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-white drop-shadow-md">
                 Remember me
               </label>
             </div>
@@ -236,7 +236,7 @@ const LoginPage = () => {
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="font-medium text-blue-700 hover:text-blue-600"
+                className="font-medium text-blue-300 hover:text-blue-200 drop-shadow-md"
               >
                 Forgot password?
               </button>
@@ -267,11 +267,11 @@ const LoginPage = () => {
             </button>
           </div>
           
-          <div className="text-center text-sm text-gray-700">
+          <div className="text-center text-sm text-white drop-shadow-md">
             <p>Don't have an account? <button
               type="button"
               onClick={handleSignUp}
-              className="font-medium text-blue-700 hover:text-blue-600"
+              className="font-medium text-blue-300 hover:text-blue-200"
             >
               Contact administrator
             </button></p>
@@ -280,9 +280,9 @@ const LoginPage = () => {
         
         {/* Demo Accounts - Only shown in development */}
         {process.env.NODE_ENV === 'development' && (
-          <div className="glass rounded-lg p-4 mt-6 bg-blue-50 border border-blue-200">
-            <h3 className="text-sm font-bold text-gray-800 mb-2 text-center">Demo Accounts</h3>
-            <div className="text-xs text-gray-700 space-y-1">
+          <div className="glass rounded-lg p-4 mt-6 bg-blue-500/20 border-2 border-blue-400/50 backdrop-blur-md">
+            <h3 className="text-sm font-bold text-white mb-2 text-center drop-shadow-md">Demo Accounts</h3>
+            <div className="text-xs text-white space-y-1 drop-shadow-md">
               <div className="flex justify-between">
                 <span>Admin:</span>
                 <span>admin@school.com / admin123</span>
@@ -300,14 +300,14 @@ const LoginPage = () => {
       {showPasswordChangeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-modal-transparent max-w-md w-full">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">🔒 Change Password Required</h2>
-            <p className="text-gray-700 mb-6">
+            <h2 className="text-2xl font-bold text-white mb-4 drop-shadow-lg">🔒 Change Password Required</h2>
+            <p className="text-white mb-6 drop-shadow-md">
               Your password has been reset by an administrator. Please create a new password to continue.
             </p>
 
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">
+                <label className="block text-sm font-medium text-white mb-1 drop-shadow-md">
                   New Password
                 </label>
                 <input
@@ -322,7 +322,7 @@ const LoginPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">
+                <label className="block text-sm font-medium text-white mb-1 drop-shadow-md">
                   Confirm New Password
                 </label>
                 <input
