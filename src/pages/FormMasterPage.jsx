@@ -1595,74 +1595,74 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   return (
     <Layout>
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-6">Form Master Dashboard</h1>
+        <h1 className="text-2xl font-bold mb-6 text-white">Form Master Dashboard</h1>
 
-        {/* Main View Switcher */}
-        <div className="mb-6 bg-white rounded-lg shadow-md p-4">
-          <div className="flex gap-4">
+        {/* Main View Switcher - Glass Morphism */}
+        <div className="mb-6 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+          <div className="flex gap-4 flex-wrap">
             <button
               onClick={() => setMainView('manageClass')}
-              className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
+              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
                 mainView === 'manageClass'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-white/30 text-white hover:bg-white/40'
+                  ? 'bg-blue-500/80 backdrop-blur-lg text-white shadow-xl border border-blue-300/50 scale-105'
+                  : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
               }`}
             >
-              <span className="text-xl mr-2">🎓</span>
+              <span className="text-2xl mr-2">🎓</span>
               Manage Class
             </button>
             <button
               onClick={() => setMainView('enterScores')}
-              className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
+              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
                 mainView === 'enterScores'
-                  ? 'bg-green-600 text-white shadow-lg'
-                  : 'bg-white/30 text-white hover:bg-white/40'
+                  ? 'bg-green-500/80 backdrop-blur-lg text-white shadow-xl border border-green-300/50 scale-105'
+                  : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
               }`}
             >
-              <span className="text-xl mr-2">✏️</span>
+              <span className="text-2xl mr-2">✏️</span>
               Enter Scores
             </button>
             <button
               onClick={() => setMainView('printSection')}
-              className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
+              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
                 mainView === 'printSection'
-                  ? 'bg-purple-600 text-white shadow-lg'
-                  : 'bg-white/30 text-white hover:bg-white/40'
+                  ? 'bg-purple-500/80 backdrop-blur-lg text-white shadow-xl border border-purple-300/50 scale-105'
+                  : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
               }`}
             >
-              <span className="text-xl mr-2">🖨️</span>
+              <span className="text-2xl mr-2">🖨️</span>
               Print Section
             </button>
             <button
               onClick={() => setIsPromoteModalOpen(true)}
-              className="flex-1 py-3 px-6 rounded-lg font-semibold transition-all bg-gradient-to-r from-green-500 to-blue-600 text-white hover:from-green-600 hover:to-blue-700 shadow-lg"
+              className="flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-green-500/80 to-blue-500/80 backdrop-blur-lg text-white hover:from-green-600/90 hover:to-blue-600/90 shadow-xl border border-white/30 hover:scale-105"
             >
-              <span className="text-xl mr-2">📈</span>
+              <span className="text-2xl mr-2">📈</span>
               Promote Students
             </button>
           </div>
         </div>
 
-        {/* Manage Class View - Show Classes as Cards */}
+        {/* Manage Class View - Show Classes as Cards with Glass Morphism */}
         {mainView === 'manageClass' && (
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-4 text-white">Select a Class to Manage</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {/* Form Class Card */}
+              {/* Form Class Card - Glass Morphism */}
               {user?.form_class && (
                 <button
                   onClick={() => setSelectedClass(user.form_class)}
-                  className={`bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-lg p-6 transition-all transform hover:scale-105 ${
-                    selectedClass === user.form_class ? 'ring-4 ring-blue-300 scale-105' : ''
+                  className={`bg-gradient-to-br from-blue-500/70 to-blue-600/70 backdrop-blur-xl hover:from-blue-600/80 hover:to-blue-700/80 text-white rounded-2xl shadow-2xl p-8 transition-all duration-300 transform hover:scale-105 border border-white/30 ${
+                    selectedClass === user.form_class ? 'ring-4 ring-blue-300/60 scale-105 shadow-blue-500/50' : ''
                   }`}
                 >
                   <div className="text-center">
-                    <div className="text-4xl mb-3">🎓</div>
-                    <h3 className="text-2xl font-bold mb-2">{user.form_class}</h3>
-                    <div className="text-sm opacity-90 bg-white bg-opacity-20 px-3 py-1 rounded-full inline-block">
+                    <div className="text-5xl mb-4 drop-shadow-lg">🎓</div>
+                    <h3 className="text-2xl font-bold mb-3 drop-shadow-md">{user.form_class}</h3>
+                    <div className="text-sm font-medium bg-white/20 backdrop-blur-md px-4 py-2 rounded-full inline-block border border-white/30">
                       Form Class
                     </div>
-                    <div className="text-sm opacity-90 mt-3">
+                    <div className="text-sm font-semibold mt-4 bg-white/10 backdrop-blur-sm px-3 py-2 rounded-lg inline-block">
                       {filteredLearners.filter(l => (l.className || l.class_name) === user.form_class).length} Students
                     </div>
                   </div>
@@ -1672,21 +1672,21 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           </div>
         )}
 
-        {/* Enter Scores View - Show Overview Cards */}
+        {/* Enter Scores View - Show Overview Cards with Glass Morphism */}
         {mainView === 'enterScores' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Subjects Card */}
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 md:col-span-2">
-              <div className="flex items-center mb-2">
-                <span className="text-3xl mr-3">📖</span>
+            {/* Subjects Card - Glass Morphism */}
+            <div className="bg-gradient-to-r from-purple-500/70 to-purple-600/70 backdrop-blur-xl text-white rounded-2xl shadow-2xl p-8 md:col-span-2 border border-white/30">
+              <div className="flex items-center mb-3">
+                <span className="text-4xl mr-4 drop-shadow-lg">📖</span>
                 <div>
-                  <h2 className="text-sm font-medium opacity-90">Your Teaching Subjects</h2>
-                  <p className="text-2xl font-bold">{getUserSubjects().length} {getUserSubjects().length === 1 ? 'Subject' : 'Subjects'}</p>
+                  <h2 className="text-sm font-medium opacity-90 uppercase tracking-wide">Your Teaching Subjects</h2>
+                  <p className="text-3xl font-bold drop-shadow-md">{getUserSubjects().length} {getUserSubjects().length === 1 ? 'Subject' : 'Subjects'}</p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="flex flex-wrap gap-3 mt-4">
                 {getUserSubjects().map(subject => (
-                  <span key={subject} className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm font-medium">
+                  <span key={subject} className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-sm font-semibold border border-white/30 hover:bg-white/30 transition-all duration-200">
                     {subject}
                   </span>
                 ))}
@@ -1746,22 +1746,22 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           />
         )}
 
-        {/* Confirmation Dialog */}
+        {/* Confirmation Dialog - Glass Morphism */}
         {showConfirmDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96">
-              <h3 className="text-lg font-medium mb-4">Confirm Save</h3>
-              <p className="mb-6">Are you sure you want to save all data? This action cannot be undone.</p>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white/90 backdrop-blur-2xl rounded-2xl shadow-2xl p-8 w-96 border border-white/40">
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">Confirm Save</h3>
+              <p className="mb-6 text-gray-700">Are you sure you want to save all data? This action cannot be undone.</p>
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => handleConfirmDialog('cancel')}
-                  className="px-4 py-2 border border-white/30 rounded-md text-white hover:bg-white/20"
+                  className="px-6 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-100 backdrop-blur-md transition-all duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleConfirmDialog('save')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-6 py-2 bg-blue-600/90 backdrop-blur-md text-white rounded-xl hover:bg-blue-700 shadow-lg transition-all duration-200"
                 >
                   Save
                 </button>
@@ -1784,24 +1784,24 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           />
         )}
 
-        {/* Empty state for Enter Scores view */}
+        {/* Empty state for Enter Scores view - Glass Morphism */}
         {mainView === 'enterScores' && (!selectedClass || !selectedSubject) && (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <span className="text-6xl mb-4 block">✏️</span>
-            <h3 className="text-xl font-bold text-white mb-2">Ready to Enter Scores</h3>
-            <p className="text-white/90 mb-6">Select a class and subject to start entering scores</p>
-            <div className="text-sm text-white/70 max-w-md mx-auto">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-12 text-center border border-white/30">
+            <span className="text-7xl mb-6 block drop-shadow-2xl">✏️</span>
+            <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-md">Ready to Enter Scores</h3>
+            <p className="text-white/90 mb-6 text-lg">Select a class and subject to start entering scores</p>
+            <div className="text-sm text-white/80 max-w-md mx-auto bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
               <p>💡 Tip: Your entered scores are automatically saved to the database as you work.</p>
             </div>
           </div>
         )}
 
-        {/* Print Section View */}
+        {/* Print Section View - Glass Morphism */}
         {mainView === 'printSection' && (
           <div className="space-y-6">
-            {/* Class Selection */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-semibold mb-4 text-white">Print Reports & Broadsheets</h2>
+            {/* Class Selection - Glass Morphism */}
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/30">
+              <h2 className="text-2xl font-bold mb-6 text-white drop-shadow-md">Print Reports & Broadsheets</h2>
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-white mb-2">Select Class</label>
@@ -1819,12 +1819,12 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
               {printClass && (
                 <>
-                  {/* Print Actions */}
+                  {/* Print Actions - Glass Morphism */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <button
                       onClick={printAllClassReports}
                       disabled={printing || printClassStudents.length === 0}
-                      className={`bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-3 rounded-md font-medium transition-colors ${
+                      className={`bg-blue-600/80 backdrop-blur-md hover:bg-blue-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${
                         printing ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     >
@@ -1834,7 +1834,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     <button
                       onClick={printCompleteBroadsheet}
                       disabled={printing}
-                      className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-3 rounded-md font-medium transition-colors ${
+                      className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${
                         printing ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     >
@@ -1844,7 +1844,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     <button
                       onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
                       disabled={printing}
-                      className={`bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-3 rounded-md font-medium transition-colors ${
+                      className={`bg-purple-600/80 backdrop-blur-md hover:bg-purple-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${
                         printing ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     >
@@ -1852,11 +1852,11 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     </button>
                   </div>
 
-                  {/* Subject Dropdown */}
+                  {/* Subject Dropdown - Glass Morphism */}
                   {showSubjectDropdown && (
-                    <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                      <h4 className="text-md font-bold mb-3 text-white">Select Subject</h4>
-                      <div className="max-h-48 overflow-y-auto bg-white rounded p-2 border border-gray-200">
+                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-5 mb-6 border border-white/20">
+                      <h4 className="text-lg font-bold mb-4 text-white drop-shadow-md">Select Subject</h4>
+                      <div className="max-h-48 overflow-y-auto bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20">
                         {printClassSubjects.length > 0 ? (
                           printClassSubjects.map((subject) => (
                             <button
@@ -1866,7 +1866,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                                 setShowSubjectDropdown(false);
                               }}
                               disabled={printing}
-                              className="w-full text-left px-3 py-2 mb-1 hover:bg-purple-100 rounded transition-colors disabled:opacity-50"
+                              className="w-full text-left px-4 py-3 mb-2 hover:bg-purple-500/30 rounded-lg transition-all duration-200 disabled:opacity-50 text-white font-medium backdrop-blur-sm border border-white/10 hover:border-white/30"
                             >
                               {subject}
                             </button>
@@ -1878,29 +1878,29 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     </div>
                   )}
 
-                  {/* Student Selection */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-lg font-bold mb-3 text-white">Select Individual Students</h3>
-                    <div className="flex items-center mb-3">
+                  {/* Student Selection - Glass Morphism */}
+                  <div className="bg-white/10 backdrop-blur-lg rounded-xl p-5 border border-white/20">
+                    <h3 className="text-lg font-bold mb-4 text-white drop-shadow-md">Select Individual Students</h3>
+                    <div className="flex items-center mb-4 bg-white/10 backdrop-blur-md p-3 rounded-lg border border-white/20">
                       <input
                         type="checkbox"
                         checked={selectedPrintStudents.length === printClassStudents.length && printClassStudents.length > 0}
                         onChange={handleSelectAllPrintStudents}
-                        className="mr-2 w-4 h-4 text-purple-600 focus:ring-purple-500"
+                        className="mr-3 w-5 h-5 text-purple-600 focus:ring-purple-500 rounded"
                       />
-                      <label className="font-medium text-white">Select All ({printClassStudents.length} students)</label>
+                      <label className="font-semibold text-white">Select All ({printClassStudents.length} students)</label>
                     </div>
 
-                    <div className="max-h-60 overflow-y-auto bg-white rounded p-3 mb-4 border border-gray-200">
+                    <div className="max-h-60 overflow-y-auto bg-white/10 backdrop-blur-md rounded-lg p-3 mb-4 border border-white/20">
                       {printClassStudents.map((student) => (
-                        <div key={student.id} className="flex items-center mb-2 hover:bg-gray-50 p-1 rounded">
+                        <div key={student.id} className="flex items-center mb-2 hover:bg-white/10 p-2 rounded-lg transition-all duration-200">
                           <input
                             type="checkbox"
                             checked={selectedPrintStudents.includes(student.id)}
                             onChange={() => handlePrintStudentSelection(student.id)}
-                            className="mr-2 w-4 h-4 text-purple-600 focus:ring-purple-500"
+                            className="mr-3 w-4 h-4 text-purple-600 focus:ring-purple-500 rounded"
                           />
-                          <label className="text-white/90">
+                          <label className="text-white font-medium">
                             {student.first_name} {student.last_name} ({student.id_number})
                           </label>
                         </div>
@@ -1910,7 +1910,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     <button
                       onClick={printSelectedReports}
                       disabled={printing || selectedPrintStudents.length === 0}
-                      className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-400 w-full text-white px-4 py-2 rounded-md font-medium transition-colors ${
+                      className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 w-full text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 border border-white/30 shadow-lg ${
                         printing || selectedPrintStudents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     >
