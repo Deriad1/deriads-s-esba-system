@@ -169,7 +169,7 @@ const UsageExample = () => {
   };
 
   return (
-    <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6 mt-6">
+    <div className="glass-ultra rounded-lg p-6 mt-6">
       <h2 className="text-xl font-semibold mb-4">Usage Examples</h2>
       <p className="text-gray-700 mb-6">
         This component demonstrates how to use the enhanced notification and loading systems.
@@ -226,7 +226,7 @@ const UsageExample = () => {
       <div className="mt-8">
         <h3 className="font-medium text-lg mb-4">Current Loading States</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white/20 p-4 rounded-lg">
+          <div className="glass-ultra-light p-4 rounded-lg">
             <h4 className="font-medium mb-2">User Creation</h4>
             <p className="text-sm mb-2">
               Status: {isLoading(loadingKeys.userCreation) ? "Loading" : "Idle"}
@@ -236,7 +236,7 @@ const UsageExample = () => {
             )}
           </div>
           
-          <div className="bg-white/20 p-4 rounded-lg">
+          <div className="glass-ultra-light p-4 rounded-lg">
             <h4 className="font-medium mb-2">Data Fetch</h4>
             <p className="text-sm mb-2">
               Status: {isLoading(loadingKeys.dataFetch) ? "Loading" : "Idle"}
@@ -246,7 +246,7 @@ const UsageExample = () => {
             )}
           </div>
           
-          <div className="bg-white/20 p-4 rounded-lg">
+          <div className="glass-ultra-light p-4 rounded-lg">
             <h4 className="font-medium mb-2">File Upload</h4>
             <p className="text-sm mb-2">
               Status: {isLoading(loadingKeys.fileUpload) ? "Loading" : "Idle"}

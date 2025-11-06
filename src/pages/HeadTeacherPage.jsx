@@ -1,1003 +1,252 @@
-import Layout from "../components/Layout";
-import { useState, useEffect } from "react";
-// import { useAuth } from "../context/AuthContext"; // Not currently used but kept for future implementation
-import { 
-  getLearners, 
-  getTeachers, 
-  addLearner, 
-  addTeacher, 
-  getClassPerformanceTrends,
-  getStudentsByClass
-} from "../api";
-import { getCurrentTermInfo, getTermKey, getCurrentTermKey } from "../utils/termHelpers";
-import PerformanceChart from "../components/PerformanceChart";
-import TrendAnalysisChart from "../components/TrendAnalysisChart";
-
-const subjectsList = [
-  "English Language", "Mathematics", "Science", "Social Studies", "Ghanaian Language",
-  "Religious and Moral Education (RME)", "Creative Arts and Design", "Career Technology",
-  "Computing", "Physical and Health Education (PHE)", "OWOP", "History", "French", "Arabic"
-];
-
-const classesList = [
-  "KG1", "KG2", "KG3", "KG4", "KG5", 
-  "P1", "P2", "P3", "P4", "P5", "P6",
-  "JHS1", "JHS2", "JHS3"
-];
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useGlobalSettings } from '../context/GlobalSettingsContext';;
+import { useNotification } from '../context/NotificationContext';
+import { getClasses, saveClass, deleteClass, getTeachers, getLearners, updateTeacher, getAllMarksForAnalytics } from '../api-client.js';
+import PerformanceChart from '../components/PerformanceChart';
+import TrendAnalysisChart from '../components/TrendAnalysisChart';
+import TeacherLeaderboard from '../components/TeacherLeaderboard';
+import Layout from '../components/Layout';
+import LoadingSpinner from '../components/LoadingSpinner';
+import PrintReportModal from '../components/PrintReportModal';
+import PromoteStudentsModal from '../components/PromoteStudentsModal';
+import TeachersManagementModal from '../components/modals/TeachersManagementModal';
+import printingService from '../services/printingService';
+import { getSubjectsForLevel } from '../utils/subjectLevelMapping';
+import {
+  calculateOverallAverage,
+  calculateSubjectAverages,
+  calculateTermTrends,
+  calculateClassStats
+} from '../utils/headTeacherAnalytics';
 
 const HeadTeacherPage = () => {
-  // const { user } = useAuth(); // Not currently used but kept for future implementation
-  
-  const [learners, setLearners] = useState([]);
+  const { user } = useAuth();
+  const { settings } = useGlobalSettings();
+  const { showNotification } = useNotification();
+  const [classData, setClassData] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedTab, setSelectedTab] = useState("overview");
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [showTrendAnalysis, setShowTrendAnalysis] = useState(false);
-  const [classTrendData, setClassTrendData] = useState(null);
-  const [classStudents, setClassStudents] = useState([]);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showStudentReport, setShowStudentReport] = useState(false);
-  
-  // State for performance dashboard
-  const [performanceData, setPerformanceData] = useState({
-    overallTrends: {},
-    subjectComparison: [],
-    gradeLevelPerformance: [],
-    yearOverYear: {}
+  const [learners, setLearners] = useState([]);
+  const [marksData, setMarksData] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isSubjectBroadsheetModalOpen, setIsSubjectBroadsheetModalOpen] = useState(false);
+  const [isClassBroadsheetModalOpen, setIsClassBroadsheetModalOpen] = useState(false);
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const [printClass, setPrintClass] = useState('');
+  const [printSubject, setPrintSubject] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [analyticsData, setAnalyticsData] = useState({
+    totalClasses: 0,
+    totalTeachers: 0,
+    totalStudents: 0,
+    overallAverage: 0
   });
-  
-  // State for communication hub
-  const [announcements, setAnnouncements] = useState([]);
-  const [newAnnouncement, setNewAnnouncement] = useState({ title: "", content: "", audience: "all" });
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState({ recipient: "", content: "" });
-  const [emergencyNotifications, setEmergencyNotifications] = useState([]);
-  const [newEmergency, setNewEmergency] = useState({ title: "", content: "" });
-  
-  // State for teacher assignment
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedTeacherForAssignment, setSelectedTeacherForAssignment] = useState(null);
-  const [assignmentForm, setAssignmentForm] = useState({
-    subjects: [],
-    classes: []
-  });
-
-  // State for adding new teacher/student
-  const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
-  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-  const [newTeacher, setNewTeacher] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    gender: "male",
-    primaryRole: "subject_teacher"
-  });
-  const [newStudent, setNewStudent] = useState({
-    firstName: "",
-    lastName: "",
-    gender: "male",
-    className: "",
-    idNumber: ""
-  });
-
-  // State for teacher roles (newly added for multi-role support)
-  const [showTeacherRoleModal, setShowTeacherRoleModal] = useState(false);
-  const [selectedTeacher, setSelectedTeacher] = useState(null);
-  const [teacherRoles, setTeacherRoles] = useState({
-    primaryRole: "subject_teacher",
-    allRoles: ["subject_teacher"],
-    classes: [],
-    subjects: []
-  });
-
-  // Get all classes from learners
-  const getAllClasses = () => {
-    return [...new Set(learners.map(l => l.className))].filter(Boolean);
-  };
-
-  // Load trend data when class and subject are selected in classes tab
-  useEffect(() => {
-    if (selectedTab === "classes" && selectedClass && selectedSubject) {
-      loadTrendData();
-    }
-  }, [selectedTab, selectedClass, selectedSubject]);
-
-  const loadTrendData = async () => {
-    try {
-      const response = await getClassPerformanceTrends(selectedClass, selectedSubject);
-      if (response.status === 'success') {
-        setClassTrendData(response.data);
-      }
-    } catch (error) {
-      console.error("Error loading trend data:", error);
-    }
-  };
-
-  // Get all subjects from teachers
-  const getAllSubjects = () => {
-    const subjects = new Set();
-    teachers.forEach(teacher => {
-      if (Array.isArray(teacher.subjects)) {
-        teacher.subjects.forEach(subject => subjects.add(subject));
-      }
-    });
-    return [...subjects];
-  };
-
-  // Load students for selected class
-  useEffect(() => {
-    if (selectedClass) {
-      loadClassStudents(selectedClass);
-    }
-  }, [selectedClass]);
-
-  const loadClassStudents = async (className) => {
-    try {
-      const response = await getStudentsByClass(className);
-      if (response.status === 'success') {
-        setClassStudents(response.data || []);
-      }
-    } catch (error) {
-      console.error("Error loading class students:", error);
-      setClassStudents([]);
-    }
-  };
 
   useEffect(() => {
-    loadData();
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch classes
+        const classResponse = await getClasses();
+        if (classResponse.status === 'success') {
+          setClassData(classResponse.data);
+        } else {
+          console.error('Failed to fetch class data:', classResponse.message);
+        }
+        
+        // Fetch teachers
+        const teacherResponse = await getTeachers();
+        if (teacherResponse.status === 'success') {
+          setTeachers(teacherResponse.data || []);
+        } else {
+          console.error('Failed to fetch teacher data:', teacherResponse.message);
+        }
+        
+        // Fetch learners
+        const learnerResponse = await getLearners();
+        if (learnerResponse.status === 'success') {
+          console.log('✅ Learners data loaded:', learnerResponse.data?.length, 'students');
+          console.log('Sample student:', learnerResponse.data?.[0]);
+          setLearners(learnerResponse.data || []);
+        } else {
+          console.error('Failed to fetch learner data:', learnerResponse.message);
+        }
+
+        // Fetch all marks for analytics
+        const marksResponse = await getAllMarksForAnalytics();
+        let marks = [];
+        if (marksResponse.status === 'success') {
+          // The API returns { status, data: { marks: [], statistics: {}, filters: {} } }
+          marks = marksResponse.data?.marks || [];
+          console.log('✅ Marks data loaded:', marks.length, 'records');
+          setMarksData(marks);
+        } else {
+          console.error('Failed to fetch marks data:', marksResponse.message);
+        }
+
+        // Calculate REAL analytics using actual data
+        const realOverallAverage = calculateOverallAverage(
+          learnerResponse.data || [],
+          marks
+        );
+
+        // Update analytics data with REAL values
+        setAnalyticsData({
+          totalClasses: classResponse.data?.length || 0,
+          totalTeachers: teacherResponse.data?.length || 0,
+          totalStudents: learnerResponse.data?.length || 0,
+          overallAverage: realOverallAverage // REAL VALUE!
+        });
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+
+  // REAL data for charts - calculated from actual student marks
+  const chartData = useMemo(() => {
+    if (!marksData || marksData.length === 0) return [];
+    return calculateSubjectAverages(marksData);
+  }, [marksData]);
+
+  const trendData = useMemo(() => {
+    if (!marksData || marksData.length === 0) return [];
+    return calculateTermTrends(marksData);
+  }, [marksData]);
+
+  const overallAverage = useMemo(() => {
+    return analyticsData.overallAverage || 0;
+  }, [analyticsData.overallAverage]);
+
+  // Print Subject Broadsheet
+  const printSubjectBroadsheet = async () => {
+    if (!printClass) {
+      showNotification({
+        type: 'warning',
+        message: 'Please select a class first',
+        duration: 3000
+      });
+      return;
+    }
+    if (!printSubject) {
+      showNotification({
+        type: 'warning',
+        message: 'Please select a subject first',
+        duration: 3000
+      });
+      return;
+    }
+
+    setPrinting(true);
     try {
-      const [learnersResponse, teachersResponse] = await Promise.all([
-        getLearners(),
-        getTeachers()
-      ]);
-      
-      if (learnersResponse.status === 'success') {
-        setLearners(learnersResponse.data || []);
+      const schoolInfo = printingService.getSchoolInfo();
+      const result = await printingService.printSubjectBroadsheet(
+        printClass,
+        printSubject,
+        schoolInfo,
+        '', // teacherName
+        settings.term // term from global settings
+      );
+
+      if (result.success) {
+        showNotification({
+          type: 'success',
+          message: result.message,
+          duration: 5000
+        });
+        setIsSubjectBroadsheetModalOpen(false);
+        setPrintClass('');
+        setPrintSubject('');
+      } else {
+        throw new Error(result.message);
       }
-      
-      if (teachersResponse.status === 'success') {
-        setTeachers(teachersResponse.data || []);
-      }
-      
-      // Load performance dashboard data
-      loadPerformanceData();
-      
-      // Load communication hub data
-      loadCommunicationData();
     } catch (error) {
-      console.error("Error loading data:", error);
-      alert("Error loading data: " + error.message);
+      console.error("Error printing subject broadsheet:", error);
+      showNotification({
+        type: 'error',
+        message: "Error printing subject broadsheet: " + error.message,
+        duration: 5000
+      });
     } finally {
-      setLoading(false);
+      setPrinting(false);
     }
   };
 
-  // Load performance dashboard data
-  const loadPerformanceData = async () => {
-    try {
-      // Load real performance data instead of mock data
-      const { currentYear } = getCurrentTermInfo();
-      const previousYear = `${parseInt(currentYear.split('/')[0]) - 1}/${parseInt(currentYear.split('/')[1]) - 1}`;
-      
-      // Overall academic performance trends across all classes
-      const overallTrends = {};
-      const termList = ['First Term', 'Second Term', 'Third Term'];
-      
-      // Get performance data for each term
-      for (const term of termList) {
-        const termKey = getTermKey(term, currentYear, 'marks');
-        const marks = JSON.parse(localStorage.getItem(termKey) || '[]');
-        
-        // Calculate average performance for this term
-        if (marks.length > 0) {
-          const totalScore = marks.reduce((sum, mark) => {
-            // Calculate final total (50% tests + 50% exam)
-            const testsTotal = (parseFloat(mark.test1) || 0) + 
-                              (parseFloat(mark.test2) || 0) + 
-                              (parseFloat(mark.test3) || 0) + 
-                              (parseFloat(mark.test4) || 0);
-            const testsScaled = (testsTotal / 60) * 50;
-            const examScaled = ((parseFloat(mark.exam) || 0) / 100) * 50;
-            const finalTotal = testsScaled + examScaled;
-            return sum + finalTotal;
-          }, 0);
-          
-          const averageScore = totalScore / marks.length;
-          overallTrends[term] = {
-            averageScore: parseFloat(averageScore.toFixed(1)),
-            studentCount: marks.length
-          };
-        } else {
-          overallTrends[term] = {
-            averageScore: 0,
-            studentCount: 0
-          };
-        }
-      }
-      
-      // Subject performance comparison
-      const subjectPerformance = {};
-      const currentTermKey = getCurrentTermKey('marks');
-      const marks = JSON.parse(localStorage.getItem(currentTermKey) || '[]');
-      
-      // Group marks by subject
-      marks.forEach(mark => {
-        if (!subjectPerformance[mark.subject]) {
-          subjectPerformance[mark.subject] = [];
-        }
-        // Calculate final total (50% tests + 50% exam)
-        const testsTotal = (parseFloat(mark.test1) || 0) + 
-                          (parseFloat(mark.test2) || 0) + 
-                          (parseFloat(mark.test3) || 0) + 
-                          (parseFloat(mark.test4) || 0);
-        const testsScaled = (testsTotal / 60) * 50;
-        const examScaled = ((parseFloat(mark.exam) || 0) / 100) * 50;
-        const finalTotal = testsScaled + examScaled;
-        subjectPerformance[mark.subject].push(finalTotal);
+  // Print Complete Class Broadsheet
+  const printClassBroadsheet = async () => {
+    if (!printClass) {
+      showNotification({
+        type: 'warning',
+        message: 'Please select a class first',
+        duration: 3000
       });
-      
-      // Calculate average for each subject
-      const subjectComparison = Object.entries(subjectPerformance).map(([subject, scores]) => {
-        const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-        return {
-          label: subject,
-          value: parseFloat(average.toFixed(1))
-        };
-      });
-      
-      // Performance by grade level
-      const gradeLevelPerformance = [];
-      const learnersByGrade = {};
-      
-      // Categorize learners by grade level
-      learners.forEach(learner => {
-        const gradeLevel = getGradeLevel(learner.className);
-        
-        if (!learnersByGrade[gradeLevel]) {
-          learnersByGrade[gradeLevel] = [];
-        }
-        learnersByGrade[gradeLevel].push(learner);
-      });
-      
-      // Calculate performance for each grade level
-      Object.entries(learnersByGrade).forEach(([gradeLevel, learnersInGrade]) => {
-        // Get marks for learners in this grade
-        const learnerIds = learnersInGrade.map(l => l.id);
-        const gradeMarks = marks.filter(mark => learnerIds.includes(mark.studentId));
-        
-        if (gradeMarks.length > 0) {
-          const totalScore = gradeMarks.reduce((sum, mark) => {
-            // Calculate final total (50% tests + 50% exam)
-            const testsTotal = (parseFloat(mark.test1) || 0) + 
-                              (parseFloat(mark.test2) || 0) + 
-                              (parseFloat(mark.test3) || 0) + 
-                              (parseFloat(mark.test4) || 0);
-            const testsScaled = (testsTotal / 60) * 50;
-            const examScaled = ((parseFloat(mark.exam) || 0) / 100) * 50;
-            const finalTotal = testsScaled + examScaled;
-            return sum + finalTotal;
-          }, 0);
-          
-          const averageScore = totalScore / gradeMarks.length;
-          gradeLevelPerformance.push({
-            label: gradeLevel,
-            value: parseFloat(averageScore.toFixed(1))
-          });
-        } else {
-          gradeLevelPerformance.push({
-            label: gradeLevel,
-            value: 0
-          });
-        }
-      });
-      
-      // Year-over-year comparison
-      const yearOverYear = {};
-      
-      // Get current year performance
-      const currentYearMarks = [];
-      for (const term of termList) {
-        const termKey = getTermKey(term, currentYear, 'marks');
-        const termMarks = JSON.parse(localStorage.getItem(termKey) || '[]');
-        currentYearMarks.push(...termMarks);
-      }
-      
-      if (currentYearMarks.length > 0) {
-        const totalScore = currentYearMarks.reduce((sum, mark) => {
-          // Calculate final total (50% tests + 50% exam)
-          const testsTotal = (parseFloat(mark.test1) || 0) + 
-                            (parseFloat(mark.test2) || 0) + 
-                            (parseFloat(mark.test3) || 0) + 
-                            (parseFloat(mark.test4) || 0);
-          const testsScaled = (testsTotal / 60) * 50;
-          const examScaled = ((parseFloat(mark.exam) || 0) / 100) * 50;
-          const finalTotal = testsScaled + examScaled;
-          return sum + finalTotal;
-        }, 0);
-        
-        const averageScore = totalScore / currentYearMarks.length;
-        yearOverYear[currentYear] = {
-          averageScore: parseFloat(averageScore.toFixed(1)),
-          studentCount: currentYearMarks.length
-        };
-      } else {
-        yearOverYear[currentYear] = {
-          averageScore: 0,
-          studentCount: 0
-        };
-      }
-      
-      // Get previous year performance
-      const previousYearMarks = [];
-      for (const term of termList) {
-        const termKey = getTermKey(term, previousYear, 'marks');
-        const termMarks = JSON.parse(localStorage.getItem(termKey) || '[]');
-        previousYearMarks.push(...termMarks);
-      }
-      
-      if (previousYearMarks.length > 0) {
-        const totalScore = previousYearMarks.reduce((sum, mark) => {
-          // Calculate final total (50% tests + 50% exam)
-          const testsTotal = (parseFloat(mark.test1) || 0) + 
-                            (parseFloat(mark.test2) || 0) + 
-                            (parseFloat(mark.test3) || 0) + 
-                            (parseFloat(mark.test4) || 0);
-          const testsScaled = (testsTotal / 60) * 50;
-          const examScaled = ((parseFloat(mark.exam) || 0) / 100) * 50;
-          const finalTotal = testsScaled + examScaled;
-          return sum + finalTotal;
-        }, 0);
-        
-        const averageScore = totalScore / previousYearMarks.length;
-        yearOverYear[previousYear] = {
-          averageScore: parseFloat(averageScore.toFixed(1)),
-          studentCount: previousYearMarks.length
-        };
-      } else {
-        yearOverYear[previousYear] = {
-          averageScore: 0,
-          studentCount: 0
-        };
-      }
-      
-      setPerformanceData({
-        overallTrends,
-        subjectComparison,
-        gradeLevelPerformance,
-        yearOverYear
-      });
-    } catch (error) {
-      console.error("Error loading performance data:", error);
-      // Fallback to mock data if there's an error
-      loadMockPerformanceData();
+      return;
     }
-  };
 
-  // Fallback function for mock data
-  const loadMockPerformanceData = () => {
-    // Overall academic performance trends
-    const overallTrends = {};
-    const terms = ['First Term', 'Second Term', 'Third Term'];
-    terms.forEach(term => {
-      overallTrends[term] = {
-        averageScore: Math.floor(Math.random() * 30) + 60, // Random score between 60-90
-        studentCount: Math.floor(Math.random() * 100) + 150 // Random count between 150-250
-      };
-    });
-    
-    // Subject performance comparison
-    const subjectComparison = subjectsList.slice(0, 8).map(subject => ({
-      label: subject,
-      value: Math.floor(Math.random() * 30) + 60 // Random score between 60-90
-    }));
-    
-    // Performance by grade level
-    const gradeLevels = ["Kindergarten", "Primary", "Junior High"];
-    const gradeLevelPerformance = gradeLevels.map(level => ({
-      label: level,
-      value: Math.floor(Math.random() * 30) + 60 // Random score between 60-90
-    }));
-    
-    // Year-over-year comparison
-    const yearOverYear = {};
-    const currentYear = "2024/2025";
-    const previousYear = "2023/2024";
-    yearOverYear[currentYear] = {
-      averageScore: Math.floor(Math.random() * 30) + 65, // Random score between 65-95
-      studentCount: Math.floor(Math.random() * 100) + 300 // Random count between 300-400
-    };
-    yearOverYear[previousYear] = {
-      averageScore: Math.floor(Math.random() * 30) + 60, // Random score between 60-90
-      studentCount: Math.floor(Math.random() * 100) + 250 // Random count between 250-350
-    };
-    
-    setPerformanceData({
-      overallTrends,
-      subjectComparison,
-      gradeLevelPerformance,
-      yearOverYear
-    });
-  };
-
-  // Load communication hub data from localStorage
-  const loadCommunicationData = async () => {
+    setPrinting(true);
     try {
-      // Load announcements from localStorage
-      const storedAnnouncements = JSON.parse(localStorage.getItem('announcements') || '[]');
-      setAnnouncements(storedAnnouncements);
-      
-      // Load messages from localStorage
-      const storedMessages = JSON.parse(localStorage.getItem('messages') || '[]');
-      setMessages(storedMessages);
-      
-      // Load emergency notifications from localStorage
-      const storedEmergencyNotifications = JSON.parse(localStorage.getItem('emergencyNotifications') || '[]');
-      setEmergencyNotifications(storedEmergencyNotifications);
-    } catch (error) {
-      console.error("Error loading communication data:", error);
-      // Fallback to sample data if there's an error
-      loadSampleCommunicationData();
-    }
-  };
-
-  // Fallback function for sample communication data
-  const loadSampleCommunicationData = () => {
-    // Sample announcements
-    const sampleAnnouncements = [
-      {
-        id: 1,
-        title: "School Closure Notice",
-        content: "The school will be closed on Friday for maintenance work.",
-        date: "2024-09-10",
-        audience: "all"
-      },
-      {
-        id: 2,
-        title: "Parent-Teacher Meeting",
-        content: "Parent-teacher meetings will be held next week.",
-        date: "2024-09-08",
-        audience: "parents"
-      }
-    ];
-    
-    // Sample messages
-    const sampleMessages = [
-      {
-        id: 1,
-        sender: "John Doe",
-        recipient: "All Teachers",
-        content: "Please remember to submit your reports by Friday.",
-        date: "2024-09-10"
-      }
-    ];
-    
-    // Sample emergency notifications
-    const sampleEmergency = [
-      {
-        id: 1,
-        title: "Fire Drill",
-        content: "Fire drill scheduled for tomorrow at 10:00 AM.",
-        date: "2024-09-09"
-      }
-    ];
-    
-    setAnnouncements(sampleAnnouncements);
-    setMessages(sampleMessages);
-    setEmergencyNotifications(sampleEmergency);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Save communication data to localStorage when it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('announcements', JSON.stringify(announcements));
-      localStorage.setItem('messages', JSON.stringify(messages));
-      localStorage.setItem('emergencyNotifications', JSON.stringify(emergencyNotifications));
-    } catch (error) {
-      console.error("Error saving communication data:", error);
-    }
-  }, [announcements, messages, emergencyNotifications]);
-
-  // Get analytics data for school statistics
-  const getSchoolAnalytics = () => {
-    const classes = getAllClasses();
-    const subjects = getAllSubjects();
-    
-    // Count students per class
-    const studentsPerClass = {};
-    learners.forEach(learner => {
-      studentsPerClass[learner.className] = (studentsPerClass[learner.className] || 0) + 1;
-    });
-    
-    // Count teachers per subject
-    const teachersPerSubject = {};
-    teachers.forEach(teacher => {
-      if (Array.isArray(teacher.subjects)) {
-        teacher.subjects.forEach(subject => {
-          teachersPerSubject[subject] = (teachersPerSubject[subject] || 0) + 1;
-        });
-      }
-    });
-    
-    // Prepare data for charts
-    const studentsPerClassData = Object.entries(studentsPerClass).map(([className, count]) => ({
-      label: className,
-      value: count
-    }));
-    
-    const teachersPerSubjectData = Object.entries(teachersPerSubject).map(([subject, count]) => ({
-      label: subject,
-      value: count
-    }));
-    
-    return {
-      totalStudents: learners.length,
-      totalTeachers: teachers.length,
-      totalClasses: classes.length,
-      totalSubjects: subjects.length,
-      studentsPerClass,
-      teachersPerSubject,
-      studentsPerClassData,
-      teachersPerSubjectData
-    };
-  };
-
-  const schoolAnalytics = getSchoolAnalytics();
-
-  // Get class-specific data
-  const getClassData = (className) => {
-    const classLearners = learners.filter(l => l.className === className);
-    const classTeachers = teachers.filter(t => 
-      Array.isArray(t.classes) && t.classes.includes(className)
-    );
-    
-    return {
-      students: classLearners,
-      teachers: classTeachers,
-      studentCount: classLearners.length,
-      teacherCount: classTeachers.length
-    };
-  };
-
-  // Get subject-specific data
-  const getSubjectData = (subject) => {
-    const subjectTeachers = teachers.filter(t => 
-      Array.isArray(t.subjects) && t.subjects.includes(subject)
-    );
-    
-    // Get classes taught for this subject
-    const classes = new Set();
-    subjectTeachers.forEach(teacher => {
-      if (Array.isArray(teacher.classes)) {
-        teacher.classes.forEach(cls => classes.add(cls));
-      }
-    });
-    
-    return {
-      teachers: subjectTeachers,
-      teacherCount: subjectTeachers.length,
-      classes: [...classes],
-      classCount: classes.size
-    };
-  };
-
-  // Handle opening the assignment modal
-  const handleOpenAssignmentModal = (teacher) => {
-    setSelectedTeacherForAssignment(teacher);
-    setAssignmentForm({
-      subjects: Array.isArray(teacher.subjects) ? [...teacher.subjects] : [],
-      classes: Array.isArray(teacher.classes) ? [...teacher.classes] : []
-    });
-    setShowAssignModal(true);
-  };
-
-  // Handle assignment toggling
-  const handleAssignmentSubjectToggle = (subject) => {
-    setAssignmentForm(prev => ({
-      ...prev,
-      subjects: prev.subjects.includes(subject)
-        ? prev.subjects.filter(s => s !== subject)
-        : [...prev.subjects, subject]
-    }));
-  };
-
-  const handleAssignmentClassToggle = (className) => {
-    setAssignmentForm(prev => ({
-      ...prev,
-      classes: prev.classes.includes(className)
-        ? prev.classes.filter(c => c !== className)
-        : [...prev.classes, className]
-    }));
-  };
-
-  // Save assignments
-  const handleSaveAssignments = async () => {
-    try {
-      // Update the teacher with new assignments
-      const updatedTeacher = {
-        ...selectedTeacherForAssignment,
-        subjects: assignmentForm.subjects,
-        classes: assignmentForm.classes
-      };
-
-      // For term-specific localStorage implementation, we'll update the teacher
-      const { currentTerm, currentYear } = getCurrentTermInfo();
-      const termKey = getTermKey(currentTerm, currentYear, 'teachers');
-      const teachersData = JSON.parse(localStorage.getItem(termKey) || '[]');
-      
-      const updatedTeachers = teachersData.map(teacher => 
-        teacher.id === selectedTeacherForAssignment.id ? updatedTeacher : teacher
+      const schoolInfo = printingService.getSchoolInfo();
+      const result = await printingService.printCompleteClassBroadsheet(
+        printClass,
+        schoolInfo
       );
-      
-      localStorage.setItem(termKey, JSON.stringify(updatedTeachers));
-      
-      // Update state
-      setTeachers(updatedTeachers);
-      setShowAssignModal(false);
-      setSelectedTeacherForAssignment(null);
-      setAssignmentForm({ subjects: [], classes: [] });
-      
-      // Refresh data to ensure consistency
-      await loadData();
-      alert("Assignments updated successfully!");
-    } catch (error) {
-      alert(`Error updating assignments: ${error.message}`);
-    }
-  };
 
-  // Handle role checkbox changes (newly added)
-  const handleRoleToggle = (role) => {
-    setTeacherRoles(prev => {
-      let allRoles = [...prev.allRoles];
-      
-      if (allRoles.includes(role)) {
-        // If we're removing a role
-        if (allRoles.length <= 1) {
-          // Don't allow removing the last role
-          return prev;
-        }
-        allRoles = allRoles.filter(r => r !== role);
+      if (result.success) {
+        showNotification({
+          type: 'success',
+          message: result.message,
+          duration: 5000
+        });
+        setIsClassBroadsheetModalOpen(false);
+        setPrintClass('');
       } else {
-        // If we're adding a role
-        allRoles = [...allRoles, role];
+        throw new Error(result.message);
       }
-      
-      // Ensure primary role is still in allRoles
-      let primaryRole = prev.primaryRole;
-      if (!allRoles.includes(primaryRole)) {
-        primaryRole = allRoles[0] || "subject_teacher";
-      }
-      
-      return {
-        ...prev,
-        allRoles,
-        primaryRole
-      };
-    });
-  };
-
-  // Handle class checkbox changes (newly added)
-  const handleClassToggle = (className) => {
-    setTeacherRoles(prev => {
-      const classes = prev.classes.includes(className)
-        ? prev.classes.filter(c => c !== className)
-        : [...prev.classes, className];
-      
-      return { ...prev, classes };
-    });
-  };
-
-  // Handle subject checkbox changes (newly added)
-  const handleSubjectToggle = (subject) => {
-    setTeacherRoles(prev => {
-      const subjects = prev.subjects.includes(subject)
-        ? prev.subjects.filter(s => s !== subject)
-        : [...prev.subjects, subject];
-      
-      return { ...prev, subjects };
-    });
-  };
-
-  // Open role assignment modal (newly added)
-  const openRoleAssignment = (teacher) => {
-    setSelectedTeacher(teacher);
-    // Ensure allRoles is properly initialized
-    const allRoles = teacher.allRoles && teacher.allRoles.length > 0 
-      ? teacher.allRoles 
-      : [teacher.primaryRole || "subject_teacher"];
-    
-    setTeacherRoles({
-      primaryRole: teacher.primaryRole || "subject_teacher",
-      allRoles: allRoles,
-      classes: teacher.classes || [],
-      subjects: teacher.subjects || []
-    });
-    setShowTeacherRoleModal(true);
-  };
-
-  // Handle role assignment (newly added)
-  const handleAssignRoles = async (e) => {
-    e.preventDefault();
-    try {
-      if (!selectedTeacher) return;
-      
-      // Prepare the data to be updated
-      const rolesData = {
-        primaryRole: teacherRoles.primaryRole,
-        allRoles: teacherRoles.allRoles,
-        classes: teacherRoles.classes,
-        subjects: teacherRoles.subjects
-      };
-      
-      // Update the teacher with new role data
-      const { currentTerm, currentYear } = getCurrentTermInfo();
-      const termKey = getTermKey(currentTerm, currentYear, 'teachers');
-      const teachersData = JSON.parse(localStorage.getItem(termKey) || '[]');
-      
-      const updatedTeachers = teachersData.map(teacher => 
-        teacher.id === selectedTeacher.id ? { ...teacher, ...rolesData } : teacher
-      );
-      
-      localStorage.setItem(termKey, JSON.stringify(updatedTeachers));
-      
-      // Update state
-      setTeachers(updatedTeachers);
-      setShowTeacherRoleModal(false);
-      setSelectedTeacher(null);
-      setTeacherRoles({
-        primaryRole: "subject_teacher",
-        allRoles: ["subject_teacher"],
-        classes: [],
-        subjects: []
+    } catch (error) {
+      console.error("Error printing class broadsheet:", error);
+      showNotification({
+        type: 'error',
+        message: "Error printing class broadsheet: " + error.message,
+        duration: 5000
       });
-      
-      alert("Teacher roles updated successfully!");
-    } catch (error) {
-      console.error("Error updating teacher roles:", error);
-      alert("Failed to update teacher roles. Please try again.");
+    } finally {
+      setPrinting(false);
     }
   };
 
-  // Helper function to get grade level from class name
-  const getGradeLevel = (className) => {
-    if (className && className.startsWith("KG")) {
-      return "Kindergarten";
-    } else if (className && className.startsWith("P")) {
-      return "Primary";
-    } else if (className && className.startsWith("JHS")) {
-      return "Junior High";
+  // Get subjects for the selected class
+  const getAvailableSubjects = () => {
+    if (!printClass) return [];
+
+    // Determine level based on class
+    let level = '';
+    if (printClass === 'KG1' || printClass === 'KG2') {
+      level = 'KG';
+    } else if (printClass === 'BS1' || printClass === 'BS2' || printClass === 'BS3') {
+      level = 'Lower Primary';
+    } else if (printClass === 'BS4' || printClass === 'BS5' || printClass === 'BS6') {
+      level = 'Upper Primary';
+    } else if (printClass === 'BS7' || printClass === 'BS8' || printClass === 'BS9') {
+      level = 'JHS';
     }
-    return "Other";
-  };
 
-  // Handle adding new teacher
-  const handleAddTeacher = async (e) => {
-    e.preventDefault();
-    try {
-      const teacherData = {
-        ...newTeacher,
-        allRoles: [newTeacher.primaryRole], // Add allRoles property
-        subjects: [],
-        classes: []
-      };
-      
-      const response = await addTeacher(teacherData);
-      if (response.status === 'success') {
-        // Ensure the new teacher has all required properties
-        const newTeacherWithRoles = {
-          ...response.data,
-          allRoles: response.data.allRoles || [response.data.primaryRole || "subject_teacher"],
-          subjects: response.data.subjects || [],
-          classes: response.data.classes || []
-        };
-        
-        setTeachers([...teachers, newTeacherWithRoles]);
-        setShowAddTeacherModal(false);
-        setNewTeacher({
-          firstName: "",
-          lastName: "",
-          email: "",
-          gender: "male",
-          primaryRole: "subject_teacher"
-        });
-        alert("Teacher added successfully!");
-      }
-    } catch (error) {
-      alert(`Error adding teacher: ${error.message}`);
-    }
-  };
-
-  // Handle adding new student
-  const handleAddStudent = async (e) => {
-    e.preventDefault();
-    try {
-      // Generate student ID if not provided
-      let studentId = newStudent.idNumber;
-      if (!studentId) {
-        // Find the highest existing ID and increment
-        const existingIds = learners
-          .filter(l => l.idNumber && l.idNumber.startsWith('eSBA'))
-          .map(l => parseInt(l.idNumber.replace('eSBA', '')))
-          .filter(id => !isNaN(id));
-        
-        const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-        studentId = `eSBA${String(maxId + 1).padStart(4, '0')}`;
-      }
-      
-      const studentData = {
-        ...newStudent,
-        idNumber: studentId
-      };
-      
-      const response = await addLearner(studentData);
-      if (response.status === 'success') {
-        setLearners([...learners, response.data]);
-        if (selectedClass === newStudent.className) {
-          setClassStudents([...classStudents, response.data]);
-        }
-        setShowAddStudentModal(false);
-        setNewStudent({
-          firstName: "",
-          lastName: "",
-          gender: "male",
-          className: "",
-          idNumber: ""
-        });
-        alert("Student added successfully!");
-      }
-    } catch (error) {
-      alert(`Error adding student: ${error.message}`);
-    }
-  };
-
-  // View student report
-  const handleViewStudentReport = (student) => {
-    setSelectedStudent(student);
-    setShowStudentReport(true);
-  };
-
-  // Print student report
-  const handlePrintStudentReport = (student) => {
-    // Create a printable report
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Student Report - ${student.firstName} ${student.lastName}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .student-info { margin-bottom: 20px; }
-          .info-row { display: flex; margin-bottom: 10px; }
-          .info-label { font-weight: bold; width: 150px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          @media print {
-            body { -webkit-print-color-adjust: exact; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Student Report</h1>
-          <h2>${student.firstName} ${student.lastName}</h2>
-        </div>
-        
-        <div class="student-info">
-          <div class="info-row">
-            <div class="info-label">Student ID:</div>
-            <div>${student.idNumber || 'N/A'}</div>
-          </div>
-          <div class="info-row">
-            <div class="info-label">Class:</div>
-            <div>${student.className}</div>
-          </div>
-          <div class="info-row">
-            <div class="info-label">Gender:</div>
-            <div>${student.gender}</div>
-          </div>
-        </div>
-        
-        <p>This is a sample report. In a full implementation, this would include academic performance data.</p>
-        
-        <script>
-          window.onload = function() {
-            window.print();
-            window.close();
-          }
-        </script>
-      </body>
-      </html>
-    `;
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.focus();
-  };
-
-  // Communication Hub functions
-  const handleAddAnnouncement = (e) => {
-    e.preventDefault();
-    if (!newAnnouncement.title || !newAnnouncement.content) {
-      alert("Please fill in all fields");
-      return;
-    }
-    
-    const announcement = {
-      id: Date.now(),
-      ...newAnnouncement,
-      date: new Date().toISOString().split('T')[0]
-    };
-    
-    const updatedAnnouncements = [announcement, ...announcements];
-    setAnnouncements(updatedAnnouncements);
-    setNewAnnouncement({ title: "", content: "", audience: "all" });
-    // Save to localStorage
-    localStorage.setItem('announcements', JSON.stringify(updatedAnnouncements));
-    alert("Announcement added successfully!");
-  };
-
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!newMessage.recipient || !newMessage.content) {
-      alert("Please fill in all fields");
-      return;
-    }
-    
-    const message = {
-      id: Date.now(),
-      sender: "Head Teacher",
-      ...newMessage,
-      date: new Date().toISOString().split('T')[0]
-    };
-    
-    const updatedMessages = [message, ...messages];
-    setMessages(updatedMessages);
-    setNewMessage({ recipient: "", content: "" });
-    // Save to localStorage
-    localStorage.setItem('messages', JSON.stringify(updatedMessages));
-    alert("Message sent successfully!");
-  };
-
-  const handleSendEmergency = (e) => {
-    e.preventDefault();
-    if (!newEmergency.title || !newEmergency.content) {
-      alert("Please fill in all fields");
-      return;
-    }
-    
-    const emergency = {
-      id: Date.now(),
-      ...newEmergency,
-      date: new Date().toISOString().split('T')[0]
-    };
-    
-    const updatedEmergencyNotifications = [emergency, ...emergencyNotifications];
-    setEmergencyNotifications(updatedEmergencyNotifications);
-    setNewEmergency({ title: "", content: "" });
-    // Save to localStorage
-    localStorage.setItem('emergencyNotifications', JSON.stringify(updatedEmergencyNotifications));
-    alert("Emergency notification sent successfully!");
+    return getSubjectsForLevel(level);
   };
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg">Loading...</div>
-        </div>
+        <LoadingSpinner message="Loading Head Teacher Dashboard..." size="lg" />
       </Layout>
     );
   }
@@ -1005,1426 +254,1089 @@ const HeadTeacherPage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-          <h1 className="text-2xl font-bold text-gray-900">Head Teacher Dashboard</h1>
-          <p className="text-gray-600 mt-1">Oversee all teachers and school-wide reports</p>
-          
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              HEAD TEACHER
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              {schoolAnalytics.totalStudents} Students
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-              {schoolAnalytics.totalTeachers} Teachers
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-              {schoolAnalytics.totalClasses} Classes
-            </span>
+        {/* Header Section */}
+        <div className="glass-extra-transparent p-6 rounded-lg">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Head Teacher Dashboard</h1>
+          <p className="text-white/90">Welcome, {user?.name || 'Head Teacher'}</p>
+        </div>
+
+      {/* Tabs */}
+      <div className="glass-extra-transparent rounded-lg">
+        <div className="flex flex-wrap border-b border-gray-700">
+          {['overview', 'classes', 'teachers', 'analytics'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`py-3 px-6 font-medium text-sm ${
+                activeTab === tab
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Stats Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { title: 'Total Classes', value: analyticsData.totalClasses, icon: '📚' },
+              { title: 'Total Teachers', value: analyticsData.totalTeachers, icon: '👩‍🏫' },
+              { title: 'Total Students', value: analyticsData.totalStudents, icon: '👨‍🎓' },
+              { title: 'Avg Performance', value: `${overallAverage}%`, icon: '📈' }
+            ].map((stat, index) => (
+              <div key={index} className="glass-card-golden p-4 rounded-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:bg-white/30">
+                <div className="flex items-center">
+                  <div className="bg-yellow-500/90 backdrop-blur-sm p-3 rounded-lg mr-4 border-2 border-white/50">
+                    <span className="text-2xl">{stat.icon}</span>
+                  </div>
+                  <div>
+                    <p className="text-white/90 text-sm">{stat.title}</p>
+                    <p className="text-2xl font-bold text-white">{stat.value}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setSelectedTab("overview")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                selectedTab === "overview"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setSelectedTab("classes")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                selectedTab === "classes"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Classes
-            </button>
-            <button
-              onClick={() => setSelectedTab("subjects")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                selectedTab === "subjects"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Subjects
-            </button>
-            <button
-              onClick={() => setSelectedTab("teachers")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                selectedTab === "teachers"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Teachers
-            </button>
-            <button
-              onClick={() => setSelectedTab("performance")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                selectedTab === "performance"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Performance Dashboard
-            </button>
-            <button
-              onClick={() => setSelectedTab("communication")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                selectedTab === "communication"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Communication Hub
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        {selectedTab === "overview" && (
-          <div className="space-y-6">
-            {/* School Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                <div className="text-3xl font-bold text-blue-600">{schoolAnalytics.totalStudents}</div>
-                <div className="text-gray-600 mt-1">Total Students</div>
-              </div>
-              
-              <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                <div className="text-3xl font-bold text-green-600">{schoolAnalytics.totalTeachers}</div>
-                <div className="text-gray-600 mt-1">Total Teachers</div>
-              </div>
-              
-              <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                <div className="text-3xl font-bold text-purple-600">{schoolAnalytics.totalClasses}</div>
-                <div className="text-gray-600 mt-1">Total Classes</div>
-              </div>
-              
-              <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                <div className="text-3xl font-bold text-yellow-600">{schoolAnalytics.totalSubjects}</div>
-                <div className="text-gray-600 mt-1">Total Subjects</div>
-              </div>
-            </div>
-
-            {/* Analytics Toggle */}
-            <div className="flex justify-end">
-              <button 
-                className={`px-4 py-2 rounded-md transition-colors ${
-                  showAnalytics 
-                    ? "bg-purple-600 text-white hover:bg-purple-700" 
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-                onClick={() => setShowAnalytics(!showAnalytics)}
+          {/* Quick Actions Panel */}
+          <div className="glass-card-golden p-6 rounded-lg">
+            <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <button
+                onClick={() => setActiveTab('teachers')}
+                className="glass-card-golden text-white p-4 rounded-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:bg-white/30 flex items-center justify-center space-x-2"
               >
-                {showAnalytics ? "Hide Analytics" : "Show Analytics"}
+                <span>👩‍🏫</span>
+                <span>View Teachers</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('classes')}
+                className="glass-card-golden text-white p-4 rounded-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:bg-white/30 flex items-center justify-center space-x-2"
+              >
+                <span>📚</span>
+                <span>Manage Classes</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className="glass-card-golden text-white p-4 rounded-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:bg-white/30 flex items-center justify-center space-x-2"
+              >
+                <span>📊</span>
+                <span>View Analytics</span>
+              </button>
+              <button
+                onClick={() => setIsPromoteModalOpen(true)}
+                className="glass-card-golden text-white p-4 rounded-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:bg-white/30 flex items-center justify-center space-x-2"
+              >
+                <span>📈</span>
+                <span>Promote Students</span>
               </button>
             </div>
+          </div>
 
-            {/* Analytics Section */}
-            {showAnalytics && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Students per Class Chart */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <PerformanceChart 
-                    data={schoolAnalytics.studentsPerClassData} 
-                    title="Students per Class" 
-                    type="bar" 
-                  />
-                </div>
-                
-                {/* Teachers per Subject Chart */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <PerformanceChart 
-                    data={schoolAnalytics.teachersPerSubjectData} 
-                    title="Teachers per Subject" 
-                    type="bar" 
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Students per Class */}
-            <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-              <h2 className="text-lg font-semibold mb-4">Students per Class</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(schoolAnalytics.studentsPerClass).map(([className, count]) => (
-                  <div key={className} className="border border-gray-200 rounded-lg p-4 bg-white/20 backdrop-blur-sm">
-                    <div className="font-medium">{className}</div>
-                    <div className="text-2xl font-bold text-blue-600">{count}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Teachers per Subject */}
-            <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-              <h2 className="text-lg font-semibold mb-4">Teachers per Subject</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(schoolAnalytics.teachersPerSubject).map(([subject, count]) => (
-                  <div key={subject} className="border border-gray-200 rounded-lg p-4 bg-white/20 backdrop-blur-sm">
-                    <div className="font-medium">{subject}</div>
-                    <div className="text-2xl font-bold text-green-600">{count}</div>
-                  </div>
-                ))}
-              </div>
+          {/* Print Reports Section */}
+          <div className="glass-card-golden p-6 rounded-lg">
+            <h2 className="text-xl font-bold text-white mb-4">Print Reports</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => setIsPrintModalOpen(true)}
+                className="glass-card-golden text-white p-4 rounded-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:bg-white/30 flex items-center justify-center space-x-2"
+                title="Print individual terminal reports for students"
+              >
+                <span>📄</span>
+                <span>Student Reports</span>
+              </button>
+              <button
+                onClick={() => setIsSubjectBroadsheetModalOpen(true)}
+                className="glass-card-golden text-white p-4 rounded-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:bg-white/30 flex items-center justify-center space-x-2"
+                title="Print broadsheet for a specific subject"
+              >
+                <span>📊</span>
+                <span>Subject Broadsheet</span>
+              </button>
+              <button
+                onClick={() => setIsClassBroadsheetModalOpen(true)}
+                className="glass-card-golden text-white p-4 rounded-lg hover:scale-105 hover:shadow-2xl transition-all duration-300 hover:bg-white/30 flex items-center justify-center space-x-2"
+                title="Print complete class broadsheet with all subjects"
+              >
+                <span>📋</span>
+                <span>Class Broadsheet</span>
+              </button>
             </div>
           </div>
-        )}
 
-        {selectedTab === "classes" && (
-          <div className="space-y-6">
-            {/* Class Selection */}
-            <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Class Reports</h2>
-                <button
-                  onClick={() => setShowAddStudentModal(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
-                  Add Student
-                </button>
-              </div>
-              
-              <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
-                  <select
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                    value={selectedClass}
-                    onChange={e => setSelectedClass(e.target.value)}
-                  >
-                    <option value="">Choose Class</option>
-                    {getAllClasses().map(cls => (
-                      <option key={cls} value={cls}>{cls}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedClass && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Subject</label>
-                    <select
-                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                      value={selectedSubject}
-                      onChange={e => setSelectedSubject(e.target.value)}
-                    >
-                      <option value="">Choose Subject</option>
-                      {getAllSubjects().map(sub => (
-                        <option key={sub} value={sub}>{sub}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="flex items-end gap-2">
-                  <button 
-                    className={`flex-1 px-4 py-3 rounded-md transition-colors ${
-                      showAnalytics 
-                        ? "bg-purple-600 text-white hover:bg-purple-700" 
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
-                    onClick={() => setShowAnalytics(!showAnalytics)}
-                    disabled={!selectedClass || !selectedSubject}
-                  >
-                    {showAnalytics ? "Hide Analytics" : "Show Analytics"}
-                  </button>
-                  
-                  {/* New Trend Analysis Button */}
-                  <button 
-                    className={`flex-1 px-4 py-3 rounded-md transition-colors ${
-                      showTrendAnalysis 
-                        ? "bg-indigo-600 text-white hover:bg-indigo-700" 
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
-                    onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
-                    disabled={!selectedClass || !selectedSubject}
-                  >
-                    {showTrendAnalysis ? "Hide Trends" : "Show Trends"}
-                  </button>
-                </div>
-              </div>
-
-              {selectedClass && (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-semibold">{selectedClass} Details</h3>
-                  
-                  {(() => {
-                    const classData = getClassData(selectedClass);
-                    return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-4 rounded-lg">
-                          <h4 className="font-medium mb-2">Student Information</h4>
-                          <div className="text-3xl font-bold text-blue-600">{classData.studentCount}</div>
-                          <div className="text-gray-600">Students</div>
-                          
-                          <div className="mt-4">
-                            <h5 className="font-medium mb-2">Students List</h5>
-                            <div className="max-h-60 overflow-y-auto">
-                              <table className="w-full border-collapse border border-gray-300 text-sm bg-white/20 backdrop-blur-sm rounded-lg">
-                                <thead>
-                                  <tr className="bg-white/30">
-                                    <th className="border border-gray-300 p-2 text-left">Name</th>
-                                    <th className="border border-gray-300 p-2 text-left">ID</th>
-                                    <th className="border border-gray-300 p-2 text-left">Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {classStudents.map(student => (
-                                    <tr key={student.id} className="hover:bg-white/30">
-                                      <td className="border border-gray-300 p-2">
-                                        {student.firstName} {student.lastName}
-                                      </td>
-                                      <td className="border border-gray-300 p-2">
-                                        {student.idNumber || 'N/A'}
-                                      </td>
-                                      <td className="border border-gray-300 p-2">
-                                        <div className="flex space-x-2">
-                                          <button
-                                            onClick={() => handleViewStudentReport(student)}
-                                            className="text-blue-600 hover:text-blue-800 text-sm"
-                                          >
-                                            View Report
-                                          </button>
-                                          <button
-                                            onClick={() => handlePrintStudentReport(student)}
-                                            className="text-green-600 hover:text-green-800 text-sm"
-                                          >
-                                            Print
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-4 rounded-lg">
-                          <h4 className="font-medium mb-2">Teacher Information</h4>
-                          <div className="text-3xl font-bold text-green-600">{classData.teacherCount}</div>
-                          <div className="text-gray-600">Assigned Teachers</div>
-                          
-                          <div className="mt-4">
-                            <h5 className="font-medium mb-2">Teachers</h5>
-                            <div className="max-h-60 overflow-y-auto">
-                              <ul className="space-y-1 bg-white/20 backdrop-blur-sm p-2 rounded">
-                                {classData.teachers.map(teacher => (
-                                  <li key={teacher.id} className="text-sm p-1 hover:bg-white/30 rounded">
-                                    {teacher.firstName} {teacher.lastName} - {teacher.primaryRole}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-
-            {/* Analytics Section */}
-            {showAnalytics && selectedClass && selectedSubject && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Students per Class Chart */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <PerformanceChart 
-                    data={schoolAnalytics.studentsPerClassData} 
-                    title="Students per Class" 
-                    type="bar" 
-                  />
-                </div>
-                
-                {/* Teachers per Subject Chart */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <PerformanceChart 
-                    data={schoolAnalytics.teachersPerSubjectData} 
-                    title="Teachers per Subject" 
-                    type="bar" 
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Trend Analysis Section */}
-            {showTrendAnalysis && selectedClass && selectedSubject && (
-              <div className="space-y-6">
-                <h2 className="text-xl font-bold text-gray-900">Performance Trends</h2>
-                
-                {classTrendData ? (
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                      <TrendAnalysisChart 
-                        data={classTrendData} 
-                        title={`Class Performance Trend: ${selectedSubject} (${selectedClass})`}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                    <div className="text-center py-8 text-gray-500">
-                      <p>Loading trend data...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {selectedTab === "subjects" && (
-          <div className="space-y-6">
-            {/* Subject Selection */}
-            <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-              <h2 className="text-lg font-semibold mb-4">Subject Reports</h2>
-              
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Subject</label>
-                <select
-                  className="w-full md:w-64 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                  value={selectedSubject}
-                  onChange={e => setSelectedSubject(e.target.value)}
-                >
-                  <option value="">Choose Subject</option>
-                  {getAllSubjects().map(sub => (
-                    <option key={sub} value={sub}>{sub}</option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedSubject && (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-semibold">{selectedSubject} Details</h3>
-                  
-                  {(() => {
-                    const subjectData = getSubjectData(selectedSubject);
-                    return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-4 rounded-lg">
-                          <h4 className="font-medium mb-2">Teacher Information</h4>
-                          <div className="text-3xl font-bold text-blue-600">{subjectData.teacherCount}</div>
-                          <div className="text-gray-600">Teachers</div>
-                          
-                          <div className="mt-4">
-                            <h5 className="font-medium mb-2">Teachers List</h5>
-                            <div className="max-h-40 overflow-y-auto">
-                              <ul className="space-y-1 bg-white/20 backdrop-blur-sm p-2 rounded">
-                                {subjectData.teachers.map(teacher => (
-                                  <li key={teacher.id} className="text-sm p-1 hover:bg-white/30 rounded">
-                                    {teacher.firstName} {teacher.lastName} - {teacher.email}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-4 rounded-lg">
-                          <h4 className="font-medium mb-2">Class Information</h4>
-                          <div className="text-3xl font-bold text-green-600">{subjectData.classCount}</div>
-                          <div className="text-gray-600">Classes</div>
-                          
-                          <div className="mt-4">
-                            <h5 className="font-medium mb-2">Classes</h5>
-                            <div className="max-h-40 overflow-y-auto">
-                              <ul className="space-y-1 bg-white/20 backdrop-blur-sm p-2 rounded">
-                                {subjectData.classes.map(className => (
-                                  <li key={className} className="text-sm p-1 hover:bg-white/30 rounded">
-                                    {className}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {selectedTab === "teachers" && (
-          <div className="space-y-6">
-            {/* Teachers List */}
-            <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">All Teachers</h2>
-                <button
-                  onClick={() => setShowAddTeacherModal(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
-                  Add Teacher
-                </button>
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300 text-sm bg-white/20 backdrop-blur-sm rounded-lg">
-                  <thead>
-                    <tr className="bg-white/30">
-                      <th className="border border-gray-300 p-3 text-left">Name</th>
-                      <th className="border border-gray-300 p-3 text-left">Email</th>
-                      <th className="border border-gray-300 p-3 text-left">Roles</th>
-                      <th className="border border-gray-300 p-3 text-left">Subjects</th>
-                      <th className="border border-gray-300 p-3 text-left">Classes</th>
-                      <th className="border border-gray-300 p-3 text-left">Actions</th>
+          {/* Form Masters & Class Assignments */}
+          <div className="glass-card-golden p-6 rounded-lg">
+            <h2 className="text-xl font-bold text-white mb-4">Form Masters & Class Assignments</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-300">
+                <thead className="bg-transparent">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Form Master/Mistress</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Class Assigned</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Students</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Subject Teaching</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-300">
+                  {teachers
+                    .filter(t => {
+                      const roles = t.all_roles || t.allRoles || [];
+                      const classAssigned = t.class_assigned || t.classAssigned || t.form_class;
+                      return roles.includes('form_master') && classAssigned;
+                    })
+                    .map(teacher => {
+                      const classAssigned = teacher.class_assigned || teacher.classAssigned || teacher.form_class;
+                      const studentsInClass = learners.filter(s => (s.className || s.class_name) === classAssigned).length;
+                      const firstName = teacher.first_name || teacher.firstName;
+                      const lastName = teacher.last_name || teacher.lastName;
+                      return (
+                        <tr key={teacher.id} className="hover:bg-white/10 transition-all duration-200">
+                          <td className="px-4 py-3 text-sm text-white font-medium">{firstName} {lastName}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                              {classAssigned}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-white/90">{studentsInClass} students</td>
+                          <td className="px-4 py-3 text-sm text-white/90">{teacher.subjects?.join(', ') || 'N/A'}</td>
+                        </tr>
+                      );
+                    })}
+                  {teachers.filter(t => {
+                    const roles = t.all_roles || t.allRoles || [];
+                    const classAssigned = t.class_assigned || t.classAssigned || t.form_class;
+                    return roles.includes('form_master') && classAssigned;
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan="4" className="px-4 py-8 text-center text-white/80">
+                        No form masters assigned yet
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {teachers.map(teacher => (
-                      <tr key={teacher.id} className="hover:bg-white/30">
-                        <td className="border border-gray-300 p-3">
-                          {teacher.firstName} {teacher.lastName}
-                        </td>
-                        <td className="border border-gray-300 p-3">
-                          {teacher.email}
-                        </td>
-                        <td className="border border-gray-300 p-3">
-                          <div className="space-y-2">
-                            <div>
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Primary: {teacher.primaryRole?.replace('_', ' ') || 'Subject Teacher'}
-                              </span>
-                            </div>
-                            {teacher.allRoles && teacher.allRoles.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {teacher.allRoles
-                                  .filter(role => role !== teacher.primaryRole)
-                                  .map(role => (
-                                    <span key={role} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                      {role.replace('_', ' ')}
-                                    </span>
-                                  ))
-                                }
-                              </div>
-                            )}
-                            {teacher.allRoles && teacher.allRoles.length === 0 && (
-                              <span className="text-xs text-gray-500">No additional roles</span>
-                            )}
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="glass-extra-transparent p-4 rounded-lg">
+              <h2 className="text-xl font-bold text-white mb-4">Performance Overview</h2>
+              <PerformanceChart data={chartData} />
+            </div>
+            <div className="glass-extra-transparent p-4 rounded-lg">
+              <h2 className="text-xl font-bold text-white mb-4">Trend Analysis</h2>
+              <TrendAnalysisChart data={trendData} />
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* Classes Tab - Clickable class cards */}
+      {activeTab === 'classes' && (
+        <div className="glass-extra-transparent p-6 rounded-lg">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-white">Class Management & Students</h2>
+          </div>
+
+          {/* Class Cards - Clickable */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {classData.map(cls => {
+              const className = cls.name || cls.ClassName;
+              const classStudents = learners.filter(l => (l.className || l.class_name) === className);
+              console.log(`Class ${className}: ${classStudents.length} students (Total learners: ${learners.length})`);
+              const maleCount = classStudents.filter(s => s.gender === 'male').length;
+              const femaleCount = classStudents.filter(s => s.gender === 'female').length;
+              const formMaster = teachers.find(t => {
+                const assigned = t.class_assigned || t.classAssigned || t.form_class;
+                return assigned === className;
+              });
+              const classTeachers = teachers.filter(t => t.classes?.includes(className));
+
+              return (
+                <div
+                  key={className}
+                  onClick={() => {
+                    setSelectedClass(className);
+                    setIsClassModalOpen(true);
+                  }}
+                  className="glass-card p-6 rounded-lg cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200"
+                >
+                  {/* Class Header */}
+                  <div className="mb-4">
+                    <h3 className="text-2xl font-bold text-white mb-2">{className}</h3>
+
+                    {/* Population Summary */}
+                    <div className="bg-gradient-to-r from-blue-50 to-pink-50 p-3 rounded-lg mb-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1">
+                            <span className="text-blue-600 font-semibold">♂</span>
+                            <span className="text-white/90 font-medium">{maleCount}</span>
                           </div>
-                        </td>
-                        <td className="border border-gray-300 p-3">
-                          {Array.isArray(teacher.subjects) && teacher.subjects.length > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-pink-600 font-semibold">♀</span>
+                            <span className="text-white/90 font-medium">{femaleCount}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-white/70 text-xs">Total:</span>
+                          <span className="text-white font-bold ml-1">{classStudents.length}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Form Master/Class Teacher */}
+                    {formMaster && (
+                      <div className="bg-green-50 p-2 rounded-lg border border-green-200">
+                        <div className="text-xs text-green-700 font-medium mb-1">
+                          {(formMaster.all_roles || formMaster.allRoles || []).includes('form_master') ? 'Form Master' : 'Class Teacher'}
+                        </div>
+                        <div className="text-sm text-white font-semibold">
+                          {formMaster.first_name || formMaster.firstName} {formMaster.last_name || formMaster.lastName}
+                        </div>
+                      </div>
+                    )}
+                    {!formMaster && (
+                      <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200">
+                        <div className="text-xs text-yellow-700 font-medium">
+                          ⚠ No Form Master/Class Teacher Assigned
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Info */}
+                  <div className="space-y-2">
+                    <div className="text-xs text-white/80">
+                      <span className="font-semibold">Subject Teachers:</span> {classTeachers.length}
+                    </div>
+                  </div>
+
+                  {/* Click to view indicator */}
+                  <div className="mt-4 pt-4 border-t border-gray-300 text-center">
+                    <span className="text-xs text-blue-600 font-medium">Click to view class list →</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Teachers Tab - Integrated View */}
+      {activeTab === 'teachers' && (
+        <div className="glass-extra-transparent p-3 sm:p-6 rounded-lg">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+            <h2 className="text-lg sm:text-xl font-bold text-white">Teacher Management</h2>
+            <button
+              onClick={() => setIsAddTeacherModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg transition duration-200 font-semibold text-sm sm:text-base w-full sm:w-auto"
+              style={{ minHeight: '44px' }}
+            >
+              + Add Teacher
+            </button>
+          </div>
+
+          {/* Mobile Cards - Hidden on desktop */}
+          <div className="block lg:hidden space-y-3">
+            {teachers.map(teacher => {
+              const firstName = teacher.first_name || teacher.firstName;
+              const lastName = teacher.last_name || teacher.lastName;
+              const classAssigned = teacher.class_assigned || teacher.classAssigned || teacher.form_class;
+              const primaryRole = teacher.teacherPrimaryRole || teacher.primaryRole || 'teacher';
+              const allRoles = teacher.all_roles || teacher.allRoles || [];
+
+              return (
+                <div key={teacher.id} className="glass-strong rounded-lg p-4 border-l-4 border-blue-500/80 shadow-lg">
+                  {/* Teacher Header */}
+                  <div className="flex items-start justify-between mb-3 gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-bold text-white drop-shadow truncate">{firstName} {lastName}</h3>
+                      <p className="text-xs text-white/90 font-medium truncate">{teacher.email}</p>
+                    </div>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/30 border-2 border-blue-400/50 text-white backdrop-blur-sm shadow flex-shrink-0">
+                      {primaryRole}
+                    </span>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="space-y-3">
+                    {/* All Roles */}
+                    {allRoles.length > 0 && (
+                      <div>
+                        <p className="text-xs text-white/80 mb-1.5 font-semibold">All Roles:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {allRoles.map(role => (
+                            <span key={role} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-500/30 border border-purple-400/50 text-white backdrop-blur-sm shadow">
+                              {role.replace('_', ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Class Assigned */}
+                    <div>
+                      <p className="text-xs text-white/80 mb-1.5 font-semibold">Form/Class Assigned:</p>
+                      {classAssigned ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/30 border-2 border-green-400/50 text-white backdrop-blur-sm shadow">
+                          {classAssigned}
+                        </span>
+                      ) : (
+                        <span className="text-white/70 text-xs">N/A</span>
+                      )}
+                    </div>
+
+                    {/* Classes Teaching */}
+                    {teacher.classes && teacher.classes.length > 0 && (
+                      <div>
+                        <p className="text-xs text-white/80 mb-1.5 font-semibold">Classes Teaching:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {teacher.classes.map(cls => (
+                            <span key={cls} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500/30 border border-blue-400/50 text-white backdrop-blur-sm shadow">
+                              {cls}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Subjects */}
+                    {teacher.subjects && teacher.subjects.length > 0 && (
+                      <div>
+                        <p className="text-xs text-white/80 mb-1.5 font-semibold">Subjects:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {teacher.subjects.map(subject => (
+                            <span key={subject} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-500/30 border border-orange-400/50 text-white backdrop-blur-sm shadow">
+                              {subject}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table - Hidden on mobile */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-300">
+              <thead className="bg-transparent">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Primary Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">All Roles</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Class Assigned</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Classes Teaching</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider font-bold">Subjects</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-300">
+                {teachers.map(teacher => {
+                  const firstName = teacher.first_name || teacher.firstName;
+                  const lastName = teacher.last_name || teacher.lastName;
+                  return (
+                  <tr key={teacher.id} className="hover:bg-white/10 transition-all duration-200">
+                    <td className="px-4 py-3 text-sm text-white font-medium">{firstName} {lastName}</td>
+                    <td className="px-4 py-3 text-sm text-white/90">{teacher.email}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                        {teacher.teacherPrimaryRole || teacher.primaryRole || 'teacher'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex flex-wrap gap-1">
+                        {(teacher.all_roles || teacher.allRoles || []).map(role => (
+                          <span key={role} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-600/80 text-white">
+                            {role.replace('_', ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {(teacher.class_assigned || teacher.classAssigned || teacher.form_class) ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                          {teacher.class_assigned || teacher.classAssigned || teacher.form_class}
+                        </span>
+                      ) : (
+                        <span className="text-white/70">N/A</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-white/90">{teacher.classes?.join(', ') || 'N/A'}</td>
+                    <td className="px-4 py-3 text-sm text-white/90">{teacher.subjects?.join(', ') || 'N/A'}</td>
+                  </tr>
+                );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="glass-extra-transparent p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-white/90 mb-2">Teacher-Student Ratio</h3>
+              <p className="text-3xl font-bold text-white">
+                1:{analyticsData.totalTeachers > 0 ? Math.round(analyticsData.totalStudents / analyticsData.totalTeachers) : 0}
+              </p>
+            </div>
+            <div className="glass-extra-transparent p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-white/90 mb-2">Avg Class Size</h3>
+              <p className="text-3xl font-bold text-white">
+                {classData.length > 0 ? Math.round(learners.length / classData.length) : 0}
+              </p>
+            </div>
+            <div className="glass-extra-transparent p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-white/90 mb-2">Form Masters Assigned</h3>
+              <p className="text-3xl font-bold text-white">
+                {teachers.filter(t => t.allRoles?.includes('form_master') && t.classAssigned).length}/3
+              </p>
+            </div>
+          </div>
+
+          {/* Charts Section */}
+          <div className="glass-extra-transparent p-6 rounded-lg">
+            <h2 className="text-xl font-bold text-white mb-4">Performance Analytics</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="glass-extra-transparent p-4 rounded-lg">
+                <h3 className="text-lg font-bold text-white mb-4">Subject Performance</h3>
+                <PerformanceChart data={chartData} />
+              </div>
+              <div className="glass-extra-transparent p-4 rounded-lg">
+                <h3 className="text-lg font-bold text-white mb-4">Term Trends</h3>
+                <TrendAnalysisChart data={trendData} />
+              </div>
+            </div>
+          </div>
+
+          {/* Role Distribution */}
+          <div className="glass-extra-transparent p-6 rounded-lg">
+            <h2 className="text-xl font-bold text-white mb-4">Teacher Role Distribution</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { role: 'subject_teacher', label: 'Subject Teachers', color: 'bg-blue-500' },
+                { role: 'class_teacher', label: 'Class Teachers', color: 'bg-green-500' },
+                { role: 'form_master', label: 'Form Masters', color: 'bg-purple-500' },
+                { role: 'head_teacher', label: 'Head Teachers', color: 'bg-orange-500' }
+              ].map(({ role, label, color }) => {
+                const count = teachers.filter(t => t.allRoles?.includes(role)).length;
+                return (
+                  <div key={role} className="glass-card p-4 rounded-lg">
+                    <div className={`${color} w-12 h-12 rounded-full flex items-center justify-center mb-3 mx-auto`}>
+                      <span className="text-2xl font-bold text-white">{count}</span>
+                    </div>
+                    <p className="text-sm text-white/90 text-center">{label}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      </div>
+
+      {/* Class Details Modal */}
+      {isClassModalOpen && selectedClass && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="glass-card-golden rounded-xl sm:rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto scroll-smooth" style={{ scrollbarWidth: 'thin', overflow: 'auto' }}>
+            {/* Modal Header */}
+            <div className="sticky top-0 glass-strong backdrop-blur-md text-white p-4 sm:p-6 rounded-t-xl border-b-4 border-blue-500/50 shadow-lg">
+              <div className="flex justify-between items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-bold truncate">{selectedClass}</h2>
+                  <p className="text-blue-100 text-xs sm:text-sm">
+                    {learners.filter(l => (l.className || l.class_name) === selectedClass).length} students enrolled
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsClassModalOpen(false);
+                    setSelectedClass(null);
+                  }}
+                  className="text-white hover:bg-white/20 rounded-full p-2 transition-colors flex-shrink-0"
+                  style={{ minHeight: '44px', minWidth: '44px' }}
+                >
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+              {/* Form Master/Class Teacher Section - Role depends on class level */}
+              <div className="glass-strong p-3 sm:p-4 rounded-lg border-2 border-green-500/30 backdrop-blur-md shadow-lg">
+                <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center drop-shadow-md">
+                  <span className="mr-2">👨‍🏫</span>
+                  <span className="truncate">{['BS7', 'BS8', 'BS9'].includes(selectedClass) ? 'Form Master/Mistress (JHS)' : 'Class Teacher (KG/Primary)'}</span>
+                </h3>
+                {(() => {
+                  const isJHS = ['BS7', 'BS8', 'BS9'].includes(selectedClass);
+                  const formMaster = teachers.find(t => (t.class_assigned || t.classAssigned || t.form_class) === selectedClass);
+                  const availableTeachers = teachers.filter(t => !(t.class_assigned || t.classAssigned || t.form_class));
+
+                  return (
+                    <>
+                      {formMaster ? (
+                        <div className="glass-medium p-3 sm:p-4 rounded-lg shadow-md mb-3 border-2 border-white/20 backdrop-blur-sm">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-white text-base sm:text-lg drop-shadow truncate">
+                                {formMaster.first_name || formMaster.firstName} {formMaster.last_name || formMaster.lastName}
+                              </p>
+                              <p className="text-xs sm:text-sm text-white/90 font-medium truncate">{formMaster.email}</p>
+                            </div>
                             <div className="flex flex-wrap gap-1">
-                              {teacher.subjects.map(subject => (
-                                <span key={subject} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {formMaster.subjects?.map(subject => (
+                                <span key={subject} className="px-2 py-1 bg-blue-500/30 border-2 border-blue-400/50 text-white text-xs rounded-full font-semibold backdrop-blur-sm shadow">
                                   {subject}
                                 </span>
                               ))}
                             </div>
-                          ) : (
-                            <span className="text-gray-500">None</span>
-                          )}
-                        </td>
-                        <td className="border border-gray-300 p-3">
-                          {Array.isArray(teacher.classes) && teacher.classes.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {teacher.classes.map(className => (
-                                <span key={className} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                  {className}
-                                </span>
-                              ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="glass-medium border-2 border-yellow-400/50 p-3 sm:p-4 rounded-lg text-center mb-3 backdrop-blur-sm shadow-md">
+                          <p className="text-white font-semibold drop-shadow text-sm sm:text-base">⚠ No {isJHS ? 'Form Master' : 'Class Teacher'} assigned to this class</p>
+                        </div>
+                      )}
+
+                      {/* Assign/Change Class Leader */}
+                      <div className="glass-medium p-3 rounded-lg border-2 border-green-400/30 backdrop-blur-sm shadow-md">
+                        <label className="block text-xs sm:text-sm font-medium text-white mb-2">
+                          {formMaster ? `Change ${isJHS ? 'Form Master' : 'Class Teacher'}` : `Assign ${isJHS ? 'Form Master' : 'Class Teacher'}`}
+                        </label>
+                        <select
+                          onChange={async (e) => {
+                            if (e.target.value) {
+                              const teacher = teachers.find(t => t.id === parseInt(e.target.value));
+                              const teacherName = `${teacher?.first_name || teacher?.firstName} ${teacher?.last_name || teacher?.lastName}`;
+                              if (window.confirm(`Assign ${teacherName} as ${isJHS ? 'Form Master' : 'Class Teacher'} for ${selectedClass}?`)) {
+                                try {
+                                await updateTeacher({
+                                  id: teacher.id,
+                                  firstName: teacher.first_name || teacher.firstName,
+                                  lastName: teacher.last_name || teacher.lastName,
+                                  email: teacher.email,
+                                  gender: teacher.gender,
+                                  primaryRole: isJHS ? 'form_master' : 'class_teacher',
+                                  allRoles: [isJHS ? 'form_master' : 'class_teacher'],
+                                  subjects: teacher.subjects || [],
+                                  classes: [...(teacher.classes || []), selectedClass],
+                                  form_class: selectedClass,
+                                  teachingLevel: isJHS ? 'JHS' : selectedClass.startsWith('KG') ? 'KG' : selectedClass.startsWith('BS') && ['BS1','BS2','BS3'].includes(selectedClass) ? 'Lower Primary' : 'Upper Primary'
+                                });
+                                showNotification({
+                                  type: 'success',
+                                  message: `${isJHS ? 'Form Master' : 'Class Teacher'} assigned successfully!`,
+                                  duration: 5000
+                                });
+                                // Refresh data
+                                window.location.reload();
+                              } catch (error) {
+                                showNotification({
+                                  type: 'error',
+                                  message: `Failed to assign: ${error.message}`,
+                                  duration: 5000
+                                });
+                              }
+                              }
+                            }
+                            e.target.value = '';
+                          }}
+                          className="w-full px-3 py-2 bg-white/20 border-2 border-white/30 rounded-lg text-white font-medium focus:ring-2 focus:ring-green-500 focus:border-green-500 backdrop-blur-sm shadow-md"
+                        >
+                          <option value="" className="bg-gray-800 text-white">-- Select a teacher --</option>
+                          {availableTeachers.map(teacher => {
+                            const firstName = teacher.first_name || teacher.firstName;
+                            const lastName = teacher.last_name || teacher.lastName;
+                            return (
+                            <option key={teacher.id} value={teacher.id} className="bg-gray-800 text-white">
+                              {firstName} {lastName}
+                            </option>
+                            );
+                          })}
+                        </select>
+                        <p className="text-xs text-white/70 mt-1">
+                          💡 {isJHS ? 'Form Masters manage JHS classes (BS7-BS9)' : 'Class Teachers manage KG and Primary classes'}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Subject Teachers Section */}
+              <div className="glass-strong p-3 sm:p-4 rounded-lg border-2 border-blue-500/30 backdrop-blur-md shadow-lg">
+                <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center drop-shadow-md">
+                  <span className="mr-2">📚</span>
+                  Subject Teachers
+                </h3>
+                {(() => {
+                  const classTeachers = teachers.filter(t => t.classes?.includes(selectedClass));
+                  return (
+                    <>
+                      {classTeachers.length > 0 ? (
+                        <div className="space-y-2 sm:space-y-3 mb-3">
+                          {classTeachers.map(teacher => (
+                            <div key={teacher.id} className="glass-medium p-3 sm:p-4 rounded-lg shadow-md border-2 border-white/20 backdrop-blur-sm">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-white drop-shadow text-sm sm:text-base truncate">
+                                    {teacher.first_name || teacher.firstName} {teacher.last_name || teacher.lastName}
+                                  </p>
+                                  <p className="text-xs text-white/90 font-medium truncate">{teacher.email}</p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {teacher.subjects?.map(subject => (
+                                      <span key={subject} className="px-2 py-1 bg-blue-500/30 border-2 border-blue-400/50 text-white text-xs rounded-full font-semibold backdrop-blur-sm shadow">
+                                        {subject}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <button
+                                    onClick={async () => {
+                                      if (window.confirm(`Remove ${teacher.first_name || teacher.firstName} ${teacher.last_name || teacher.lastName} from ${selectedClass}?`)) {
+                                        try {
+                                          const updatedClasses = teacher.classes.filter(c => c !== selectedClass);
+                                          await updateTeacher({
+                                            id: teacher.id,
+                                            firstName: teacher.first_name || teacher.firstName,
+                                            lastName: teacher.last_name || teacher.lastName,
+                                            email: teacher.email,
+                                            gender: teacher.gender,
+                                            primaryRole: teacher.teacher_primary_role || teacher.primaryRole,
+                                            allRoles: teacher.all_roles || [],
+                                            subjects: teacher.subjects || [],
+                                            classes: updatedClasses,
+                                            teachingLevel: teacher.teaching_level || 'PRIMARY'
+                                          });
+                                          showNotification({
+                                            type: 'success',
+                                            message: 'Teacher removed from class successfully!',
+                                            duration: 5000
+                                          });
+                                          // Refresh data
+                                          window.location.reload();
+                                        } catch (error) {
+                                          showNotification({
+                                            type: 'error',
+                                            message: 'Failed to remove teacher: ' + error.message,
+                                            duration: 5000
+                                          });
+                                        }
+                                      }
+                                    }}
+                                    className="text-red-400 hover:text-red-200 text-xs sm:text-sm font-semibold bg-red-500/20 px-3 py-1.5 rounded-lg border border-red-400/50 backdrop-blur-sm w-full sm:w-auto"
+                                    style={{ minHeight: '44px' }}
+                                  >
+                                    🗑️ Remove
+                                  </button>
+                                </div>
+                              </div>
                             </div>
-                          ) : (
-                            <span className="text-gray-500">None</span>
-                          )}
-                        </td>
-                        <td className="border border-gray-300 p-3">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => openRoleAssignment(teacher)}
-                              className="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 text-sm"
-                            >
-                              Manage Roles
-                            </button>
-                            <button
-                              onClick={() => handleOpenAssignmentModal(teacher)}
-                              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm"
-                            >
-                              Assign
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="glass-medium border-2 border-yellow-400/50 p-3 sm:p-4 rounded-lg text-center mb-3 backdrop-blur-sm shadow-md">
+                          <p className="text-white font-semibold drop-shadow text-sm sm:text-base">⚠ No teachers assigned to this class yet</p>
+                        </div>
+                      )}
 
-        {/* Performance Dashboard Tab */}
-        {selectedTab === "performance" && (
-          <div className="space-y-6">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">School-Wide Performance Overview</h2>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {/* Overall Academic Performance Trends */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">Overall Academic Performance Trends</h3>
-                  <TrendAnalysisChart 
-                    data={performanceData.overallTrends} 
-                    title="Academic Performance Across All Classes" 
-                  />
-                </div>
-                
-                {/* Subject Performance Comparison */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">Subject Performance Comparison</h3>
-                  <PerformanceChart 
-                    data={performanceData.subjectComparison} 
-                    title="Subject Performance Comparison" 
-                    type="bar" 
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Performance by Grade Level */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">Performance by Grade Level</h3>
-                  <PerformanceChart 
-                    data={performanceData.gradeLevelPerformance} 
-                    title="Grade Level Performance" 
-                    type="pie" 
-                  />
-                </div>
-                
-                {/* Year-over-Year Comparison */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">Year-over-Year Comparison</h3>
-                  <div className="space-y-4">
-                    {Object.entries(performanceData.yearOverYear).map(([year, data]) => (
-                      <div key={year} className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-medium">{year}</h4>
-                          <span className="text-lg font-bold text-blue-600">{data.averageScore}%</span>
-                        </div>
-                        <div className="mt-2">
-                          <div className="flex justify-between text-sm text-gray-600">
-                            <span>Students: {data.studentCount}</span>
-                            <span>Average Score</span>
-                          </div>
-                          <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${data.averageScore}%` }}
-                            ></div>
-                          </div>
-                        </div>
+                      {/* Add Subject Teacher */}
+                      <div className="glass-medium p-3 rounded-lg border-2 border-blue-400/30 backdrop-blur-sm shadow-md">
+                        <label className="block text-xs sm:text-sm font-medium text-white/90 mb-2">
+                          Add Subject Teacher to Class
+                        </label>
+                        <select
+                          onChange={async (e) => {
+                            if (e.target.value) {
+                              const teacher = teachers.find(t => t.id === parseInt(e.target.value));
+                              const teacherName = `${teacher?.first_name || teacher?.firstName} ${teacher?.last_name || teacher?.lastName}`;
+                              if (window.confirm(`Add ${teacherName} to ${selectedClass}?`)) {
+                              try {
+                                const updatedClasses = [...(teacher.classes || []), selectedClass];
+                                await updateTeacher({
+                                  id: teacher.id,
+                                  firstName: teacher.first_name || teacher.firstName,
+                                  lastName: teacher.last_name || teacher.lastName,
+                                  email: teacher.email,
+                                  gender: teacher.gender,
+                                  primaryRole: teacher.teacher_primary_role || teacher.primaryRole || 'subject_teacher',
+                                  allRoles: teacher.all_roles || ['subject_teacher'],
+                                  subjects: teacher.subjects || [],
+                                  classes: [...new Set(updatedClasses)],
+                                  teachingLevel: teacher.teaching_level || 'PRIMARY'
+                                });
+                                showNotification({
+                                  type: 'success',
+                                  message: 'Teacher added to class successfully!',
+                                  duration: 5000
+                                });
+                                // Refresh data
+                                window.location.reload();
+                              } catch (error) {
+                                showNotification({
+                                  type: 'error',
+                                  message: 'Failed to add teacher: ' + error.message,
+                                  duration: 5000
+                                });
+                              }
+                              }
+                            }
+                            e.target.value = '';
+                          }}
+                          className="w-full px-3 py-2 bg-white/20 border-2 border-white/30 rounded-lg text-white font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 backdrop-blur-sm shadow-md"
+                        >
+                          <option value="" className="bg-gray-800 text-white">-- Select a teacher to add --</option>
+                          {teachers
+                            .filter(t => !t.classes?.includes(selectedClass))
+                            .map(teacher => (
+                              <option key={teacher.id} value={teacher.id} className="bg-gray-800 text-white">
+                                {teacher.first_name || teacher.firstName} {teacher.last_name || teacher.lastName}
+                              </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-white/70 mt-1">
+                          💡 Teachers must have subjects assigned via "Assign Teacher Subjects" button
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </>
+                  );
+                })()}
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Communication Hub Tab */}
-        {selectedTab === "communication" && (
-          <div className="space-y-6">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Communication Hub</h2>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Announcements Management */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">Announcements</h3>
-                  <form onSubmit={handleAddAnnouncement} className="mb-6 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={newAnnouncement.title}
-                        onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                        placeholder="Enter announcement title"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                      <textarea
-                        value={newAnnouncement.content}
-                        onChange={(e) => setNewAnnouncement({...newAnnouncement, content: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                        rows="3"
-                        placeholder="Enter announcement content"
-                      ></textarea>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Audience</label>
-                      <select
-                        value={newAnnouncement.audience}
-                        onChange={(e) => setNewAnnouncement({...newAnnouncement, audience: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                      >
-                        <option value="all">All</option>
-                        <option value="teachers">Teachers Only</option>
-                        <option value="parents">Parents Only</option>
-                        <option value="students">Students Only</option>
-                      </select>
-                    </div>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 backdrop-blur-sm border border-blue-500/30"
-                    >
-                      Post Announcement
-                    </button>
-                  </form>
-                  
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {announcements.map(announcement => (
-                      <div key={announcement.id} className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-                        <div className="flex justify-between items-start">
-                          <h4 className="font-medium">{announcement.title}</h4>
-                          <span className="text-xs text-gray-500">{announcement.date}</span>
-                        </div>
-                        <p className="text-sm text-gray-700 mt-2">{announcement.content}</p>
-                        <div className="mt-2">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {announcement.audience}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Messaging and Emergency Notifications */}
-                <div className="space-y-6">
-                  {/* Staff Messaging */}
-                  <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                    <h3 className="text-lg font-semibold mb-4">Staff Messaging</h3>
-                    <form onSubmit={handleSendMessage} className="mb-6 space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
-                        <input
-                          type="text"
-                          value={newMessage.recipient}
-                          onChange={(e) => setNewMessage({...newMessage, recipient: e.target.value})}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                          placeholder="Enter recipient name or group"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                        <textarea
-                          value={newMessage.content}
-                          onChange={(e) => setNewMessage({...newMessage, content: e.target.value})}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                          rows="3"
-                          placeholder="Enter your message"
-                        ></textarea>
-                      </div>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 backdrop-blur-sm border border-green-500/30"
-                      >
-                        Send Message
-                      </button>
-                    </form>
-                    
-                    <div className="space-y-4 max-h-60 overflow-y-auto">
-                      {messages.map(message => (
-                        <div key={message.id} className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <span className="font-medium">{message.sender}</span>
-                              <span className="text-gray-500 mx-2">→</span>
-                              <span className="font-medium">{message.recipient}</span>
+              {/* Students Section */}
+              <div className="glass-strong p-3 sm:p-4 rounded-lg border-2 border-purple-500/30 backdrop-blur-md shadow-lg">
+                <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center drop-shadow-md">
+                  <span className="mr-2">👨‍🎓</span>
+                  Students List
+                </h3>
+                {(() => {
+                  const classStudents = learners.filter(l => (l.className || l.class_name) === selectedClass);
+                  return classStudents.length > 0 ? (
+                    <div className="glass-medium p-3 sm:p-4 rounded-lg shadow-md max-h-80 sm:max-h-96 overflow-y-auto scroll-smooth backdrop-blur-sm border-2 border-white/20">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        {classStudents.map(student => (
+                          <div
+                            key={student.id}
+                            className="p-2.5 sm:p-3 glass-light rounded-lg hover:bg-white/30 transition-all border-2 border-white/20 backdrop-blur-sm shadow-md"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-white text-xs sm:text-sm drop-shadow truncate">
+                                  {student.first_name || student.firstName} {student.last_name || student.lastName}
+                                </p>
+                                <p className="text-xs text-white/90 font-medium truncate">{student.idNumber}</p>
+                              </div>
+                              <span className={`text-xs px-2 py-1 rounded-full font-semibold border-2 backdrop-blur-sm shadow flex-shrink-0 ${
+                                student.gender === 'male'
+                                  ? 'bg-blue-500/30 border-blue-400/50 text-white'
+                                  : 'bg-pink-500/30 border-pink-400/50 text-white'
+                              }`}>
+                                {student.gender === 'male' ? '👦' : '👧'}
+                              </span>
                             </div>
-                            <span className="text-xs text-gray-500">{message.date}</span>
                           </div>
-                          <p className="text-sm text-gray-700 mt-2">{message.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Emergency Notifications */}
-                  <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl p-6 rounded-lg">
-                    <h3 className="text-lg font-semibold mb-4">Emergency Notifications</h3>
-                    <form onSubmit={handleSendEmergency} className="mb-6 space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                        <input
-                          type="text"
-                          value={newEmergency.title}
-                          onChange={(e) => setNewEmergency({...newEmergency, title: e.target.value})}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                          placeholder="Enter emergency title"
-                        />
+                        ))}
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                        <textarea
-                          value={newEmergency.content}
-                          onChange={(e) => setNewEmergency({...newEmergency, content: e.target.value})}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                          rows="3"
-                          placeholder="Enter emergency details"
-                        ></textarea>
-                      </div>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 backdrop-blur-sm border border-red-500/30"
-                      >
-                        Send Emergency Notification
-                      </button>
-                    </form>
-                    
-                    <div className="space-y-4 max-h-60 overflow-y-auto">
-                      {emergencyNotifications.map(emergency => (
-                        <div key={emergency.id} className="bg-red-500/20 backdrop-blur-sm p-4 rounded-lg border border-red-300/50">
-                          <div className="flex justify-between items-start">
-                            <h4 className="font-medium text-red-800">{emergency.title}</h4>
-                            <span className="text-xs text-red-700">{emergency.date}</span>
-                          </div>
-                          <p className="text-sm text-red-900 mt-2">{emergency.content}</p>
-                        </div>
-                      ))}
                     </div>
-                  </div>
-                </div>
+                  ) : (
+                    <div className="glass-medium p-6 sm:p-8 rounded-lg text-center border-2 border-yellow-400/50 backdrop-blur-sm shadow-md">
+                      <p className="text-white font-semibold drop-shadow text-sm sm:text-base">⚠ No students enrolled in this class yet</p>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Analytics Modal */}
-      {showAnalytics && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">School Analytics</h2>
-                <button 
-                  onClick={() => setShowAnalytics(false)} 
-                  className="text-2xl text-gray-500 hover:text-gray-800 focus:outline-none"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Students per Class Chart */}
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-                  <PerformanceChart 
-                    data={schoolAnalytics.studentsPerClassData} 
-                    title="Students per Class" 
-                    type="bar" 
-                  />
-                </div>
-                
-                {/* Teachers per Subject Chart */}
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-                  <PerformanceChart 
-                    data={schoolAnalytics.teachersPerSubjectData} 
-                    title="Teachers per Subject" 
-                    type="bar" 
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={() => setShowAnalytics(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                >
-                  Close
-                </button>
-              </div>
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 glass-strong backdrop-blur-md px-3 sm:px-6 py-3 sm:py-4 rounded-b-xl border-t-4 border-blue-500/50 shadow-lg">
+              <button
+                onClick={() => {
+                  setIsClassModalOpen(false);
+                  setSelectedClass(null);
+                }}
+                className="w-full bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-600/90 hover:to-purple-600/90 text-white font-bold py-3 sm:py-3 px-4 rounded-lg transition-all shadow-lg border-2 border-white/50 backdrop-blur-sm active:scale-95 text-sm sm:text-base"
+                style={{ minHeight: '48px' }}
+              >
+                ✓ Close
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Trend Analysis Modal */}
-      {showTrendAnalysis && selectedClass && selectedSubject && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Performance Trends</h2>
-                <button 
-                  onClick={() => setShowTrendAnalysis(false)} 
-                  className="text-2xl text-gray-500 hover:text-gray-800 focus:outline-none"
+      {/* Print Report Modal */}
+      <PrintReportModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        students={learners}
+        selectedStudents={[]}
+      />
+
+      {/* Subject Broadsheet Modal */}
+      {isSubjectBroadsheetModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white p-6 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Print Subject Broadsheet</h2>
+                  <p className="text-orange-100 text-sm">All students for one subject</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsSubjectBroadsheetModalOpen(false);
+                    setPrintClass('');
+                    setPrintSubject('');
+                  }}
+                  className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
                 >
-                  ×
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-              
-              <div className="space-y-6">
-                {classTrendData ? (
-                  <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-                    <TrendAnalysisChart 
-                      data={classTrendData} 
-                      title={`Class Performance Trend: ${selectedSubject} (${selectedClass})`}
-                    />
-                  </div>
-                ) : (
-                  <div className="bg-white/20 backdrop-blur-sm p-6 rounded-lg border border-white/30 text-center">
-                    <p className="text-gray-500">Loading trend data...</p>
-                  </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">Select Class</label>
+                <select
+                  value={printClass}
+                  onChange={(e) => {
+                    setPrintClass(e.target.value);
+                    setPrintSubject(''); // Reset subject when class changes
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">Choose a class...</option>
+                  {classData.map(cls => (
+                    <option key={cls.ClassName} value={cls.ClassName}>
+                      {cls.ClassName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/90 mb-2">Select Subject</label>
+                <select
+                  value={printSubject}
+                  onChange={(e) => setPrintSubject(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  disabled={!printClass}
+                >
+                  <option value="">Choose a subject...</option>
+                  {getAvailableSubjects().map(subject => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
+                {!printClass && (
+                  <p className="text-xs text-white/70 mt-1">Please select a class first</p>
                 )}
               </div>
-              
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={() => setShowTrendAnalysis(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Assignment Modal */}
-      {showAssignModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Assign Classes & Subjects
-                </h2>
-                <button 
-                  onClick={() => {
-                    setShowAssignModal(false);
-                    setSelectedTeacherForAssignment(null);
-                    setAssignmentForm({ subjects: [], classes: [] });
-                  }} 
-                  className="text-2xl text-gray-500 hover:text-gray-800 focus:outline-none"
-                >
-                  ×
-                </button>
-              </div>
-
-              {selectedTeacherForAssignment && (
-                <div className="mb-6 p-4 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {selectedTeacherForAssignment.firstName} {selectedTeacherForAssignment.lastName}
-                  </h3>
-                  <p className="text-gray-600">
-                    {selectedTeacherForAssignment.email}
+              {printClass && printSubject && (
+                <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                  <p className="text-sm text-orange-900">
+                    <strong>Ready to print:</strong> {printSubject} broadsheet for {printClass}
                   </p>
                 </div>
               )}
+            </div>
 
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">Subjects</label>
-                  <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg p-4 max-h-40 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-2">
-                      {subjectsList.map(subject => (
-                        <label key={subject} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={assignmentForm.subjects.includes(subject)}
-                            onChange={() => handleAssignmentSubjectToggle(subject)}
-                            className="rounded text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{subject}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">Classes</label>
-                  <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg p-4 max-h-40 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-2">
-                      {getAllClasses().map(className => (
-                        <label key={className} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={assignmentForm.classes.includes(className)}
-                            onChange={() => handleAssignmentClassToggle(className)}
-                            className="rounded text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{className}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAssignModal(false);
-                      setSelectedTeacherForAssignment(null);
-                      setAssignmentForm({ subjects: [], classes: [] });
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50/50 backdrop-blur-sm bg-white/30"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveAssignments}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 backdrop-blur-sm border border-blue-500/30"
-                  >
-                    Save Assignments
-                  </button>
-                </div>
-              </div>
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t flex justify-between">
+              <button
+                onClick={() => {
+                  setIsSubjectBroadsheetModalOpen(false);
+                  setPrintClass('');
+                  setPrintSubject('');
+                }}
+                disabled={printing}
+                className="px-6 py-2 border border-white/30 text-white rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={printSubjectBroadsheet}
+                disabled={printing || !printClass || !printSubject}
+                className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {printing ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Printing...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span>Print Broadsheet</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Class Broadsheet Modal */}
+      {isClassBroadsheetModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Print Class Broadsheet</h2>
+                  <p className="text-green-100 text-sm">All subjects for all students</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsClassBroadsheetModalOpen(false);
+                    setPrintClass('');
+                  }}
+                  className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">Select Class</label>
+                <select
+                  value={printClass}
+                  onChange={(e) => setPrintClass(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Choose a class...</option>
+                  {classData.map(cls => (
+                    <option key={cls.ClassName} value={cls.ClassName}>
+                      {cls.ClassName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {printClass && (
+                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                  <p className="text-sm text-green-900">
+                    <strong>Ready to print:</strong> Complete broadsheet for {printClass} with all subjects
+                  </p>
+                  <p className="text-xs text-green-700 mt-1">
+                    {learners.filter(l => (l.className || l.class_name) === printClass).length} students enrolled
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t flex justify-between">
+              <button
+                onClick={() => {
+                  setIsClassBroadsheetModalOpen(false);
+                  setPrintClass('');
+                }}
+                disabled={printing}
+                className="px-6 py-2 border border-white/30 text-white rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={printClassBroadsheet}
+                disabled={printing || !printClass}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {printing ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Printing...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span>Print Broadsheet</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Leaderboard - At Bottom (Visible on all tabs) */}
+      <div className="mt-6">
+        <TeacherLeaderboard />
+      </div>
+
+      {/* Promote Students Modal */}
+      {isPromoteModalOpen && (
+        <PromoteStudentsModal
+          isOpen={isPromoteModalOpen}
+          onClose={() => setIsPromoteModalOpen(false)}
+          students={learners}
+          onPromotionComplete={() => {
+            setIsPromoteModalOpen(false);
+            // Refresh data after promotion
+            window.location.reload();
+          }}
+        />
       )}
 
       {/* Add Teacher Modal */}
-      {showAddTeacherModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto rounded-lg">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Add New Teacher
-                </h2>
-                <button 
-                  onClick={() => {
-                    setShowAddTeacherModal(false);
-                    setNewTeacher({
-                      firstName: "",
-                      lastName: "",
-                      email: "",
-                      gender: "male",
-                      primaryRole: "subject_teacher"
-                    });
-                  }} 
-                  className="text-2xl text-gray-500 hover:text-gray-800 focus:outline-none"
-                >
-                  ×
-                </button>
-              </div>
+      <TeachersManagementModal
+        isOpen={isAddTeacherModalOpen}
+        onClose={() => setIsAddTeacherModalOpen(false)}
+        teachers={teachers}
+        loadData={async () => {
+          // Refresh teachers data after adding/editing
+          const teacherResponse = await getTeachers();
+          setTeachers(teacherResponse.data || []);
+        }}
+        onEditTeacher={(teacher) => {
+          // Optional: Handle edit teacher if needed
+          console.log('Edit teacher:', teacher);
+        }}
+      />
 
-              <form onSubmit={handleAddTeacher} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <input
-                    type="text"
-                    value={newTeacher.firstName}
-                    onChange={(e) => setNewTeacher({...newTeacher, firstName: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    value={newTeacher.lastName}
-                    onChange={(e) => setNewTeacher({...newTeacher, lastName: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={newTeacher.email}
-                    onChange={(e) => setNewTeacher({...newTeacher, email: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                  <select
-                    value={newTeacher.gender}
-                    onChange={(e) => setNewTeacher({...newTeacher, gender: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Primary Role</label>
-                  <select
-                    value={newTeacher.primaryRole}
-                    onChange={(e) => setNewTeacher({...newTeacher, primaryRole: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                  >
-                    <option value="subject_teacher">Subject Teacher</option>
-                    <option value="class_teacher">Class Teacher</option>
-                    <option value="form_master">Form Master</option>
-                    <option value="head_teacher">Head Teacher</option>
-                  </select>
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddTeacherModal(false);
-                      setNewTeacher({
-                        firstName: "",
-                        lastName: "",
-                        email: "",
-                        gender: "male",
-                        primaryRole: "subject_teacher"
-                      });
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50/50 backdrop-blur-sm bg-white/30"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 backdrop-blur-sm border border-blue-500/30"
-                  >
-                    Add Teacher
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Student Modal */}
-      {showAddStudentModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto rounded-lg">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Add New Student
-                </h2>
-                <button 
-                  onClick={() => {
-                    setShowAddStudentModal(false);
-                    setNewStudent({
-                      firstName: "",
-                      lastName: "",
-                      gender: "male",
-                      className: "",
-                      idNumber: ""
-                    });
-                  }} 
-                  className="text-2xl text-gray-500 hover:text-gray-800 focus:outline-none"
-                >
-                  ×
-                </button>
-              </div>
-
-              <form onSubmit={handleAddStudent} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <input
-                    type="text"
-                    value={newStudent.firstName}
-                    onChange={(e) => setNewStudent({...newStudent, firstName: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    value={newStudent.lastName}
-                    onChange={(e) => setNewStudent({...newStudent, lastName: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                  <select
-                    value={newStudent.gender}
-                    onChange={(e) => setNewStudent({...newStudent, gender: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                  <select
-                    value={newStudent.className}
-                    onChange={(e) => setNewStudent({...newStudent, className: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                    required
-                  >
-                    <option value="">Select Class</option>
-                    {classesList.map(cls => (
-                      <option key={cls} value={cls}>{cls}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Student ID (Optional)</label>
-                  <input
-                    type="text"
-                    value={newStudent.idNumber}
-                    onChange={(e) => setNewStudent({...newStudent, idNumber: e.target.value})}
-                    placeholder="Leave blank for auto-generation"
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddStudentModal(false);
-                      setNewStudent({
-                        firstName: "",
-                        lastName: "",
-                        gender: "male",
-                        className: "",
-                        idNumber: ""
-                      });
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50/50 backdrop-blur-sm bg-white/30"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 backdrop-blur-sm border border-blue-500/30"
-                  >
-                    Add Student
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Student Report Modal */}
-      {showStudentReport && selectedStudent && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Student Report: {selectedStudent.firstName} {selectedStudent.lastName}
-                </h2>
-                <button 
-                  onClick={() => {
-                    setShowStudentReport(false);
-                    setSelectedStudent(null);
-                  }} 
-                  className="text-2xl text-gray-500 hover:text-gray-800 focus:outline-none"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="space-y-4" id="print-area">
-                <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-3">Student Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Name</p>
-                      <p className="font-medium">{selectedStudent.firstName} {selectedStudent.lastName}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Student ID</p>
-                      <p className="font-medium">{selectedStudent.idNumber || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Class</p>
-                      <p className="font-medium">{selectedStudent.className}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Gender</p>
-                      <p className="font-medium">{selectedStudent.gender}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-3">Academic Performance</h3>
-                  <p className="text-gray-600">In a full implementation, this section would show the student's academic performance across subjects.</p>
-                  <div className="mt-4 bg-yellow-500/20 border border-yellow-300/50 rounded-lg p-4 backdrop-blur-sm">
-                    <p className="text-yellow-900">
-                      <strong>Note:</strong> This is a demonstration interface. In a production environment, 
-                      this would pull actual academic data from the system.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-3">Attendance & Remarks</h3>
-                  <p className="text-gray-600">This section would show attendance records and teacher remarks.</p>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowStudentReport(false);
-                    setSelectedStudent(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50/50 backdrop-blur-sm bg-white/30"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => handlePrintStudentReport(selectedStudent)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 backdrop-blur-sm border border-green-500/30"
-                >
-                  Print Report
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Teacher Role Management Modal */}
-      {showTeacherRoleModal && selectedTeacher && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl rounded-lg shadow-2xl border border-white/40 ring-1 ring-white/20 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Manage Roles for {selectedTeacher.firstName} {selectedTeacher.lastName}</h2>
-                <button 
-                  className="text-4xl text-gray-500 hover:text-gray-800 focus:outline-none"
-                  onClick={() => setShowTeacherRoleModal(false)}
-                >
-                  ✕
-                </button>
-              </div>
-              <form onSubmit={handleAssignRoles}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Primary Role</label>
-                  <select 
-                    value={teacherRoles.primaryRole} 
-                    onChange={(e) => {
-                      const newPrimaryRole = e.target.value;
-                      setTeacherRoles(prev => ({ ...prev, primaryRole: newPrimaryRole }));
-                      
-                      // Ensure the new primary role is in allRoles
-                      if (!teacherRoles.allRoles.includes(newPrimaryRole)) {
-                        handleRoleToggle(newPrimaryRole);
-                      }
-                    }} 
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50 backdrop-blur-sm" 
-                  >
-                    <option value="subject_teacher">Subject Teacher</option>
-                    <option value="class_teacher">Class Teacher</option>
-                    <option value="form_master">Form Master</option>
-                    <option value="head_teacher">Head Teacher</option>
-                  </select>
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">All Roles</label>
-                  <div className="grid grid-cols-2 gap-3 p-4 border border-white/30 rounded-lg bg-white/20 backdrop-blur-sm">
-                    {["subject_teacher", "class_teacher", "form_master", "head_teacher"].map(role => (
-                      <label key={role} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/30 transition-colors">
-                        <input 
-                          type="checkbox" 
-                          checked={teacherRoles.allRoles.includes(role)} 
-                          onChange={() => handleRoleToggle(role)} 
-                          className="rounded text-blue-600 focus:ring-blue-500 h-5 w-5" 
-                        />
-                        <span className="text-sm font-medium text-gray-800">
-                          {role === 'subject_teacher' ? 'Subject Teacher' :
-                           role === 'class_teacher' ? 'Class Teacher' :
-                           role === 'form_master' ? 'Form Master' :
-                           role === 'head_teacher' ? 'Head Teacher' : 'Teacher'}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-xs text-gray-600">Select all roles this teacher has. The primary role is marked above.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Classes</label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-3 border border-white/30 rounded-lg bg-white/20 backdrop-blur-sm">
-                    {getAllClasses().map(className => (
-                      <label key={className} className="flex items-center space-x-2">
-                        <input 
-                          type="checkbox" 
-                          checked={teacherRoles.classes.includes(className)} 
-                          onChange={() => handleClassToggle(className)} 
-                          className="rounded text-blue-600 focus:ring-blue-500" 
-                        />
-                        <span className="text-sm text-gray-800">{className}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subjects</label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-3 border border-white/30 rounded-lg bg-white/20 backdrop-blur-sm">
-                    {subjectsList.map(subject => (
-                      <label key={subject} className="flex items-center space-x-2">
-                        <input 
-                          type="checkbox" 
-                          checked={teacherRoles.subjects.includes(subject)} 
-                          onChange={() => handleSubjectToggle(subject)} 
-                          className="rounded text-blue-600 focus:ring-blue-500" 
-                        />
-                        <span className="text-sm text-gray-800">{subject}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-4 pt-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowTeacherRoleModal(false)}
-                    className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50/50 backdrop-blur-sm bg-white/30"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 backdrop-blur-sm border border-blue-500/30"
-                  >
-                    Save Roles
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 };

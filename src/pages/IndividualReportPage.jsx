@@ -14,9 +14,10 @@ const dummyStudent = {
   classTeacherComments: "Shows consistent effort",
   headmaster: "Mr. Kwame",
   subjects: [
-    { name: "English", cscore: 45, exam: 78 },
+    { name: "English Language", cscore: 45, exam: 78 },
     { name: "Mathematics", cscore: 50, exam: 88 },
-    { name: "Science", cscore: 40, exam: 60 },
+    { name: "Integrated Science", cscore: 40, exam: 60 },
+    { name: "Social Studies", cscore: 48, exam: 72 },
   ],
 };
 

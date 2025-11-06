@@ -1,16 +1,47 @@
 import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getLearners, updateStudentScores, getClassPerformanceTrends } from "../api";
+import { useNotification } from "../context/NotificationContext";
+import { useGlobalSettings } from "../context/GlobalSettingsContext";
+import { getLearners, updateStudentScores, getClassPerformanceTrends, getMarks, getCustomAssessments, saveCustomAssessmentScores, getCustomAssessmentScores } from '../api-client';
 import PerformanceChart from "../components/PerformanceChart";
 import TrendAnalysisChart from "../components/TrendAnalysisChart";
+import AnalyticsDashboard from "../components/AnalyticsDashboard";
+import printingService from "../services/printingService";
+import ChangePasswordModal from "../components/ChangePasswordModal";
+import TeacherLeaderboard from "../components/TeacherLeaderboard";
+import ResponsiveScoreEntry from "../components/ResponsiveScoreEntry";
+import useOfflineSync from "../hooks/useOfflineSync";
+import useAutoSave from "../hooks/useAutoSave";
+import { DEFAULT_TERM } from "../constants/terms";
+import { validateScoreData, VALIDATION_CONSTRAINTS } from "../utils/validation";
 
 const SubjectTeacherPage = () => {
   const { user } = useAuth();
-  
+  const { showNotification } = useNotification();
+  const { settings } = useGlobalSettings();
+
+  // Initialize offline sync hook
+  const {
+    isOnline,
+    pendingCount,
+    queueAction,
+    syncPendingData
+  } = useOfflineSync({
+    onSyncSuccess: (successCount) => {
+      showNotification({ message: `Successfully synced ${successCount} items!`, type: 'success' });
+    },
+    onSyncError: (errorCount) => {
+      showNotification({ message: `Failed to sync ${errorCount} items`, type: 'error' });
+    },
+    autoSync: true
+  });
+
   const [learners, setLearners] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedAssessment, setSelectedAssessment] = useState(""); // Can be "regular" or assessment ID
+  const [customAssessments, setCustomAssessments] = useState([]);
   const [marks, setMarks] = useState({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -20,6 +51,7 @@ const SubjectTeacherPage = () => {
   const [classTrendData, setClassTrendData] = useState(null); // New state for trend data
   // State for modals
   const [showScoresModal, setShowScoresModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   // Get user's subjects
   const getUserSubjects = () => {
@@ -39,7 +71,20 @@ const SubjectTeacherPage = () => {
 
   useEffect(() => {
     loadLearners();
+    loadCustomAssessments();
   }, []);
+
+  // Load custom assessments
+  const loadCustomAssessments = async () => {
+    try {
+      const response = await getCustomAssessments();
+      if (response.status === 'success') {
+        setCustomAssessments(response.data || []);
+      }
+    } catch (error) {
+      console.error("Error loading custom assessments:", error);
+    }
+  };
 
   const loadLearners = async () => {
     setLoading(true);
@@ -52,38 +97,167 @@ const SubjectTeacherPage = () => {
       }
     } catch (error) {
       console.error("Error loading learners:", error);
-      alert("Error loading learners: " + error.message);
+      showNotification({ message: "Error loading learners: " + error.message, type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
   // Filter learners for selected class
-  const filteredLearners = learners.filter(l => l.className === selectedClass);
+  const filteredLearners = learners.filter(l => {
+    const studentClass = l.className || l.class_name;
+    return studentClass === selectedClass;
+  });
 
-  // Initialize marks when class/subject changes
+  // Fetch and initialize marks when class/subject/assessment changes
   useEffect(() => {
-    if (selectedClass && selectedSubject && filteredLearners.length > 0) {
+    if (selectedClass && selectedSubject && selectedAssessment && filteredLearners.length > 0) {
+      fetchExistingMarks();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClass, selectedSubject, selectedAssessment, filteredLearners.length]);
+
+  // Fetch existing marks from database
+  const fetchExistingMarks = async () => {
+    try {
+      const isCustomAssessment = selectedAssessment !== 'regular';
+
+      let response;
+      if (isCustomAssessment) {
+        // Fetch custom assessment scores
+        response = await getCustomAssessmentScores(
+          parseInt(selectedAssessment),
+          selectedClass,
+          selectedSubject
+        );
+      } else {
+        // Fetch regular term marks
+        response = await getMarks(selectedClass, selectedSubject);
+      }
+
+      if (response.status === 'success') {
+        const existingMarksData = response.data || [];
+
+        // Create marks object with existing data
+        const newMarks = {};
+        const alreadySaved = new Set();
+
+        filteredLearners.forEach(learner => {
+          const studentId = learner.idNumber || learner.LearnerID;
+
+          // Find existing marks for this student
+          const existingMark = existingMarksData.find(
+            mark => mark.student_id === studentId || mark.id_number === studentId
+          );
+
+          if (existingMark) {
+            if (isCustomAssessment) {
+              // Custom assessment - single score field
+              newMarks[studentId] = {
+                score: existingMark.score || ""
+              };
+              if (existingMark.score) {
+                alreadySaved.add(studentId);
+              }
+            } else {
+              // Regular term scores
+              newMarks[studentId] = {
+                test1: existingMark.test1 || "",
+                test2: existingMark.test2 || "",
+                test3: existingMark.test3 || "",
+                test4: existingMark.test4 || "",
+                exam: existingMark.exam || ""
+              };
+
+              // Mark as already saved if any marks exist
+              const hasMarks = existingMark.test1 || existingMark.test2 ||
+                              existingMark.test3 || existingMark.test4 || existingMark.exam;
+              if (hasMarks) {
+                alreadySaved.add(studentId);
+              }
+            }
+          } else {
+            // Initialize with empty marks
+            if (isCustomAssessment) {
+              newMarks[studentId] = { score: "" };
+            } else {
+              newMarks[studentId] = {
+                test1: "", test2: "", test3: "", test4: "", exam: ""
+              };
+            }
+          }
+        });
+
+        setMarks(newMarks);
+        setSavedStudents(alreadySaved);
+      }
+    } catch (error) {
+      console.error("Error fetching existing marks:", error);
+      // If fetch fails, initialize with empty marks
       const newMarks = {};
+      const isCustomAssessment = selectedAssessment !== 'regular';
+
       filteredLearners.forEach(learner => {
         const key = learner.idNumber || learner.LearnerID;
-        newMarks[key] = {
-          test1: "", test2: "", test3: "", test4: "", exam: ""
-        };
+        if (isCustomAssessment) {
+          newMarks[key] = { score: "" };
+        } else {
+          newMarks[key] = {
+            test1: "", test2: "", test3: "", test4: "", exam: ""
+          };
+        }
       });
       setMarks(newMarks);
-      setSavedStudents(new Set()); // Reset saved students when class/subject changes
+      setSavedStudents(new Set());
     }
-  }, [selectedClass, selectedSubject, filteredLearners.length]);
+  };
 
   const handleMarkChange = (studentId, field, value) => {
-    // Allow only numbers and decimal points
-    if (value && !/^\d*\.?\d*$/.test(value)) return;
-    
+    // ✅ VALIDATION FIX: Improved regex and range checking
+    // Allow only valid numbers with max 2 decimal places
+    if (value && !/^\d*\.?\d{0,2}$/.test(value)) {
+      return; // Invalid format
+    }
+
+    // Check value is within acceptable range
+    if (value !== '') {
+      const numValue = parseFloat(value);
+
+      if (isNaN(numValue)) {
+        return; // Not a valid number
+      }
+
+      // Check maximum bounds
+      if (field === 'exam' && numValue > VALIDATION_CONSTRAINTS.MAX_EXAM_SCORE) {
+        showNotification({
+          message: `Exam score cannot exceed ${VALIDATION_CONSTRAINTS.MAX_EXAM_SCORE}`,
+          type: 'warning'
+        });
+        return;
+      }
+
+      if (field !== 'exam' && field !== 'score' && numValue > VALIDATION_CONSTRAINTS.MAX_TEST_SCORE) {
+        showNotification({
+          message: `Test score cannot exceed ${VALIDATION_CONSTRAINTS.MAX_TEST_SCORE}`,
+          type: 'warning'
+        });
+        return;
+      }
+
+      // Check for negative values
+      if (numValue < 0) {
+        showNotification({
+          message: 'Score cannot be negative',
+          type: 'warning'
+        });
+        return;
+      }
+    }
+
     setMarks(prev => ({
       ...prev,
       [studentId]: {
-        ...prev[studentId],
+        ...(prev[studentId] || {}),
         [field]: value
       }
     }));
@@ -146,56 +320,137 @@ const SubjectTeacherPage = () => {
 
   const positions = calculatePositions();
 
-  // Save individual student marks
+  // Save individual student marks with offline support
   const saveStudentMarks = async (studentId) => {
-    if (!selectedClass || !selectedSubject) {
-      alert("Please select a class and subject first.");
+    if (!selectedClass || !selectedSubject || !selectedAssessment) {
+      showNotification({ message: "Please select a class, subject, and assessment first.", type: 'warning' });
       return;
     }
 
     // Check if user has permission for this subject
     if (!getUserSubjects().includes(selectedSubject)) {
-      alert("You don't have permission to enter scores for this subject.");
+      showNotification({ message: "You don't have permission to enter scores for this subject.", type: 'error' });
       return;
     }
 
     const studentMarks = marks[studentId];
     if (!studentMarks) {
-      alert("No marks to save for this student.");
+      showNotification({ message: "No marks to save for this student.", type: 'warning' });
       return;
     }
 
     // Validate that at least one mark field has a value
     const hasMarks = Object.values(studentMarks).some(mark => mark !== "" && mark !== undefined);
     if (!hasMarks) {
-      alert("Please enter at least one mark before saving.");
+      showNotification({ message: "Please enter at least one mark before saving.", type: 'warning' });
       return;
     }
 
+    const isCustomAssessment = selectedAssessment !== 'regular';
+
+    // If offline, queue the action
+    if (!isOnline) {
+      const scoreData = isCustomAssessment
+        ? {
+            assessmentId: parseInt(selectedAssessment),
+            studentId,
+            subject: selectedSubject,
+            score: parseFloat(studentMarks.score) || 0
+          }
+        : {
+            studentId,
+            subject: selectedSubject,
+            term: settings.term || DEFAULT_TERM,
+            test1: parseFloat(studentMarks.test1) || 0,
+            test2: parseFloat(studentMarks.test2) || 0,
+            test3: parseFloat(studentMarks.test3) || 0,
+            test4: parseFloat(studentMarks.test4) || 0,
+            exam: parseFloat(studentMarks.exam) || 0
+          };
+
+      queueAction('scores', scoreData);
+      setSavedStudents(prev => new Set(prev).add(studentId));
+      showNotification({
+        message: "📡 Offline: Saved locally. Will sync when online.",
+        type: 'info'
+      });
+      return;
+    }
+
+    // Online - save directly
     setSaving(true);
     try {
-      const response = await updateStudentScores({
-        studentId,
-        subject: selectedSubject,
-        term: 'Term 3',
-        test1: parseFloat(studentMarks.test1) || 0,
-        test2: parseFloat(studentMarks.test2) || 0,
-        test3: parseFloat(studentMarks.test3) || 0,
-        test4: parseFloat(studentMarks.test4) || 0,
-        exam: parseFloat(studentMarks.exam) || 0
-      });
-      
+      let response;
+
+      if (isCustomAssessment) {
+        // Validate custom assessment score
+        const score = parseFloat(studentMarks.score);
+
+        if (isNaN(score) || score < 0) {
+          showNotification({
+            message: "Score must be a valid positive number",
+            type: 'error'
+          });
+          setSaving(false);
+          return;
+        }
+
+        // Save custom assessment score
+        response = await saveCustomAssessmentScores({
+          assessmentId: parseInt(selectedAssessment),
+          studentId,
+          subject: selectedSubject,
+          score: score
+        });
+      } else {
+        // ✅ VALIDATION FIX: Validate scores before saving
+        const scoreData = {
+          studentId,
+          subject: selectedSubject,
+          term: settings.term || DEFAULT_TERM,
+          test1: studentMarks.test1,
+          test2: studentMarks.test2,
+          test3: studentMarks.test3,
+          test4: studentMarks.test4,
+          exam: studentMarks.exam
+        };
+
+        const validation = validateScoreData(scoreData);
+
+        if (!validation.isValid) {
+          const errorMessages = Object.values(validation.errors).join('\n');
+          showNotification({
+            message: `Validation failed:\n${errorMessages}`,
+            type: 'error'
+          });
+          setSaving(false);
+          return;
+        }
+
+        // Save regular term scores with validated data
+        response = await updateStudentScores({
+          studentId,
+          subject: selectedSubject,
+          term: settings.term || DEFAULT_TERM,
+          test1: parseFloat(studentMarks.test1) || 0,
+          test2: parseFloat(studentMarks.test2) || 0,
+          test3: parseFloat(studentMarks.test3) || 0,
+          test4: parseFloat(studentMarks.test4) || 0,
+          exam: parseFloat(studentMarks.exam) || 0
+        });
+      }
+
       if (response.status === 'success') {
         // Update saved students set
         setSavedStudents(prev => new Set(prev).add(studentId));
         // Show success message without interrupting workflow
-        console.log(`Student marks saved successfully for ${studentId}!`);
+        showNotification({ message: `Marks saved successfully!`, type: 'success' });
       } else {
-        alert("Error saving student marks: " + response.message);
+        showNotification({ message: "Error saving student marks: " + response.message, type: 'error' });
       }
     } catch (error) {
       console.error("Save student marks error:", error);
-      alert("Error saving student marks: " + error.message);
+      showNotification({ message: "Error saving student marks: " + error.message, type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -204,13 +459,13 @@ const SubjectTeacherPage = () => {
   // Save all marks
   const saveAllMarks = async () => {
     if (!selectedClass || !selectedSubject) {
-      alert("Please select a class and subject first.");
+      showNotification({ message: "Please select a class and subject first.", type: 'warning' });
       return;
     }
 
     // Check if user has permission for this subject
     if (!getUserSubjects().includes(selectedSubject)) {
-      alert("You don't have permission to enter scores for this subject.");
+      showNotification({ message: "You don't have permission to enter scores for this subject.", type: 'error' });
       return;
     }
 
@@ -251,16 +506,16 @@ const SubjectTeacherPage = () => {
       });
 
       await Promise.all(promises);
-      
+
       if (errorCount === 0) {
-        alert(`All marks saved successfully! (${successCount} students)`);
+        showNotification({ message: `All marks saved successfully! (${successCount} students)`, type: 'success' });
       } else {
-        alert(`Saved ${successCount} students successfully. ${errorCount} failed.`);
+        showNotification({ message: `Saved ${successCount} students successfully. ${errorCount} failed.`, type: 'warning' });
       }
-      
+
     } catch (error) {
       console.error("Save all marks error:", error);
-      alert("Error saving marks: " + error.message);
+      showNotification({ message: "Error saving marks: " + error.message, type: 'error' });
     } finally {
       setSaving(false);
       setShowScoresModal(false); // Close modal after saving
@@ -270,13 +525,13 @@ const SubjectTeacherPage = () => {
   // Save progress - save only the marks that have been entered
   const saveProgress = async () => {
     if (!selectedClass || !selectedSubject) {
-      alert("Please select a class and subject first.");
+      showNotification({ message: "Please select a class and subject first.", type: 'warning' });
       return;
     }
 
     // Check if user has permission for this subject
     if (!getUserSubjects().includes(selectedSubject)) {
-      alert("You don't have permission to enter scores for this subject.");
+      showNotification({ message: "You don't have permission to enter scores for this subject.", type: 'error' });
       return;
     }
 
@@ -284,16 +539,16 @@ const SubjectTeacherPage = () => {
     const learnersWithMarks = filteredLearners.filter(learner => {
       const studentId = learner.idNumber || learner.LearnerID;
       const studentMarks = marks[studentId];
-      
+
       // Check if any marks have been entered for this student
       if (!studentMarks) return false;
-      
+
       // Check if any of the mark fields have values
       return Object.values(studentMarks).some(mark => mark !== "" && mark !== undefined);
     });
 
     if (learnersWithMarks.length === 0) {
-      alert("No marks have been entered to save.");
+      showNotification({ message: "No marks have been entered to save.", type: 'warning' });
       return;
     }
 
@@ -334,133 +589,58 @@ const SubjectTeacherPage = () => {
       });
 
       await Promise.all(promises);
-      
+
       if (errorCount === 0) {
-        alert(`Progress saved successfully! (${successCount} students)`);
+        showNotification({ message: `Progress saved successfully! (${successCount} students)`, type: 'success' });
       } else {
-        alert(`Saved ${successCount} students successfully. ${errorCount} failed.`);
+        showNotification({ message: `Saved ${successCount} students successfully. ${errorCount} failed.`, type: 'warning' });
       }
-      
+
     } catch (error) {
       console.error("Save progress error:", error);
-      alert("Error saving progress: " + error.message);
+      showNotification({ message: "Error saving progress: " + error.message, type: 'error' });
     } finally {
       setSaving(false);
     }
   };
 
-  // Print broadsheet
-  const printBroadsheet = () => {
+  // Print broadsheet - RESTRICTED TO ASSIGNED SUBJECTS ONLY
+  const printBroadsheet = async () => {
     if (!selectedClass || !selectedSubject) {
-      alert("Please select a class and subject first.");
+      showNotification({ message: "Please select a class and subject first.", type: 'warning' });
+      return;
+    }
+
+    // ✅ CHECK: Verify teacher is assigned to this subject
+    if (!getUserSubjects().includes(selectedSubject)) {
+      showNotification({
+        message: "You can only print broadsheets for subjects you teach.",
+        type: 'error'
+      });
       return;
     }
 
     try {
-      let tableRows = '';
-      const studentsWithData = filteredLearners.filter(learner => {
-        const studentId = learner.idNumber || learner.LearnerID;
-        const studentMarks = marks[studentId] || {};
-        const totals = calculateTotals(studentMarks);
-        return totals.finalTotal > 0; // Only include students with scores
-      });
+      // Get school information
+      const schoolInfo = printingService.getSchoolInfo();
 
-      studentsWithData.forEach((learner) => {
-        const studentId = learner.idNumber || learner.LearnerID;
-        const studentMarks = marks[studentId] || {};
-        
-        const totals = calculateTotals(studentMarks);
-        const position = positions[studentId] || '-';
-        const remarks = getRemarks(totals.finalTotal);
-        
-        tableRows += `
-          <tr>
-            <td style="border: 1px solid black; padding: 4px;">${learner.firstName} ${learner.lastName}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${studentMarks.test1 || 0}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${studentMarks.test2 || 0}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${studentMarks.test3 || 0}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${studentMarks.test4 || 0}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${totals.testsTotal}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${totals.testsScaled.toFixed(1)}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${studentMarks.exam || 0}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${totals.examScaled.toFixed(1)}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${totals.finalTotal.toFixed(1)}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${position}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: center;">${remarks}</td>
-          </tr>
-        `;
-      });
+      // Generate and download subject broadsheet
+      const result = await printingService.printSubjectBroadsheet(
+        selectedClass,
+        selectedSubject,
+        schoolInfo,
+        '', // teacherName
+        settings.term // term from global settings
+      );
 
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        alert("Popup blocked. Please allow popups for this site.");
-        return;
+      if (result.success) {
+        showNotification({ message: result.message, type: 'success' });
+      } else {
+        throw new Error(result.message);
       }
-
-      const htmlContent = `<!DOCTYPE html>
-        <html>
-          <head>
-            <title>Broadsheet - ${selectedSubject} - ${selectedClass}</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .header { text-align: center; margin-bottom: 30px; }
-              .school-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-              .broadsheet-title { font-size: 18px; margin-bottom: 10px; }
-              .details { font-size: 14px; color: #666; }
-              table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-              th, td { border: 1px solid black; padding: 8px; text-align: center; }
-              th { background-color: #f0f0f0; font-weight: bold; }
-              .student-name { text-align: left; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <div class="school-name">DERIAD'S eSBA</div>
-              <div class="broadsheet-title">Subject Broadsheet</div>
-              <div class="details">
-                Subject: ${selectedSubject} | Class: ${selectedClass} | 
-                Teacher: ${user?.name} | Date: ${new Date().toLocaleDateString()}
-              </div>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th class="student-name">Student Name</th>
-                  <th>Test 1<br/>(15)</th>
-                  <th>Test 2<br/>(15)</th>
-                  <th>Test 3<br/>(15)</th>
-                  <th>Test 4<br/>(15)</th>
-                  <th>Tests Total<br/>(60)</th>
-                  <th>50%</th>
-                  <th>Exam<br/>(100)</th>
-                  <th>50%</th>
-                  <th>Final Total<br/>(100)</th>
-                  <th>Position</th>
-                  <th>Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${tableRows}
-              </tbody>
-            </table>
-            <div style="margin-top: 30px; font-size: 12px;">
-              <p><strong>Grading Scale:</strong></p>
-              <p>80-100: Excellent | 70-79: Very Good | 60-69: Good | 50-59: Satisfactory | 40-49: Fair | 0-39: Needs Improvement</p>
-            </div>
-          </body>
-        </html>`;
-      
-      printWindow.document.open();
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      
-      setTimeout(() => {
-        printWindow.print();
-      }, 1000);
-      
     } catch (error) {
-      console.error("Print error:", error);
-      alert("Print failed: " + error.message);
+      console.error("Error printing broadsheet:", error);
+      showNotification({ message: "Error printing broadsheet: " + error.message, type: 'error' });
     }
   };
 
@@ -478,77 +658,65 @@ const SubjectTeacherPage = () => {
 
     if (studentsWithData.length === 0) return null;
 
-    // Performance distribution data
-    const performanceData = [
-      { label: 'Excellent', value: 0, color: '#10B981' },
-      { label: 'Very Good', value: 0, color: '#3B82F6' },
-      { label: 'Good', value: 0, color: '#8B5CF6' },
-      { label: 'Satisfactory', value: 0, color: '#F59E0B' },
-      { label: 'Fair', value: 0, color: '#F97316' },
-      { label: 'Needs Improvement', value: 0, color: '#EF4444' }
-    ];
-
-    // Student scores data for charts
-    const studentScores = [];
-    const studentScoresForLine = [];
-
-    studentsWithData.forEach(learner => {
+    // Calculate scores
+    const scores = studentsWithData.map(learner => {
       const studentId = learner.idNumber || learner.LearnerID;
       const studentMarks = marks[studentId] || {};
       const totals = calculateTotals(studentMarks);
-      const finalTotal = totals.finalTotal;
-      
-      if (finalTotal > 0) {
-        // Add to performance distribution
-        if (finalTotal >= 80) {
-          performanceData[0].value++;
-        } else if (finalTotal >= 70) {
-          performanceData[1].value++;
-        } else if (finalTotal >= 60) {
-          performanceData[2].value++;
-        } else if (finalTotal >= 50) {
-          performanceData[3].value++;
-        } else if (finalTotal >= 40) {
-          performanceData[4].value++;
-        } else {
-          performanceData[5].value++;
-        }
-        
-        // Add to student scores for bar chart
-        studentScores.push({
-          label: `${learner.firstName} ${learner.lastName.charAt(0)}.`,
-          value: parseFloat(finalTotal.toFixed(1))
-        });
-        
-        // Add to student scores for line chart (full name for better readability)
-        studentScoresForLine.push({
-          label: `${learner.firstName} ${learner.lastName}`,
-          value: parseFloat(finalTotal.toFixed(1))
-        });
-      }
+      return totals.finalTotal;
     });
 
-    // Average score
-    const averageScore = studentScores.length > 0 
-      ? (studentScores.reduce((sum, student) => sum + student.value, 0) / studentScores.length).toFixed(1)
-      : 0;
+    // Calculate statistics
+    const highest = Math.max(...scores);
+    const lowest = Math.min(...scores);
+    const average = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    // Calculate distribution
+    const excellent = scores.filter(score => score >= 80).length;
+    const good = scores.filter(score => score >= 70 && score < 80).length;
+    const fair = scores.filter(score => score >= 60 && score < 70).length;
+    const poor = scores.filter(score => score < 60).length;
+
+    // Calculate score ranges for distribution chart
+    const scoreRanges = [
+      { range: '0-19', count: scores.filter(score => score >= 0 && score < 20).length },
+      { range: '20-39', count: scores.filter(score => score >= 20 && score < 40).length },
+      { range: '40-59', count: scores.filter(score => score >= 40 && score < 60).length },
+      { range: '60-79', count: scores.filter(score => score >= 60 && score < 80).length },
+      { range: '80-100', count: scores.filter(score => score >= 80 && score <= 100).length }
+    ];
+
+    // Mock trend data (in a real implementation, this would come from the API)
+    const trend = {
+      'First Term': { averageScore: 75.5 },
+      'Second Term': { averageScore: 78.2 },
+      'Third Term': { averageScore: 82.1 }
+    };
 
     return {
-      performanceData: performanceData.filter(item => item.value > 0),
-      studentScores,
-      studentScoresForLine: studentScoresForLine.slice(0, 10), // Limit to 10 for line chart readability
-      averageScore,
-      totalStudents: studentsWithData.length
+      highest: highest.toFixed(1),
+      lowest: lowest.toFixed(1),
+      average: average.toFixed(1),
+      totalStudents: studentsWithData.length,
+      distribution: {
+        excellent: Math.round((excellent / studentsWithData.length) * 100),
+        good: Math.round((good / studentsWithData.length) * 100),
+        fair: Math.round((fair / studentsWithData.length) * 100),
+        poor: Math.round((poor / studentsWithData.length) * 100)
+      },
+      scoreRanges,
+      trend
     };
   };
 
-  const analyticsData = getAnalyticsData();
+
 
   // Load trend data when class and subject are selected
   useEffect(() => {
     if (selectedClass && selectedSubject) {
       loadTrendData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClass, selectedSubject]);
 
   const loadTrendData = async () => {
@@ -576,10 +744,21 @@ const SubjectTeacherPage = () => {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
-          <h1 className="text-2xl font-bold text-gray-900">Subject Teacher Dashboard</h1>
-          <p className="text-gray-600 mt-1">Enter scores for your assigned subjects</p>
-          
+        <div className="glass-ultra rounded-lg p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Subject Teacher Dashboard</h1>
+              <p className="text-white/90 mt-1">Enter scores for your assigned subjects</p>
+            </div>
+            <button
+              onClick={() => setShowChangePasswordModal(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+            >
+              <span>🔒</span>
+              <span>Change Password</span>
+            </button>
+          </div>
+
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
               SUBJECT TEACHER
@@ -610,12 +789,12 @@ const SubjectTeacherPage = () => {
         )}
 
         {/* Class & Subject Selection */}
-        <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+        <div className="glass-ultra rounded-lg p-6">
           <h2 className="text-lg font-semibold mb-4">Enter Student Scores</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+              <label className="block text-sm font-medium text-white mb-2">Select Class</label>
               <select
                 className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50"
                 value={selectedClass}
@@ -629,7 +808,7 @@ const SubjectTeacherPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Subject</label>
+              <label className="block text-sm font-medium text-white mb-2">Select Subject</label>
               <select
                 className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50"
                 value={selectedSubject}
@@ -642,19 +821,36 @@ const SubjectTeacherPage = () => {
               </select>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">Assessment Type</label>
+              <select
+                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50"
+                value={selectedAssessment}
+                onChange={e => setSelectedAssessment(e.target.value)}
+              >
+                <option value="">Choose Assessment</option>
+                <option value="regular">Regular Term Scores</option>
+                {customAssessments.map(assessment => (
+                  <option key={assessment.id} value={assessment.id}>
+                    {assessment.name} ({assessment.max_score} marks)
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-end gap-2">
-              <button 
+              <button
                 className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
                 onClick={() => setShowScoresModal(true)}
-                disabled={!selectedClass || !selectedSubject}
+                disabled={!selectedClass || !selectedSubject || !selectedAssessment}
               >
                 Enter Scores
               </button>
-              
-              <button 
+
+              <button
                 className="flex-1 bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors"
                 onClick={printBroadsheet}
-                disabled={!selectedClass || !selectedSubject}
+                disabled={!selectedClass || !selectedSubject || selectedAssessment !== 'regular'}
               >
                 Print
               </button>
@@ -665,7 +861,7 @@ const SubjectTeacherPage = () => {
                 className={`flex-1 px-4 py-3 rounded-md transition-colors ${
                   showAnalytics 
                     ? "bg-purple-600 text-white hover:bg-purple-700" 
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    : "bg-white/30 text-white hover:bg-white/40"
                 }`}
                 onClick={() => setShowAnalytics(!showAnalytics)}
                 disabled={!selectedClass || !selectedSubject}
@@ -680,7 +876,7 @@ const SubjectTeacherPage = () => {
                 className={`flex-1 px-4 py-3 rounded-md transition-colors ${
                   showTrendAnalysis 
                     ? "bg-indigo-600 text-white hover:bg-indigo-700" 
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    : "bg-white/30 text-white hover:bg-white/40"
                 }`}
                 onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
                 disabled={!selectedClass || !selectedSubject}
@@ -692,7 +888,7 @@ const SubjectTeacherPage = () => {
 
           {/* Current Selection Info */}
           {selectedClass && selectedSubject && (
-            <div className="bg-blue-50/30 border border-blue-200/50 rounded-md p-4 backdrop-blur-sm">
+            <div className="glass-ultra-light border border-blue-200/50 rounded-md p-4">
               <h3 className="font-semibold text-blue-900">
                 {selectedSubject} - {selectedClass}
               </h3>
@@ -703,80 +899,30 @@ const SubjectTeacherPage = () => {
           )}
         </div>
 
-        {/* Analytics Section */}
-        {showAnalytics && selectedClass && selectedSubject && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-gray-900">Performance Analytics</h2>
-            
-            {analyticsData ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Performance Distribution */}
-                <PerformanceChart 
-                  data={analyticsData.performanceData} 
-                  title="Performance Distribution" 
-                  type="pie" 
-                />
-                
-                {/* Student Scores Bar Chart */}
-                <PerformanceChart 
-                  data={analyticsData.studentScores} 
-                  title="Student Scores (Bar)" 
-                  type="bar" 
-                />
-                
-                {/* Student Scores Line Chart */}
-                <PerformanceChart 
-                  data={analyticsData.studentScoresForLine} 
-                  title="Student Scores (Line)" 
-                  type="line" 
-                />
-                
-                {/* Summary Stats */}
-                <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6 md:col-span-2">
-                  <h3 className="text-lg font-semibold mb-4">Summary Statistics</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-blue-50/30 border border-blue-200/50 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-blue-600">{analyticsData.totalStudents}</div>
-                      <div className="text-gray-700">Students Assessed</div>
-                    </div>
-                    <div className="bg-green-50/30 border border-green-200/50 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-green-600">{analyticsData.averageScore}</div>
-                      <div className="text-gray-700">Average Score</div>
-                    </div>
-                    <div className="bg-purple-50/30 border border-purple-200/50 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-purple-600">
-                        {analyticsData.performanceData.find(d => d.label === 'Excellent')?.value || 0}
-                      </div>
-                      <div className="text-gray-700">Excellent Students</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
-                <div className="text-center py-8 text-gray-500">
-                  <p>No data available for analytics. Please enter student scores first.</p>
-                </div>
-              </div>
-            )}
+        {/* Analytics Dashboard */}
+        {showAnalytics && (
+          <div className="mt-6">
+            <AnalyticsDashboard 
+              analyticsData={getAnalyticsData()} 
+              className={selectedClass} 
+              subject={selectedSubject} 
+            />
           </div>
         )}
 
         {/* Trend Analysis Section */}
         {showTrendAnalysis && selectedClass && selectedSubject && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-gray-900">Performance Trends</h2>
+            <h2 className="text-xl font-bold text-white">Performance Trends</h2>
             
             {classTrendData ? (
-              <div className="grid grid-cols-1 gap-6">
-                <TrendAnalysisChart 
-                  data={classTrendData} 
-                  title={`Class Performance Trend: ${selectedSubject} (${selectedClass})`}
-                />
-              </div>
+              <TrendAnalysisChart 
+                data={classTrendData} 
+                title={`Class Performance Trend: ${selectedClass} - ${selectedSubject}`}
+              />
             ) : (
-              <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
-                <div className="text-center py-8 text-gray-500">
+              <div className="glass-ultra rounded-lg p-6">
+                <div className="text-center py-8 text-white/70">
                   <p>Loading trend data...</p>
                 </div>
               </div>
@@ -791,10 +937,10 @@ const SubjectTeacherPage = () => {
             <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Enter Student Scores</h2>
+                  <h2 className="text-xl font-bold text-white text-shadow">Enter Student Scores</h2>
                   <button 
                     onClick={() => setShowScoresModal(false)} 
-                    className="text-4xl text-gray-500 hover:text-gray-800 focus:outline-none"
+                    className="text-4xl text-white/70 hover:text-white focus:outline-none"
                   >
                     ✕
                   </button>
@@ -802,174 +948,81 @@ const SubjectTeacherPage = () => {
 
                 {/* Current Selection Info in Modal */}
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
-                  <h3 className="font-semibold text-blue-900">
+                  <h3 className="font-bold text-blue-900 text-shadow">
                     {selectedSubject} - {selectedClass}
                   </h3>
-                  <p className="text-blue-700 text-sm">
+                  <p className="text-blue-700 text-sm text-shadow">
                     {filteredLearners.length} students | Teacher: {user?.name}
                   </p>
                 </div>
 
-                {/* Marks Entry Table */}
+                {/* Marks Entry - Responsive Table/Card View */}
                 {selectedClass && selectedSubject && filteredLearners.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300 text-sm">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border border-gray-300 p-3 text-left">Student Name</th>
-                          <th className="border border-gray-300 p-2">Test 1<br/>(0-15)</th>
-                          <th className="border border-gray-300 p-2">Test 2<br/>(0-15)</th>
-                          <th className="border border-gray-300 p-2">Test 3<br/>(0-15)</th>
-                          <th className="border border-gray-300 p-2">Test 4<br/>(0-15)</th>
-                          <th className="border border-gray-300 p-2">Tests Total</th>
-                          <th className="border border-gray-300 p-2">50%</th>
-                          <th className="border border-gray-300 p-2">Exam<br/>(0-100)</th>
-                          <th className="border border-gray-300 p-2">50%</th>
-                          <th className="border border-gray-300 p-2">Final Total</th>
-                          <th className="border border-gray-300 p-2">Position</th>
-                          <th className="border border-gray-300 p-2">Remarks</th>
-                          <th className="border border-gray-300 p-2">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredLearners.map(learner => {
-                          const studentId = learner.idNumber || learner.LearnerID;
-                          const studentMarks = marks[studentId] || {};
-                          const totals = calculateTotals(studentMarks);
-                          const position = positions[studentId];
-                          const remarks = getRemarks(totals.finalTotal);
-                          const isSaved = savedStudents.has(studentId);
-
-                          return (
-                            <tr key={studentId} className="hover:bg-gray-50">
-                              <td className="border border-gray-300 p-3 font-medium">
-                                {learner.firstName} {learner.lastName}
-                              </td>
-                              
-                              {['test1', 'test2', 'test3', 'test4'].map(test => (
-                                <td key={test} className="border border-gray-300 p-1">
-                                  <input 
-                                    type="text"
-                                    value={studentMarks[test] || ''}
-                                    onChange={(e) => handleMarkChange(studentId, test, e.target.value)}
-                                    className="w-16 p-2 border rounded text-center focus:ring-2 focus:ring-blue-500"
-                                    placeholder="0"
-                                    maxLength="4"
-                                  />
-                                </td>
-                              ))}
-                              
-                              <td className="border border-gray-300 p-3 text-center font-medium bg-gray-50">
-                                {totals.testsTotal.toFixed(1)}
-                              </td>
-                              
-                              <td className="border border-gray-300 p-3 text-center bg-gray-50">
-                                {totals.testsScaled.toFixed(1)}
-                              </td>
-                              
-                              <td className="border border-gray-300 p-1">
-                                <input 
-                                  type="text"
-                                  value={studentMarks.exam || ''}
-                                  onChange={(e) => handleMarkChange(studentId, 'exam', e.target.value)}
-                                  className="w-20 p-2 border rounded text-center focus:ring-2 focus:ring-blue-500"
-                                  placeholder="0"
-                                  maxLength="5"
-                                />
-                              </td>
-                              
-                              <td className="border border-gray-300 p-3 text-center bg-gray-50">
-                                {totals.examScaled.toFixed(1)}
-                              </td>
-                              
-                              <td className="border border-gray-300 p-3 text-center font-bold text-lg bg-blue-50">
-                                {totals.finalTotal.toFixed(1)}
-                              </td>
-                              
-                              <td className="border border-gray-300 p-3 text-center">
-                                {position && (
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                                    position === 1 ? 'bg-yellow-400 text-yellow-900' :
-                                    position === 2 ? 'bg-gray-300 text-gray-800' :
-                                    position === 3 ? 'bg-orange-400 text-orange-900' :
-                                    'bg-blue-100 text-blue-800'
-                                  }`}>
-                                    {position === 1 ? '🥇 1st' :
-                                     position === 2 ? '🥈 2nd' :
-                                     position === 3 ? '🥉 3rd' :
-                                     `${position}th`}
-                                  </span>
-                                )}
-                              </td>
-                              
-                              <td className="border border-gray-300 p-2 text-center">
-                                {remarks && (
-                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                    totals.finalTotal >= 80 ? 'bg-green-100 text-green-800' :
-                                    totals.finalTotal >= 70 ? 'bg-blue-100 text-blue-800' :
-                                    totals.finalTotal >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                    totals.finalTotal >= 50 ? 'bg-orange-100 text-orange-800' :
-                                    totals.finalTotal >= 40 ? 'bg-red-100 text-red-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {remarks}
-                                  </span>
-                                )}
-                              </td>
-                              
-                              <td className="border border-gray-300 p-3 text-center">
-                                <button
-                                  onClick={() => saveStudentMarks(studentId)}
-                                  disabled={saving}
-                                  className={`px-3 py-1 rounded text-sm flex items-center justify-center ${
-                                    isSaved 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                  }`}
-                                  title={isSaved ? "Saved" : "Save student marks"}
-                                >
-                                  {saving ? (
-                                    <span className="flex items-center">
-                                      <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></span>
-                                      Saving...
-                                    </span>
-                                  ) : isSaved ? (
-                                    <span className="flex items-center">
-                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                      </svg>
-                                      Saved
-                                    </span>
-                                  ) : (
-                                    'Save'
-                                  )}
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    
-                    <div className="mt-4 text-xs text-gray-600">
-                      <strong>Grading Scale:</strong> 80-100: Excellent | 70-79: Very Good | 60-69: Good | 50-59: Satisfactory | 40-49: Fair | Below 40: Needs Improvement
-                    </div>
-                  </div>
+                  <ResponsiveScoreEntry
+                    learners={filteredLearners}
+                    marks={marks}
+                    onMarkChange={handleMarkChange}
+                    onSaveStudent={saveStudentMarks}
+                    savedStudents={savedStudents}
+                    saving={saving}
+                    calculateTotals={calculateTotals}
+                    positions={positions}
+                    getRemarks={getRemarks}
+                    assessmentType={selectedAssessment === 'regular' ? 'regular' : 'custom'}
+                    customAssessmentInfo={
+                      selectedAssessment !== 'regular'
+                        ? customAssessments.find(a => a.id === parseInt(selectedAssessment))
+                        : null
+                    }
+                  />
                 ) : selectedClass && selectedSubject ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No students found in {selectedClass}</p>
+                  <div className="text-center py-8 text-white/70">
+                    <p>No students found in this class.</p>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>Please select both a class and subject to enter marks</p>
+                  <div className="text-center py-8 text-white/70">
+                    <p>Please select a class and subject to view students.</p>
                   </div>
                 )}
 
-                {/* Modal Action Buttons */}
-                <div className="mt-6 flex justify-end space-x-3">
+                {/* Grading Scale */}
+                {selectedClass && selectedSubject && filteredLearners.length > 0 && (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <div className="overflow-x-auto">
+                      <div className="text-xs text-white/90">
+                        <strong>Grading Scale:</strong> 80-100: Excellent | 70-79: Very Good | 60-69: Good | 50-59: Satisfactory | 40-49: Fair | Below 40: Needs Improvement
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Save All Button - Only for desktop */}
+                {selectedClass && selectedSubject && filteredLearners.length > 0 && (
+                  <div className="hidden md:block mt-6">
+                    <div className="flex justify-end gap-4">
+                      <button
+                        onClick={saveProgress}
+                        disabled={saving}
+                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors font-medium"
+                      >
+                        {saving ? 'Saving...' : 'Save Progress'}
+                      </button>
+                      <button
+                        onClick={saveAllMarks}
+                        disabled={saving}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors font-medium"
+                      >
+                        {saving ? 'Saving...' : 'Save All Marks'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Modal Action Buttons - Desktop only */}
+                <div className="hidden md:flex mt-6 justify-end space-x-3">
                   <button
                     onClick={() => setShowScoresModal(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    className="px-4 py-2 border border-white/30 rounded-lg text-white hover:bg-white/20"
                   >
                     Cancel
                   </button>
@@ -992,7 +1045,17 @@ const SubjectTeacherPage = () => {
             </div>
           </div>
         )}
+
+        {/* Teacher Leaderboard - At Bottom */}
+        <TeacherLeaderboard />
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        userEmail={user?.email}
+      />
     </Layout>
   );
 };

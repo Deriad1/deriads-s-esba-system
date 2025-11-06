@@ -7,7 +7,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 const NotificationDemoPage = () => {
   const { showNotification } = useNotification();
   const { setLoading, isLoading, getLoadingMessage } = useLoading();
-  const [loadingKey, setLoadingKey] = useState("demo");
+  const [loadingKey] = useState("demo");
 
   const showSuccessNotification = () => {
     showNotification({
@@ -95,7 +95,7 @@ const NotificationDemoPage = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Notification Examples */}
-          <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+          <div className="glass-ultra rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4">Notification Examples</h2>
             <div className="space-y-4">
               <button
@@ -136,7 +136,7 @@ const NotificationDemoPage = () => {
           </div>
           
           {/* Loading Examples */}
-          <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+          <div className="glass-ultra rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4">Loading Examples</h2>
             <div className="space-y-4">
               <button
@@ -177,7 +177,7 @@ const NotificationDemoPage = () => {
         </div>
         
         {/* Loading Spinner Demo */}
-        <div className="mt-8 bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+        <div className="glass-ultra rounded-lg p-6 mt-8">
           <h2 className="text-xl font-semibold mb-4">Loading Spinner Examples</h2>
           <div className="flex flex-wrap gap-6">
             <div className="flex flex-col items-center">
@@ -194,7 +194,7 @@ const NotificationDemoPage = () => {
         
         {/* Current Loading Message */}
         {isLoading(loadingKey) && (
-          <div className="mt-6 bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+          <div className="glass-ultra rounded-lg p-6 mt-6">
             <h2 className="text-xl font-semibold mb-4">Current Loading Message</h2>
             <p className="text-lg">{getLoadingMessage(loadingKey)}</p>
           </div>

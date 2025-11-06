@@ -5,7 +5,7 @@ import LoadingSpinner from "./LoadingSpinner";
 
 const NotificationDemo = () => {
   const { showNotification } = useNotification();
-  const { setLoading, isLoading, getLoadingMessage } = useLoading();
+  const { setLoading, isLoading } = useLoading();
   const [loadingKey] = React.useState("demo");
 
   const showSuccessNotification = () => {
@@ -74,7 +74,7 @@ const NotificationDemo = () => {
   };
 
   return (
-    <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6 mt-6">
+    <div className="glass-ultra rounded-lg p-6 mt-6">
       <h2 className="text-xl font-semibold mb-4">Enhanced Notifications & Loading Demo</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

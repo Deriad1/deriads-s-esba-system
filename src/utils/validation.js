@@ -1,7 +1,72 @@
 /**
  * Data validation utilities for all user inputs
  * Provides type checking, range validation, and format validation
+ *
+ * This module follows best practices:
+ * - Named exports for tree-shaking optimization
+ * - Constants for magic values (maintainability)
+ * - Consistent validation result format: { isValid, errors }
+ * - Reusable primitive validators composed into object validators
  */
+
+// ============================================================================
+// CONSTANTS - Magic Values Extracted for Consistency and Maintainability
+// ============================================================================
+
+/**
+ * Allowed gender values across the application
+ * Export this constant to ensure consistency wherever gender is used
+ */
+export const ALLOWED_GENDERS = ['male', 'female', 'other'];
+
+/**
+ * Allowed teacher roles in the system
+ * Export this constant to ensure role validation is consistent
+ */
+export const ALLOWED_TEACHER_ROLES = [
+  'teacher',
+  'head_teacher',
+  'class_teacher',
+  'subject_teacher',
+  'form_master',
+  'admin'
+];
+
+/**
+ * Validation constraints for various fields
+ * Centralize all numeric constraints here for easy updates
+ */
+export const VALIDATION_CONSTRAINTS = {
+  // Score constraints
+  MAX_TEST_SCORE: 15,
+  MAX_EXAM_SCORE: 100,
+  MIN_SCORE: 0,
+
+  // String length constraints
+  MAX_STUDENT_ID_LENGTH: 20,
+  MAX_SUBJECT_NAME_LENGTH: 50,
+  MAX_REMARKS_LENGTH: 1000,
+  MIN_PASSWORD_LENGTH: 6,
+
+  // Number constraints
+  MIN_CLASS_SIZE: 1,
+  MAX_CLASS_SIZE: 100,
+  MIN_ATTENDANCE_DAYS: 0,
+  MAX_ATTENDANCE_DAYS: 365
+};
+
+/**
+ * Regular expressions for format validation
+ * Centralize regex patterns for consistency
+ */
+export const VALIDATION_PATTERNS = {
+  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  PHONE: /^[+]?[1-9][\d]{0,15}$/
+};
+
+// ============================================================================
+// PRIMITIVE VALIDATORS - Reusable Building Blocks
+// ============================================================================
 
 /**
  * Validate email format
@@ -10,8 +75,7 @@
  */
 export const validateEmail = (email) => {
   if (!email) return false;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return VALIDATION_PATTERNS.EMAIL.test(email);
 };
 
 /**
@@ -21,8 +85,7 @@ export const validateEmail = (email) => {
  */
 export const validatePhone = (phone) => {
   if (!phone) return true; // Phone is optional
-  const phoneRegex = /^[+]?[1-9][\d]{0,15}$/;
-  return phoneRegex.test(phone.replace(/[\s\-()]/g, ''));
+  return VALIDATION_PATTERNS.PHONE.test(phone.replace(/[\s\-()]/g, ''));
 };
 
 /**
@@ -53,7 +116,7 @@ export const validateRequiredString = (value) => {
  * @returns {boolean} - Whether value is valid
  */
 export const validateGender = (value) => {
-  return ['male', 'female', 'other'].includes(value);
+  return ALLOWED_GENDERS.includes(value);
 };
 
 /**
@@ -82,8 +145,8 @@ export const validateStudentData = (studentData) => {
   }
   
   // Optional fields validation
-  if (studentData.idNumber && studentData.idNumber.length > 20) {
-    errors.idNumber = 'Student ID must be less than 20 characters';
+  if (studentData.idNumber && studentData.idNumber.length > VALIDATION_CONSTRAINTS.MAX_STUDENT_ID_LENGTH) {
+    errors.idNumber = `Student ID must be less than ${VALIDATION_CONSTRAINTS.MAX_STUDENT_ID_LENGTH} characters`;
   }
   
   return {
@@ -126,8 +189,8 @@ export const validateTeacherData = (teacherData) => {
     errors.phone = 'Phone number format is invalid';
   }
   
-  if (teacherData.password && teacherData.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters';
+  if (teacherData.password && teacherData.password.length < VALIDATION_CONSTRAINTS.MIN_PASSWORD_LENGTH) {
+    errors.password = `Password must be at least ${VALIDATION_CONSTRAINTS.MIN_PASSWORD_LENGTH} characters`;
   }
   
   return {
@@ -165,12 +228,12 @@ export const validateScoreData = (scoreData) => {
       const value = parseFloat(scoreData[field]);
       if (isNaN(value)) {
         errors[field] = `${field} must be a valid number`;
-      } else if (value < 0) {
+      } else if (value < VALIDATION_CONSTRAINTS.MIN_SCORE) {
         errors[field] = `${field} cannot be negative`;
-      } else if (field === 'exam' && value > 100) {
-        errors[field] = 'Exam score cannot exceed 100';
-      } else if (field !== 'exam' && value > 15) {
-        errors[field] = 'Test score cannot exceed 15';
+      } else if (field === 'exam' && value > VALIDATION_CONSTRAINTS.MAX_EXAM_SCORE) {
+        errors[field] = `Exam score cannot exceed ${VALIDATION_CONSTRAINTS.MAX_EXAM_SCORE}`;
+      } else if (field !== 'exam' && value > VALIDATION_CONSTRAINTS.MAX_TEST_SCORE) {
+        errors[field] = `Test score cannot exceed ${VALIDATION_CONSTRAINTS.MAX_TEST_SCORE}`;
       }
     }
   });
@@ -203,17 +266,17 @@ export const validateRemarkData = (remarkData) => {
   }
   
   // Optional validation - remarks should not exceed reasonable length
-  if (remarkData.remarks && remarkData.remarks.length > 1000) {
-    errors.remarks = 'Remarks cannot exceed 1000 characters';
+  if (remarkData.remarks && remarkData.remarks.length > VALIDATION_CONSTRAINTS.MAX_REMARKS_LENGTH) {
+    errors.remarks = `Remarks cannot exceed ${VALIDATION_CONSTRAINTS.MAX_REMARKS_LENGTH} characters`;
   }
-  
+
   // Attendance validation
   if (remarkData.attendance !== undefined && remarkData.attendance !== '') {
     const attendance = parseInt(remarkData.attendance);
     if (isNaN(attendance)) {
       errors.attendance = 'Attendance must be a valid number';
-    } else if (attendance < 0 || attendance > 365) {
-      errors.attendance = 'Attendance must be between 0 and 365';
+    } else if (attendance < VALIDATION_CONSTRAINTS.MIN_ATTENDANCE_DAYS || attendance > VALIDATION_CONSTRAINTS.MAX_ATTENDANCE_DAYS) {
+      errors.attendance = `Attendance must be between ${VALIDATION_CONSTRAINTS.MIN_ATTENDANCE_DAYS} and ${VALIDATION_CONSTRAINTS.MAX_ATTENDANCE_DAYS}`;
     }
   }
   
@@ -271,8 +334,8 @@ export const validateClassConfig = (configData) => {
   if (configData.maxStudents !== undefined) {
     if (!validateType(configData.maxStudents, 'number')) {
       errors.maxStudents = 'Max students must be a number';
-    } else if (configData.maxStudents < 1 || configData.maxStudents > 100) {
-      errors.maxStudents = 'Max students must be between 1 and 100';
+    } else if (configData.maxStudents < VALIDATION_CONSTRAINTS.MIN_CLASS_SIZE || configData.maxStudents > VALIDATION_CONSTRAINTS.MAX_CLASS_SIZE) {
+      errors.maxStudents = `Max students must be between ${VALIDATION_CONSTRAINTS.MIN_CLASS_SIZE} and ${VALIDATION_CONSTRAINTS.MAX_CLASS_SIZE}`;
     }
   }
   
@@ -294,8 +357,8 @@ export const validateSubjectData = (subjectData) => {
     errors.name = 'Subject name is required';
   }
   
-  if (subjectData.name && subjectData.name.length > 50) {
-    errors.name = 'Subject name cannot exceed 50 characters';
+  if (subjectData.name && subjectData.name.length > VALIDATION_CONSTRAINTS.MAX_SUBJECT_NAME_LENGTH) {
+    errors.name = `Subject name cannot exceed ${VALIDATION_CONSTRAINTS.MAX_SUBJECT_NAME_LENGTH} characters`;
   }
   
   return {
@@ -321,8 +384,7 @@ export const validateRoleData = (roleData) => {
   }
   
   // Validate role is in allowed set
-  const allowedRoles = ['teacher', 'head_teacher', 'class_teacher', 'subject_teacher', 'form_master'];
-  if (roleData.role && !validateInSet(roleData.role, allowedRoles)) {
+  if (roleData.role && !validateInSet(roleData.role, ALLOWED_TEACHER_ROLES)) {
     errors.role = 'Invalid role specified';
   }
   
@@ -338,19 +400,9 @@ export const validateRoleData = (roleData) => {
   };
 };
 
-export default {
-  validateEmail,
-  validatePhone,
-  validateNumberRange,
-  validateRequiredString,
-  validateGender,
-  validateStudentData,
-  validateTeacherData,
-  validateScoreData,
-  validateRemarkData,
-  validateType,
-  validateInSet,
-  validateClassConfig,
-  validateSubjectData,
-  validateRoleData
-};
+// ============================================================================
+// NO DEFAULT EXPORT
+// ============================================================================
+// This module uses named exports only for better tree-shaking and explicit imports.
+// Import specific functions: import { validateEmail, validateStudentData } from './validation';
+// Or import all: import * as validation from './validation';

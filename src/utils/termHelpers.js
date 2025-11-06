@@ -3,13 +3,22 @@
  */
 
 /**
- * Get current term and year from localStorage
+ * Get current term and year from localStorage or use defaults
  * @returns {Object} Current term and year
  */
 export const getCurrentTermInfo = () => {
-  const currentTerm = localStorage.getItem('currentTerm') || 'First Term';
-  const currentYear = localStorage.getItem('currentAcademicYear') || '2024/2025';
-  return { currentTerm, currentYear };
+  // Check if we're in a browser environment (has localStorage)
+  if (typeof localStorage !== 'undefined') {
+    const currentTerm = localStorage.getItem('currentTerm') || 'First Term';
+    const currentYear = localStorage.getItem('currentAcademicYear') || '2024/2025';
+    return { currentTerm, currentYear };
+  } else {
+    // Default values for server-side usage
+    return { 
+      currentTerm: 'First Term', 
+      currentYear: '2024/2025' 
+    };
+  }
 };
 
 /**

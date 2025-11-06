@@ -3,7 +3,7 @@ import React from 'react';
 const TrendAnalysisChart = ({ data, title }) => {
   if (!data || Object.keys(data).length === 0) {
     return (
-      <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+      <div className="glass-extra-transparent rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">{title}</h3>
         <div className="text-center py-8 text-gray-500">
           <p>No trend data available</p>
@@ -22,7 +22,7 @@ const TrendAnalysisChart = ({ data, title }) => {
   const range = maxValue - minValue || 1;
   
   return (
-    <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+    <div className="glass-extra-transparent rounded-lg p-6">
       <h3 className="text-lg font-semibold mb-4">{title}</h3>
       <div className="relative h-64 mt-8">
         <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -89,7 +89,7 @@ const TrendAnalysisChart = ({ data, title }) => {
         
         {/* X-axis labels */}
         <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-600 px-2">
-          {terms.map((term, index) => (
+          {terms.map((term) => (
             <span key={term} className="truncate" style={{ width: `${100 / terms.length}%` }}>
               {term}
             </span>
@@ -99,19 +99,19 @@ const TrendAnalysisChart = ({ data, title }) => {
       
       {/* Summary statistics */}
       <div className="mt-6 grid grid-cols-3 gap-4">
-        <div className="bg-blue-50/30 border border-blue-200/50 rounded-lg p-3 text-center">
+        <div className="glass-extra-transparent-light border border-blue-200/30 rounded-lg p-3 text-center">
           <div className="text-lg font-bold text-blue-600">
             {values.length > 0 ? Math.max(...values).toFixed(1) : '0'}
           </div>
           <div className="text-xs text-gray-700">Highest Score</div>
         </div>
-        <div className="bg-green-50/30 border border-green-200/50 rounded-lg p-3 text-center">
+        <div className="glass-extra-transparent-light border border-green-200/30 rounded-lg p-3 text-center">
           <div className="text-lg font-bold text-green-600">
             {values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : '0'}
           </div>
           <div className="text-xs text-gray-700">Average Score</div>
         </div>
-        <div className="bg-purple-50/30 border border-purple-200/50 rounded-lg p-3 text-center">
+        <div className="glass-extra-transparent-light border border-purple-200/30 rounded-lg p-3 text-center">
           <div className="text-lg font-bold text-purple-600">
             {values.length > 0 ? Math.min(...values).toFixed(1) : '0'}
           </div>

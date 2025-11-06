@@ -1,12 +1,20 @@
 import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getLearners, updateFormMasterRemarks, getMarks, updateStudentScores } from "../api";
+import { getLearners, updateFormMasterRemarks, getMarks, updateStudentScores, getClassPerformanceTrends, getClassSubjects, getStudentsByClass, getCustomAssessments, saveCustomAssessmentScores } from '../api-client';
 import { useNotification } from '../context/NotificationContext';
 import { useLoading } from '../context/LoadingContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import printingService from "../services/printingService";
+import TeacherLeaderboard from "../components/TeacherLeaderboard";
+import ManageClassView from "../components/formmaster/ManageClassView";
+import EnterScoresView from "../components/formmaster/EnterScoresView";
+import PromoteStudentsModal from "../components/PromoteStudentsModal";
+import { DEFAULT_TERM } from "../constants/terms";
+import { useGlobalSettings } from "../context/GlobalSettingsContext";
 
 const FormMasterPage = () => {
+  const { settings } = useGlobalSettings();
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const { setLoading, isLoading } = useLoading();
@@ -15,12 +23,25 @@ const FormMasterPage = () => {
   const [saving, setSaving] = useState(false);
   const [selectedClass, setSelectedClass] = useState("");
   const [remarks, setRemarks] = useState({});
+  const [attitude, setAttitude] = useState({});
+  const [interest, setInterest] = useState({});
+  const [comments, setComments] = useState({});
   const [attendance, setAttendance] = useState({});
   const [errors, setErrors] = useState({}); // New state for validation errors
   const [showConfirmDialog, setShowConfirmDialog] = useState(false); // New state for confirmation dialog
   const [marksData, setMarksData] = useState({}); // New state for marks data
   const [activeTab, setActiveTab] = useState("attendance"); // New state for active tab
   const [footnoteInfo, setFootnoteInfo] = useState(""); // New state for footnote information
+  const [mainView, setMainView] = useState("manageClass"); // New state for main view: "manageClass" or "enterScores"
+
+  // States for Enter Scores view (subject teacher functionality)
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [subjectMarks, setSubjectMarks] = useState({});
+  const [savingScores, setSavingScores] = useState(false);
+  const [savedStudents, setSavedStudents] = useState(new Set());
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [selectedAssessment, setSelectedAssessment] = useState("");
+  const [customAssessments, setCustomAssessments] = useState([]);
   
   // New states for daily attendance
   const [dailyAttendance, setDailyAttendance] = useState({});
@@ -31,11 +52,47 @@ const FormMasterPage = () => {
   const [reportEndDate, setReportEndDate] = useState("");
   const [attendanceReportData, setAttendanceReportData] = useState([]);
 
+  // New state for analytics
+  const [analyticsData, setAnalyticsData] = useState({});
+
+  // New state for PDF generation method toggle
+  const [useServerSidePDF, setUseServerSidePDF] = useState(true);
+
+  // Print Section states
+  const [printClass, setPrintClass] = useState("");
+  const [printClassStudents, setPrintClassStudents] = useState([]);
+  const [printClassSubjects, setPrintClassSubjects] = useState([]);
+  const [selectedPrintStudents, setSelectedPrintStudents] = useState([]);
+  const [selectedPrintSubject, setSelectedPrintSubject] = useState("");
+  const [printing, setPrinting] = useState(false);
+  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+
   // Get user's assigned classes
   const getUserClasses = () => {
+    console.log('User object:', user);
+    console.log('User classes:', user?.classes);
+
     if (Array.isArray(user?.classes)) {
-      return user.classes.filter(cls => cls !== 'ALL');
+      const filtered = user.classes.filter(cls => cls !== 'ALL');
+      console.log('Filtered classes:', filtered);
+      return filtered;
     }
+
+    // Handle if classes is a string (comma-separated or JSON)
+    if (typeof user?.classes === 'string') {
+      try {
+        // Try parsing as JSON
+        const parsed = JSON.parse(user.classes);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(cls => cls !== 'ALL');
+        }
+      } catch (e) {
+        // Try splitting by comma
+        return user.classes.split(',').map(cls => cls.trim()).filter(cls => cls && cls !== 'ALL');
+      }
+    }
+
+    console.log('No classes found, returning empty array');
     return [];
   };
 
@@ -49,7 +106,19 @@ const FormMasterPage = () => {
 
   useEffect(() => {
     loadLearners();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-select form class when switching to Manage Class view
+  useEffect(() => {
+    if (mainView === 'manageClass' && user?.form_class) {
+      setSelectedClass(user.form_class);
+    } else if (mainView === 'enterScores') {
+      // Clear selection when switching to Enter Scores view
+      setSelectedClass('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainView]);
 
   const loadLearners = async () => {
     setLoading('learners', true, 'Loading students...');
@@ -70,7 +139,10 @@ const FormMasterPage = () => {
   };
 
   // Filter learners for selected class
-  const filteredLearners = learners.filter(l => l.className === selectedClass);
+  const filteredLearners = learners.filter(l => {
+    const studentClass = l.className || l.class_name;
+    return studentClass === selectedClass;
+  });
 
   // Load saved remarks and attendance when class changes
   useEffect(() => {
@@ -79,28 +151,41 @@ const FormMasterPage = () => {
       loadMarksDataForClass(selectedClass);
       loadFootnoteInfo(selectedClass);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClass, filteredLearners.length]);
 
   // Load saved data for a specific class
   const loadSavedDataForClass = (className) => {
     try {
-      // Get saved remarks and attendance from localStorage
+      // Get saved remarks, attitude, interest, comments, and attendance from localStorage
       const savedRemarks = JSON.parse(localStorage.getItem(`formMasterRemarks_${className}`) || '{}');
+      const savedAttitude = JSON.parse(localStorage.getItem(`formMasterAttitude_${className}`) || '{}');
+      const savedInterest = JSON.parse(localStorage.getItem(`formMasterInterest_${className}`) || '{}');
+      const savedComments = JSON.parse(localStorage.getItem(`formMasterComments_${className}`) || '{}');
       const savedAttendance = JSON.parse(localStorage.getItem(`formMasterAttendance_${className}`) || '{}');
-      
+
       // Initialize with saved data or empty values
       const newRemarks = {};
+      const newAttitude = {};
+      const newInterest = {};
+      const newComments = {};
       const newAttendance = {};
       const newErrors = {};
-      
+
       filteredLearners.forEach(learner => {
         const key = learner.idNumber || learner.LearnerID;
         newRemarks[key] = savedRemarks[key] || "";
+        newAttitude[key] = savedAttitude[key] || "";
+        newInterest[key] = savedInterest[key] || "";
+        newComments[key] = savedComments[key] || "";
         newAttendance[key] = savedAttendance[key] || "";
         newErrors[key] = "";
       });
-      
+
       setRemarks(newRemarks);
+      setAttitude(newAttitude);
+      setInterest(newInterest);
+      setComments(newComments);
       setAttendance(newAttendance);
       setErrors(newErrors);
     } catch (error) {
@@ -131,12 +216,19 @@ const FormMasterPage = () => {
           
           // Populate with existing marks data
           response.data.forEach(mark => {
-            const studentId = mark.studentId;
+            const studentId = mark.studentId || mark.student_id;
             newMarksData[subject][studentId] = {
-              ca1: mark.ca1 || '',
-              ca2: mark.ca2 || '',
+              test1: mark.test1 || '',
+              test2: mark.test2 || '',
+              test3: mark.test3 || '',
+              test4: mark.test4 || '',
+              testsTotal: mark.tests_total || mark.testsTotal || '',
+              classScore50: mark.class_score_50 || mark.classScore50 || '',
               exam: mark.exam || '',
-              total: mark.total || ''
+              examScore50: mark.exam_score_50 || mark.examScore50 || '',
+              total: mark.total || '',
+              ca1: mark.ca1 || '',
+              ca2: mark.ca2 || ''
             };
           });
         }
@@ -162,25 +254,60 @@ const FormMasterPage = () => {
     }
   };
 
+  // Load analytics data for a specific class
+  const loadAnalyticsData = async (className) => {
+    setLoading('analytics', true, 'Loading analytics data...');
+    try {
+      const userSubjects = getUserSubjects();
+      if (userSubjects.length === 0) return;
+
+      const analyticsPromises = userSubjects.map(subject => 
+        getClassPerformanceTrends(className, subject)
+      );
+
+      const analyticsResponses = await Promise.all(analyticsPromises);
+      const newAnalyticsData = {};
+
+      analyticsResponses.forEach((response, index) => {
+        const subject = userSubjects[index];
+        if (response.status === 'success') {
+          newAnalyticsData[subject] = response.data;
+        }
+      });
+
+      setAnalyticsData(newAnalyticsData);
+    } catch (error) {
+      console.error("Error loading analytics data:", error);
+      showNotification({message: "Error loading analytics data: " + error.message, type: 'error'});
+    } finally {
+      setLoading('analytics', false);
+    }
+  };
+
   // Load daily attendance when date changes
   useEffect(() => {
     if (dailyAttendanceDate && selectedClass) {
       loadDailyAttendance();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dailyAttendanceDate, selectedClass]);
 
-  // Save data to localStorage whenever remarks or attendance change
+  // Save data to localStorage whenever remarks, attitude, interest, comments, or attendance change
   useEffect(() => {
     if (selectedClass) {
       try {
         localStorage.setItem(`formMasterRemarks_${selectedClass}`, JSON.stringify(remarks));
+        localStorage.setItem(`formMasterAttitude_${selectedClass}`, JSON.stringify(attitude));
+        localStorage.setItem(`formMasterInterest_${selectedClass}`, JSON.stringify(interest));
+        localStorage.setItem(`formMasterComments_${selectedClass}`, JSON.stringify(comments));
         localStorage.setItem(`formMasterAttendance_${selectedClass}`, JSON.stringify(attendance));
       } catch (error) {
         console.error("Error saving data to localStorage:", error);
         showNotification({message: "Error saving data to localStorage: " + error.message, type: 'error'});
       }
     }
-  }, [remarks, attendance, selectedClass]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remarks, attitude, interest, comments, attendance, selectedClass]);
 
   // Save footnote information to localStorage
   useEffect(() => {
@@ -192,6 +319,7 @@ const FormMasterPage = () => {
         showNotification({message: "Error saving footnote info: " + error.message, type: 'error'});
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [footnoteInfo, selectedClass]);
 
   const handleRemarkChange = (studentId, value) => {
@@ -199,7 +327,7 @@ const FormMasterPage = () => {
       ...prev,
       [studentId]: value
     }));
-    
+
     // Clear error for this field when user starts typing
     if (errors[studentId]) {
       setErrors(prev => ({
@@ -207,6 +335,27 @@ const FormMasterPage = () => {
         [studentId]: ""
       }));
     }
+  };
+
+  const handleAttitudeChange = (studentId, value) => {
+    setAttitude(prev => ({
+      ...prev,
+      [studentId]: value
+    }));
+  };
+
+  const handleInterestChange = (studentId, value) => {
+    setInterest(prev => ({
+      ...prev,
+      [studentId]: value
+    }));
+  };
+
+  const handleCommentsChange = (studentId, value) => {
+    setComments(prev => ({
+      ...prev,
+      [studentId]: value
+    }));
   };
 
   const handleAttendanceChange = (studentId, value) => {
@@ -231,14 +380,42 @@ const FormMasterPage = () => {
   const handleMarksChange = (subject, studentId, field, value) => {
     // Allow only numbers
     if (value && !/^\d*\.?\d*$/.test(value)) return;
-    
+
+    // Calculate total automatically
+    const currentMarks = marksData[subject]?.[studentId] || {};
+    const updatedMarks = { ...currentMarks, [field]: value };
+
+    // Get test scores (each out of 15)
+    const test1 = parseFloat(updatedMarks.test1 || 0);
+    const test2 = parseFloat(updatedMarks.test2 || 0);
+    const test3 = parseFloat(updatedMarks.test3 || 0);
+    const test4 = parseFloat(updatedMarks.test4 || 0);
+
+    // Calculate tests total (out of 60)
+    const testsTotal = test1 + test2 + test3 + test4;
+
+    // Convert tests to 50% (60 marks → 50%)
+    const classScore50 = (testsTotal / 60) * 50;
+
+    // Get exam score (out of 100)
+    const examScore = parseFloat(updatedMarks.exam || 0);
+
+    // Convert exam to 50% (100 marks → 50%)
+    const examScore50 = (examScore / 100) * 50;
+
+    // Calculate final total (out of 100)
+    const finalTotal = classScore50 + examScore50;
+
     setMarksData(prev => ({
       ...prev,
       [subject]: {
         ...prev[subject],
         [studentId]: {
-          ...prev[subject][studentId],
-          [field]: value
+          ...updatedMarks,
+          testsTotal: testsTotal.toFixed(1),
+          classScore50: classScore50.toFixed(1),
+          examScore50: examScore50.toFixed(1),
+          total: finalTotal.toFixed(1)
         }
       }
     }));
@@ -445,6 +622,374 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     }
   };
 
+
+  // Print broadsheet for a specific class and subject
+  const printBroadsheet = async (subject) => {
+    if (!selectedClass || !subject) {
+      showNotification({message: "Please select a class and subject first.", type: 'error'});
+      return;
+    }
+
+    try {
+      // Get school information
+      const schoolInfo = printingService.getSchoolInfo();
+
+      // Generate and download subject broadsheet
+      const result = await printingService.printSubjectBroadsheet(
+        selectedClass,
+        subject,
+        schoolInfo,
+        '', // teacherName
+        settings.term || DEFAULT_TERM // term from global settings
+      );
+      
+      if (result.success) {
+        showNotification({message: result.message, type: 'success'});
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error("Error printing broadsheet:", error);
+      showNotification({message: "Error printing broadsheet: " + error.message, type: 'error'});
+    }
+  };
+
+  // Print complete class broadsheet with all subjects
+  const _printCompleteClassBroadsheet = async () => {
+    if (!selectedClass) {
+      showNotification({message: "Please select a class first.", type: 'error'});
+      return;
+    }
+
+    try {
+      // Get school information
+      const schoolInfo = printingService.getSchoolInfo();
+
+      // Generate and download complete class broadsheet
+      const result = await printingService.printCompleteClassBroadsheet(
+        selectedClass,
+        schoolInfo
+      );
+      
+      if (result.success) {
+        showNotification({message: result.message, type: 'success'});
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error("Error printing complete class broadsheet:", error);
+      showNotification({message: "Error printing complete class broadsheet: " + error.message, type: 'error'});
+    }
+  };
+
+  // Print class report with attendance and remarks
+  // Print Student Terminal Reports
+  const printStudentReports = async () => {
+    if (!selectedClass) {
+      showNotification({message: "Please select a class first.", type: 'error'});
+      return;
+    }
+
+    // Verify this is the form class
+    if (selectedClass !== user?.form_class) {
+      showNotification({message: "You can only print reports for your assigned form class.", type: 'error'});
+      return;
+    }
+
+    try {
+      const schoolInfo = printingService.getSchoolInfo();
+      const classStudents = filteredLearners;
+
+      if (classStudents.length === 0) {
+        showNotification({message: "No students found in this class", type: 'error'});
+        return;
+      }
+
+      let result;
+
+      // Try server-side PDF generation first if enabled
+      if (useServerSidePDF) {
+        try {
+          showNotification({
+            message: "Generating high-quality PDFs on server...",
+            type: 'info'
+          });
+
+          result = await printingService.printBulkStudentReportsServerSide(
+            classStudents,
+            schoolInfo.term,
+            schoolInfo
+          );
+
+          if (result.success) {
+            showNotification({message: result.message, type: 'success'});
+            return;
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (serverError) {
+          console.warn('Server-side PDF generation failed, falling back to client-side:', serverError);
+          showNotification({
+            message: "Server-side generation failed. Trying client-side...",
+            type: 'warning'
+          });
+
+          // Fallback to client-side generation
+          result = await printingService.printBulkStudentReports(
+            classStudents,
+            schoolInfo.term,
+            schoolInfo
+          );
+
+          if (result.success) {
+            showNotification({
+              message: result.message + ' (using client-side generation)',
+              type: 'success'
+            });
+          } else {
+            throw new Error(result.message);
+          }
+        }
+      } else {
+        // Use client-side generation directly
+        result = await printingService.printBulkStudentReports(
+          classStudents,
+          schoolInfo.term,
+          schoolInfo
+        );
+
+        if (result.success) {
+          showNotification({message: result.message, type: 'success'});
+        } else {
+          throw new Error(result.message);
+        }
+      }
+    } catch (error) {
+      console.error("Error printing student reports:", error);
+      showNotification({message: "Error printing student reports: " + error.message, type: 'error'});
+    }
+  };
+
+  // Print Complete Class Broadsheet
+  const printClassBroadsheet = async () => {
+    if (!selectedClass) {
+      showNotification({message: "Please select a class first.", type: 'error'});
+      return;
+    }
+
+    // Verify this is the form class
+    if (selectedClass !== user?.form_class) {
+      showNotification({message: "You can only print broadsheets for your assigned form class.", type: 'error'});
+      return;
+    }
+
+    try {
+      const schoolInfo = printingService.getSchoolInfo();
+      const result = await printingService.printCompleteClassBroadsheet(
+        selectedClass,
+        schoolInfo
+      );
+
+      if (result.success) {
+        showNotification({message: result.message, type: 'success'});
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error("Error printing class broadsheet:", error);
+      showNotification({message: "Error printing class broadsheet: " + error.message, type: 'error'});
+    }
+  };
+
+  // ========== PRINT SECTION FUNCTIONS ==========
+
+  // Handle print class change
+  const handlePrintClassChange = async (className) => {
+    setPrintClass(className);
+    if (className) {
+      try {
+        // Fetch both students and subjects for the class
+        const [studentsResponse, subjectsResponse] = await Promise.all([
+          getStudentsByClass(className),
+          getClassSubjects(className)
+        ]);
+
+        if (studentsResponse.status === 'success') {
+          setPrintClassStudents(studentsResponse.data || []);
+        } else {
+          setPrintClassStudents([]);
+        }
+
+        if (subjectsResponse.status === 'success') {
+          setPrintClassSubjects(subjectsResponse.data || []);
+        } else {
+          setPrintClassSubjects([]);
+        }
+
+        setSelectedPrintStudents([]);
+        setSelectedPrintSubject("");
+      } catch (error) {
+        console.error("Error loading print class data:", error);
+        showNotification({message: `Error loading class data: ${error.message}`, type: 'error'});
+        setPrintClassStudents([]);
+        setPrintClassSubjects([]);
+      }
+    } else {
+      setPrintClassStudents([]);
+      setPrintClassSubjects([]);
+      setSelectedPrintStudents([]);
+      setSelectedPrintSubject("");
+    }
+  };
+
+  // Handle student selection for printing
+  const handlePrintStudentSelection = (studentId) => {
+    setSelectedPrintStudents(prev => {
+      if (prev.includes(studentId)) {
+        return prev.filter(id => id !== studentId);
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  // Handle select all students
+  const handleSelectAllPrintStudents = () => {
+    if (selectedPrintStudents.length === printClassStudents.length) {
+      setSelectedPrintStudents([]);
+    } else {
+      setSelectedPrintStudents(printClassStudents.map(s => s.id));
+    }
+  };
+
+  // Print all class reports
+  const printAllClassReports = async () => {
+    if (!printClass) {
+      showNotification({message: "Please select a class first", type: 'warning'});
+      return;
+    }
+
+    setPrinting(true);
+    try {
+      const schoolInfo = printingService.getSchoolInfo();
+      const result = await printingService.printBulkStudentReportsServerSide(
+        printClassStudents,
+        schoolInfo.term,
+        schoolInfo,
+        (progress) => console.log(`PDF Progress: ${progress}%`)
+      );
+
+      if (result.success) {
+        showNotification({message: result.message, type: 'success'});
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error("Error printing class reports:", error);
+      showNotification({message: `Error printing reports: ${error.message}`, type: 'error'});
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  // Print selected students
+  const printSelectedReports = async () => {
+    if (selectedPrintStudents.length === 0) {
+      showNotification({message: "Please select at least one student", type: 'warning'});
+      return;
+    }
+
+    setPrinting(true);
+    try {
+      const schoolInfo = printingService.getSchoolInfo();
+      const studentsToprint = printClassStudents.filter(s =>
+        selectedPrintStudents.includes(s.id)
+      );
+
+      const result = await printingService.printBulkStudentReportsServerSide(
+        studentsToprint,
+        schoolInfo.term,
+        schoolInfo,
+        (progress) => console.log(`PDF Progress: ${progress}%`)
+      );
+
+      if (result.success) {
+        showNotification({message: result.message, type: 'success'});
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error("Error printing selected reports:", error);
+      showNotification({message: `Error printing reports: ${error.message}`, type: 'error'});
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  // Print complete broadsheet for print class
+  const printCompleteBroadsheet = async () => {
+    if (!printClass) {
+      showNotification({message: "Please select a class first", type: 'warning'});
+      return;
+    }
+
+    setPrinting(true);
+    try {
+      const schoolInfo = printingService.getSchoolInfo();
+      const result = await printingService.printCompleteClassBroadsheet(
+        printClass,
+        schoolInfo
+      );
+
+      if (result.success) {
+        showNotification({message: result.message, type: 'success'});
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error("Error printing broadsheet:", error);
+      showNotification({message: `Error printing broadsheet: ${error.message}`, type: 'error'});
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  // Print subject broadsheet from print section
+  const printSubjectBroadsheetFromPrintSection = async (subject) => {
+    if (!printClass) {
+      showNotification({message: "Please select a class first", type: 'warning'});
+      return;
+    }
+
+    if (!subject) {
+      showNotification({message: "Please select a subject", type: 'warning'});
+      return;
+    }
+
+    setPrinting(true);
+    try {
+      const schoolInfo = printingService.getSchoolInfo();
+      const result = await printingService.printSubjectBroadsheet(
+        printClass,
+        subject,
+        schoolInfo,
+        '', // teacherName
+        settings.term || DEFAULT_TERM // term from global settings
+      );
+
+      if (result.success) {
+        showNotification({message: `${subject} broadsheet for ${printClass} generated successfully`, type: 'success'});
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error("Error printing subject broadsheet:", error);
+      showNotification({message: `Error printing ${subject} broadsheet: ${error.message}`, type: 'error'});
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   // Handle confirmation dialog
   const handleConfirmDialog = (action) => {
     setShowConfirmDialog(false);
@@ -554,38 +1099,50 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   const validateMarksData = () => {
     const newErrors = {};
     let isValid = true;
-    
+
     const userSubjects = getUserSubjects();
-    
+
     userSubjects.forEach(subject => {
       if (marksData[subject]) {
         filteredLearners.forEach(learner => {
           const studentId = learner.idNumber || learner.LearnerID;
           const studentMarks = marksData[subject][studentId];
-          
+
           if (studentMarks) {
-            // Validate CA1 (0-20)
-            if (studentMarks.ca1 && (isNaN(studentMarks.ca1) || studentMarks.ca1 < 0 || studentMarks.ca1 > 20)) {
-              newErrors[`${subject}-${studentId}-ca1`] = "CA1 must be between 0 and 20";
+            // Validate Test 1 (0-15)
+            if (studentMarks.test1 && (isNaN(studentMarks.test1) || studentMarks.test1 < 0 || studentMarks.test1 > 15)) {
+              newErrors[`${subject}-${studentId}-test1`] = "Test 1 must be between 0 and 15";
               isValid = false;
             }
-            
-            // Validate CA2 (0-20)
-            if (studentMarks.ca2 && (isNaN(studentMarks.ca2) || studentMarks.ca2 < 0 || studentMarks.ca2 > 20)) {
-              newErrors[`${subject}-${studentId}-ca2`] = "CA2 must be between 0 and 20";
+
+            // Validate Test 2 (0-15)
+            if (studentMarks.test2 && (isNaN(studentMarks.test2) || studentMarks.test2 < 0 || studentMarks.test2 > 15)) {
+              newErrors[`${subject}-${studentId}-test2`] = "Test 2 must be between 0 and 15";
               isValid = false;
             }
-            
-            // Validate Exam (0-60)
-            if (studentMarks.exam && (isNaN(studentMarks.exam) || studentMarks.exam < 0 || studentMarks.exam > 60)) {
-              newErrors[`${subject}-${studentId}-exam`] = "Exam must be between 0 and 60";
+
+            // Validate Test 3 (0-15)
+            if (studentMarks.test3 && (isNaN(studentMarks.test3) || studentMarks.test3 < 0 || studentMarks.test3 > 15)) {
+              newErrors[`${subject}-${studentId}-test3`] = "Test 3 must be between 0 and 15";
+              isValid = false;
+            }
+
+            // Validate Test 4 (0-15)
+            if (studentMarks.test4 && (isNaN(studentMarks.test4) || studentMarks.test4 < 0 || studentMarks.test4 > 15)) {
+              newErrors[`${subject}-${studentId}-test4`] = "Test 4 must be between 0 and 15";
+              isValid = false;
+            }
+
+            // Validate Exam Score (0-100)
+            if (studentMarks.exam && (isNaN(studentMarks.exam) || studentMarks.exam < 0 || studentMarks.exam > 100)) {
+              newErrors[`${subject}-${studentId}-exam`] = "Exam must be between 0 and 100";
               isValid = false;
             }
           }
         });
       }
     });
-    
+
     setErrors(prev => ({ ...prev, ...newErrors }));
     return isValid;
   };
@@ -632,25 +1189,51 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         if (marksData[subject]) {
           filteredLearners.forEach(learner => {
             const studentId = learner.idNumber || learner.LearnerID;
-            const studentMarks = marksData[subject][studentId];
-            
-            if (studentMarks && (studentMarks.ca1 || studentMarks.ca2 || studentMarks.exam)) {
-              // Calculate total
-              const ca1 = parseFloat(studentMarks.ca1) || 0;
-              const ca2 = parseFloat(studentMarks.ca2) || 0;
+            const studentMarks = marksData[subject]?.[studentId];
+
+            if (studentMarks && (studentMarks.test1 || studentMarks.test2 || studentMarks.test3 || studentMarks.test4 || studentMarks.exam)) {
+              // Get test scores
+              const test1 = parseFloat(studentMarks.test1) || 0;
+              const test2 = parseFloat(studentMarks.test2) || 0;
+              const test3 = parseFloat(studentMarks.test3) || 0;
+              const test4 = parseFloat(studentMarks.test4) || 0;
+              const testsTotal = test1 + test2 + test3 + test4;
+
+              // Convert to 50%
+              const classScore50 = (testsTotal / 60) * 50;
+
+              // Get exam score
               const exam = parseFloat(studentMarks.exam) || 0;
-              const total = ca1 + ca2 + exam;
-              
+              const examScore50 = (exam / 100) * 50;
+
+              // Calculate total
+              const total = classScore50 + examScore50;
+
+              // Calculate grade
+              let grade = '';
+              if (total >= 80) grade = 'A';
+              else if (total >= 70) grade = 'B';
+              else if (total >= 60) grade = 'C';
+              else if (total >= 50) grade = 'D';
+              else if (total >= 40) grade = 'E';
+              else if (total > 0) grade = 'F';
+
               promises.push(
                 updateStudentScores({
                   studentId,
                   className: selectedClass,
                   subject,
-                  term: 'Term 3',
-                  ca1: studentMarks.ca1 || "",
-                  ca2: studentMarks.ca2 || "",
+                  term: settings.term || DEFAULT_TERM,
+                  test1: studentMarks.test1 || "",
+                  test2: studentMarks.test2 || "",
+                  test3: studentMarks.test3 || "",
+                  test4: studentMarks.test4 || "",
+                  testsTotal: testsTotal.toString(),
+                  classScore50: classScore50.toFixed(1),
                   exam: studentMarks.exam || "",
-                  total: total.toString()
+                  examScore50: examScore50.toFixed(1),
+                  total: total.toFixed(1),
+                  grade: grade
                 })
               );
             }
@@ -659,7 +1242,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       });
 
       const responses = await Promise.all(promises);
-      
+
       responses.forEach(response => {
         if (response.status === 'success') {
           successCount++;
@@ -674,7 +1257,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       } else {
         showNotification({message: `Saved ${successCount} marks successfully. ${errorCount} failed.`, type: 'warning'});
       }
-      
+
     } catch (error) {
       console.error("Save all marks error:", error);
       showNotification({message: "Error saving marks: " + error.message, type: 'error'});
@@ -699,455 +1282,468 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     }
   };
 
+  // ========== ENTER SCORES VIEW FUNCTIONS ==========
 
+  // Initialize and load marks when class/subject changes (for Enter Scores view)
+  useEffect(() => {
+    if (mainView === 'enterScores' && selectedClass && selectedSubject && filteredLearners.length > 0) {
+      loadSubjectMarks();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainView, selectedClass, selectedSubject, filteredLearners.length]);
+
+  // Load saved marks from database for Enter Scores view
+  const loadSubjectMarks = async () => {
+    setLoading('marks', true, 'Loading saved marks...');
+    try {
+      const response = await getMarks(selectedClass, selectedSubject);
+      const newMarks = {};
+      const savedSet = new Set();
+
+      // Initialize all students with empty marks
+      filteredLearners.forEach(learner => {
+        const studentId = learner.idNumber || learner.LearnerID;
+        newMarks[studentId] = {
+          test1: "", test2: "", test3: "", test4: "", exam: ""
+        };
+      });
+
+      // Populate with saved marks from database
+      if (response.status === 'success' && response.data) {
+        response.data.forEach(mark => {
+          const studentId = mark.studentId || mark.student_id;
+          if (newMarks[studentId]) {
+            // Map database fields to form fields
+            newMarks[studentId] = {
+              test1: mark.test1 || "",
+              test2: mark.test2 || "",
+              test3: mark.test3 || "",
+              test4: mark.test4 || "",
+              exam: mark.exam || ""
+            };
+            // Mark this student as saved if they have any marks
+            if (mark.test1 || mark.test2 || mark.test3 || mark.test4 || mark.exam) {
+              savedSet.add(studentId);
+            }
+          }
+        });
+      }
+
+      setSubjectMarks(newMarks);
+      setSavedStudents(savedSet);
+    } catch (error) {
+      console.error("Error loading subject marks:", error);
+      showNotification({message: "Error loading saved marks: " + error.message, type: 'error'});
+      // Still initialize with empty marks even if loading fails
+      const newMarks = {};
+      filteredLearners.forEach(learner => {
+        const studentId = learner.idNumber || learner.LearnerID;
+        newMarks[studentId] = {
+          test1: "", test2: "", test3: "", test4: "", exam: ""
+        };
+      });
+      setSubjectMarks(newMarks);
+      setSavedStudents(new Set());
+    } finally {
+      setLoading('marks', false);
+    }
+  };
+
+  // Handle mark change for Enter Scores view
+  const handleSubjectMarkChange = (studentId, field, value) => {
+    // Allow only numbers and decimal points
+    if (value && !/^\d*\.?\d*$/.test(value)) return;
+
+    setSubjectMarks(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        [field]: value
+      }
+    }));
+  };
+
+  // Calculate totals for a student (Enter Scores view)
+  const calculateStudentTotals = (studentMarks) => {
+    const test1 = Math.min(parseFloat(studentMarks.test1) || 0, 15);
+    const test2 = Math.min(parseFloat(studentMarks.test2) || 0, 15);
+    const test3 = Math.min(parseFloat(studentMarks.test3) || 0, 15);
+    const test4 = Math.min(parseFloat(studentMarks.test4) || 0, 15);
+    const testsTotal = test1 + test2 + test3 + test4;
+    const classScore50 = (testsTotal / 60) * 50;
+
+    const exam = Math.min(parseFloat(studentMarks.exam) || 0, 100);
+    const examScore50 = (exam / 100) * 50;
+
+    const total = classScore50 + examScore50;
+
+    let grade = '';
+    if (total >= 80) grade = 'A';
+    else if (total >= 70) grade = 'B';
+    else if (total >= 60) grade = 'C';
+    else if (total >= 50) grade = 'D';
+    else if (total >= 40) grade = 'E';
+    else if (total > 0) grade = 'F';
+
+    return { testsTotal, classScore50, examScore50, total, grade };
+  };
+
+  // Save individual student scores (Enter Scores view)
+  const saveStudentScores = async (studentId) => {
+    if (!selectedClass || !selectedSubject) {
+      showNotification({message: "Please select both class and subject", type: 'error'});
+      return;
+    }
+
+    const studentMarks = subjectMarks[studentId];
+    if (!studentMarks) return;
+
+    setSavingScores(true);
+    try {
+      const isCustomAssessment = selectedAssessment && selectedAssessment !== 'regular';
+
+      if (isCustomAssessment) {
+        // Save custom assessment score
+        const response = await saveCustomAssessmentScores({
+          assessmentId: parseInt(selectedAssessment),
+          studentId,
+          subject: selectedSubject,
+          score: parseFloat(studentMarks.score) || 0
+        });
+
+        if (response.status === 'success') {
+          setSavedStudents(prev => new Set([...prev, studentId]));
+          showNotification({message: "Score saved successfully!", type: 'success'});
+        } else {
+          showNotification({message: "Error saving score: " + response.message, type: 'error'});
+        }
+      } else {
+        // Save regular term scores
+        const { testsTotal, classScore50, examScore50, total, grade } = calculateStudentTotals(studentMarks);
+
+        await updateStudentScores({
+          studentId,
+          className: selectedClass,
+          subject: selectedSubject,
+          term: settings.term || DEFAULT_TERM,
+          test1: studentMarks.test1 || "",
+          test2: studentMarks.test2 || "",
+          test3: studentMarks.test3 || "",
+          test4: studentMarks.test4 || "",
+          ca1: (parseFloat(studentMarks.test1) || 0) + (parseFloat(studentMarks.test2) || 0),
+          ca2: (parseFloat(studentMarks.test3) || 0) + (parseFloat(studentMarks.test4) || 0),
+          testsTotal: testsTotal.toString(),
+          classScore50: classScore50.toFixed(1),
+          exam: studentMarks.exam || "",
+          examScore50: examScore50.toFixed(1),
+          total: total.toFixed(1),
+          grade: grade
+        });
+
+        setSavedStudents(prev => new Set([...prev, studentId]));
+        showNotification({message: "Scores saved successfully!", type: 'success'});
+      }
+    } catch (error) {
+      console.error("Error saving scores:", error);
+      showNotification({message: "Error saving scores: " + error.message, type: 'error'});
+    } finally {
+      setSavingScores(false);
+    }
+  };
+
+  // Save all scores for the subject (Enter Scores view)
+  const saveAllSubjectScores = async () => {
+    if (!selectedClass || !selectedSubject) {
+      showNotification({message: "Please select both class and subject", type: 'error'});
+      return;
+    }
+
+    setSavingScores(true);
+    try {
+      const isCustomAssessment = selectedAssessment && selectedAssessment !== 'regular';
+
+      const promises = filteredLearners.map(learner => {
+        const studentId = learner.idNumber || learner.LearnerID;
+        const studentMarks = subjectMarks[studentId];
+
+        if (isCustomAssessment) {
+          // Save custom assessment scores
+          if (studentMarks && studentMarks.score) {
+            return saveCustomAssessmentScores({
+              assessmentId: parseInt(selectedAssessment),
+              studentId,
+              subject: selectedSubject,
+              score: parseFloat(studentMarks.score) || 0
+            });
+          }
+        } else {
+          // Save regular term scores
+          if (studentMarks && (studentMarks.test1 || studentMarks.test2 || studentMarks.test3 || studentMarks.test4 || studentMarks.exam)) {
+            const { testsTotal, classScore50, examScore50, total, grade } = calculateStudentTotals(studentMarks);
+
+            return updateStudentScores({
+              studentId,
+              className: selectedClass,
+              subject: selectedSubject,
+              term: settings.term || DEFAULT_TERM,
+              test1: studentMarks.test1 || "",
+              test2: studentMarks.test2 || "",
+              test3: studentMarks.test3 || "",
+              test4: studentMarks.test4 || "",
+              ca1: (parseFloat(studentMarks.test1) || 0) + (parseFloat(studentMarks.test2) || 0),
+              ca2: (parseFloat(studentMarks.test3) || 0) + (parseFloat(studentMarks.test4) || 0),
+              testsTotal: testsTotal.toString(),
+              classScore50: classScore50.toFixed(1),
+              exam: studentMarks.exam || "",
+              examScore50: examScore50.toFixed(1),
+              total: total.toFixed(1),
+              grade: grade
+            });
+          }
+        }
+        return Promise.resolve();
+      });
+
+      await Promise.all(promises);
+      showNotification({message: "All scores saved successfully!", type: 'success'});
+      setSavedStudents(new Set(filteredLearners.map(l => l.idNumber || l.LearnerID)));
+    } catch (error) {
+      console.error("Error saving all scores:", error);
+      showNotification({message: "Error saving scores: " + error.message, type: 'error'});
+    } finally {
+      setSavingScores(false);
+    }
+  };
+
+  // Actions object for ManageClassView and EnterScoresView
+  const actions = {
+    // Tab navigation
+    setActiveTab,
+
+    // Attendance & Remarks handlers
+    handleAttendanceChange,
+    handleRemarkChange,
+    handleAttitudeChange,
+    handleInterestChange,
+    handleCommentsChange,
+    handleFootnoteChange,
+    confirmSave,
+    saveFootnoteInfo,
+
+    // Marks handlers
+    handleMarksChange,
+    saveAllMarksData,
+
+    // Broadsheet handlers
+    printBroadsheet,
+
+    // Analytics handlers
+    loadAnalyticsData: () => loadAnalyticsData(selectedClass),
+
+    // Daily Attendance handlers
+    setDailyAttendanceDate,
+    handleDailyAttendanceChange,
+    saveDailyAttendance,
+
+    // Report handlers
+    setReportStartDate,
+    setReportEndDate,
+    generateAttendanceReport,
+    printAttendanceReport,
+
+    // Enter Scores handlers
+    setSelectedClass,
+    setSelectedSubject,
+    handleScoreChange: handleSubjectMarkChange,
+    saveScore: saveStudentScores,
+    saveAllScores: saveAllSubjectScores
+  };
+
+  // Loading states object
+  const loadingStates = {
+    learners: isLoading('learners'),
+    marks: isLoading('marks'),
+    broadsheet: isLoading('broadsheet'),
+    analytics: isLoading('analytics'),
+    daily: isLoading('daily'),
+    report: isLoading('report')
+  };
+
+  // State object for views
+  const state = {
+    activeTab,
+    marksData,
+    attendance,
+    remarks,
+    attitude,
+    interest,
+    comments,
+    footnoteInfo,
+    dailyAttendance,
+    dailyAttendanceDate,
+    analyticsData,
+    attendanceReportData,
+    reportStartDate,
+    reportEndDate,
+    // Enter Scores state
+    selectedClass,
+    selectedSubject,
+    subjectMarks,
+    savedStudents
+  };
 
   return (
     <Layout>
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6">Form Master Dashboard</h1>
-        
-        {/* Class Selection */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
-          <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Select a class</option>
-            {getUserClasses().map(cls => (
-              <option key={cls} value={cls}>{cls}</option>
-            ))}
-          </select>
+
+        {/* Main View Switcher */}
+        <div className="mb-6 bg-white rounded-lg shadow-md p-4">
+          <div className="flex gap-4">
+            <button
+              onClick={() => setMainView('manageClass')}
+              className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
+                mainView === 'manageClass'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-white/30 text-white hover:bg-white/40'
+              }`}
+            >
+              <span className="text-xl mr-2">🎓</span>
+              Manage Class
+            </button>
+            <button
+              onClick={() => setMainView('enterScores')}
+              className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
+                mainView === 'enterScores'
+                  ? 'bg-green-600 text-white shadow-lg'
+                  : 'bg-white/30 text-white hover:bg-white/40'
+              }`}
+            >
+              <span className="text-xl mr-2">✏️</span>
+              Enter Scores
+            </button>
+            <button
+              onClick={() => setMainView('printSection')}
+              className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
+                mainView === 'printSection'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-white/30 text-white hover:bg-white/40'
+              }`}
+            >
+              <span className="text-xl mr-2">🖨️</span>
+              Print Section
+            </button>
+            <button
+              onClick={() => setIsPromoteModalOpen(true)}
+              className="flex-1 py-3 px-6 rounded-lg font-semibold transition-all bg-gradient-to-r from-green-500 to-blue-600 text-white hover:from-green-600 hover:to-blue-700 shadow-lg"
+            >
+              <span className="text-xl mr-2">📈</span>
+              Promote Students
+            </button>
+          </div>
         </div>
 
-        {selectedClass && (
-          <div>
-            {/* Tabs */}
-            <div className="mb-6 border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
+        {/* Manage Class View - Show Classes as Cards */}
+        {mainView === 'manageClass' && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4 text-white">Select a Class to Manage</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {/* Form Class Card */}
+              {user?.form_class && (
                 <button
-                  onClick={() => setActiveTab("attendance")}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "attendance"
-                      ? "border-indigo-500 text-indigo-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  onClick={() => setSelectedClass(user.form_class)}
+                  className={`bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-lg p-6 transition-all transform hover:scale-105 ${
+                    selectedClass === user.form_class ? 'ring-4 ring-blue-300 scale-105' : ''
                   }`}
                 >
-                  Attendance & Remarks
+                  <div className="text-center">
+                    <div className="text-4xl mb-3">🎓</div>
+                    <h3 className="text-2xl font-bold mb-2">{user.form_class}</h3>
+                    <div className="text-sm opacity-90 bg-white bg-opacity-20 px-3 py-1 rounded-full inline-block">
+                      Form Class
+                    </div>
+                    <div className="text-sm opacity-90 mt-3">
+                      {filteredLearners.filter(l => (l.className || l.class_name) === user.form_class).length} Students
+                    </div>
+                  </div>
                 </button>
-                <button
-                  onClick={() => setActiveTab("marks")}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "marks"
-                      ? "border-indigo-500 text-indigo-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  Marks
-                </button>
-                <button
-                  onClick={() => setActiveTab("daily")}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "daily"
-                      ? "border-indigo-500 text-indigo-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  Daily Attendance
-                </button>
-                <button
-                  onClick={() => setActiveTab("report")}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "report"
-                      ? "border-indigo-500 text-indigo-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  Attendance Report
-                </button>
-              </nav>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Enter Scores View - Show Overview Cards */}
+        {mainView === 'enterScores' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Subjects Card */}
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 md:col-span-2">
+              <div className="flex items-center mb-2">
+                <span className="text-3xl mr-3">📖</span>
+                <div>
+                  <h2 className="text-sm font-medium opacity-90">Your Teaching Subjects</h2>
+                  <p className="text-2xl font-bold">{getUserSubjects().length} {getUserSubjects().length === 1 ? 'Subject' : 'Subjects'}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {getUserSubjects().map(subject => (
+                  <span key={subject} className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm font-medium">
+                    {subject}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Class and Subject Selection - Only for Enter Scores View */}
+        {mainView === 'enterScores' && (
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Class Selection */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Select Class (Enter Scores)
+              </label>
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="">Select a class</option>
+                {getUserClasses().map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Attendance & Remarks Tab */}
-            {activeTab === "attendance" && (
-              <div>
-                <div className="bg-white shadow rounded-lg p-6 mb-6">
-                  <h2 className="text-xl font-semibold mb-4">Attendance & Remarks</h2>
-                  
-                  {isLoading('learners') ? (
-                    <LoadingSpinner message="Loading students..." />
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredLearners.map((learner) => {
-                            const studentId = learner.idNumber || learner.LearnerID;
-                            return (
-                              <tr key={studentId}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm font-medium text-gray-900">{learner.firstName} {learner.lastName}</div>
-                                  <div className="text-sm text-gray-500">{studentId}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="365"
-                                    value={attendance[studentId] || ""}
-                                    onChange={(e) => handleAttendanceChange(studentId, e.target.value)}
-                                    className="w-24 p-2 border border-gray-300 rounded-md"
-                                  />
-                                  {errors[studentId] && (
-                                    <div className="text-red-500 text-sm mt-1">{errors[studentId]}</div>
-                                  )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <textarea
-                                    value={remarks[studentId] || ""}
-                                    onChange={(e) => handleRemarkChange(studentId, e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-md"
-                                    rows="2"
-                                  />
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  
-                  <div className="mt-6 flex justify-end space-x-3">
-                    <button
-                      onClick={confirmSave}
-                      disabled={saving}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {saving ? "Saving..." : "Save All"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Footnote Section */}
-                <div className="bg-white shadow rounded-lg p-6 mb-6">
-                  <h2 className="text-xl font-semibold mb-4">Footnote Information</h2>
-                  <textarea
-                    value={footnoteInfo}
-                    onChange={(e) => handleFootnoteChange(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    rows="3"
-                    placeholder="Enter any additional information for reports..."
-                  />
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      onClick={saveFootnoteInfo}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-                    >
-                      Save Footnote
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Marks Tab */}
-            {activeTab === "marks" && (
-              <div>
-                <div className="bg-white shadow rounded-lg p-6 mb-6">
-                  <h2 className="text-xl font-semibold mb-4">Student Marks</h2>
-                  
-                  {isLoading('marks') ? (
-                    <LoadingSpinner message="Loading marks data..." />
-                  ) : (
-                    getUserSubjects().map(subject => (
-                      <div key={subject} className="mb-8">
-                        <h3 className="text-lg font-medium mb-3">{subject}</h3>
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CA1 (20)</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CA2 (20)</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam (60)</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total (100)</th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {filteredLearners.map((learner) => {
-                                const studentId = learner.idNumber || learner.LearnerID;
-                                const studentMarks = marksData[subject]?.[studentId] || {};
-                                const ca1 = studentMarks.ca1 || '';
-                                const ca2 = studentMarks.ca2 || '';
-                                const exam = studentMarks.exam || '';
-                                const total = studentMarks.total || '';
-                                
-                                // Check for errors for this specific student and subject
-                                const ca1Error = errors[`${subject}-${studentId}-ca1`];
-                                const ca2Error = errors[`${subject}-${studentId}-ca2`];
-                                const examError = errors[`${subject}-${studentId}-exam`];
-                                
-                                return (
-                                  <tr key={`${subject}-${studentId}`}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <div className="text-sm font-medium text-gray-900">{learner.firstName} {learner.lastName}</div>
-                                      <div className="text-sm text-gray-500">{studentId}</div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="20"
-                                        step="0.5"
-                                        value={ca1}
-                                        onChange={(e) => handleMarksChange(subject, studentId, 'ca1', e.target.value)}
-                                        className="w-20 p-2 border border-gray-300 rounded-md"
-                                      />
-                                      {ca1Error && (
-                                        <div className="text-red-500 text-xs mt-1">{ca1Error}</div>
-                                      )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="20"
-                                        step="0.5"
-                                        value={ca2}
-                                        onChange={(e) => handleMarksChange(subject, studentId, 'ca2', e.target.value)}
-                                        className="w-20 p-2 border border-gray-300 rounded-md"
-                                      />
-                                      {ca2Error && (
-                                        <div className="text-red-500 text-xs mt-1">{ca2Error}</div>
-                                      )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="60"
-                                        step="0.5"
-                                        value={exam}
-                                        onChange={(e) => handleMarksChange(subject, studentId, 'exam', e.target.value)}
-                                        className="w-20 p-2 border border-gray-300 rounded-md"
-                                      />
-                                      {examError && (
-                                        <div className="text-red-500 text-xs mt-1">{examError}</div>
-                                      )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <div className="text-sm font-medium text-gray-900">{total}</div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  
-                  <div className="mt-6 flex justify-end space-x-3">
-                    <button
-                      onClick={saveAllMarksData}
-                      disabled={saving}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {saving ? "Saving..." : "Save All Marks"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Daily Attendance Tab */}
-            {activeTab === "daily" && (
-              <div>
-                <div className="bg-white shadow rounded-lg p-6 mb-6">
-                  <h2 className="text-xl font-semibold mb-4">Daily Attendance</h2>
-                  
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
-                    <input
-                      type="date"
-                      value={dailyAttendanceDate}
-                      onChange={(e) => setDailyAttendanceDate(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                  
-                  {dailyAttendanceDate && (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredLearners.map((learner) => {
-                            const studentId = learner.idNumber || learner.LearnerID;
-                            const status = dailyAttendance[studentId] || 'present';
-                            return (
-                              <tr key={studentId}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm font-medium text-gray-900">{learner.firstName} {learner.lastName}</div>
-                                  <div className="text-sm text-gray-500">{studentId}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex space-x-4">
-                                    <label className="inline-flex items-center">
-                                      <input
-                                        type="radio"
-                                        name={`status-${studentId}`}
-                                        checked={status === 'present'}
-                                        onChange={() => handleDailyAttendanceChange(studentId, 'present')}
-                                        className="text-blue-600"
-                                      />
-                                      <span className="ml-2">Present</span>
-                                    </label>
-                                    <label className="inline-flex items-center">
-                                      <input
-                                        type="radio"
-                                        name={`status-${studentId}`}
-                                        checked={status === 'absent'}
-                                        onChange={() => handleDailyAttendanceChange(studentId, 'absent')}
-                                        className="text-blue-600"
-                                      />
-                                      <span className="ml-2">Absent</span>
-                                    </label>
-                                    <label className="inline-flex items-center">
-                                      <input
-                                        type="radio"
-                                        name={`status-${studentId}`}
-                                        checked={status === 'late'}
-                                        onChange={() => handleDailyAttendanceChange(studentId, 'late')}
-                                        className="text-blue-600"
-                                      />
-                                      <span className="ml-2">Late</span>
-                                    </label>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                      
-                      <div className="mt-6 flex justify-end">
-                        <button
-                          onClick={saveDailyAttendance}
-                          disabled={saving}
-                          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {saving ? "Saving..." : "Save Daily Attendance"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Attendance Report Tab */}
-            {activeTab === "report" && (
-              <div>
-                <div className="bg-white shadow rounded-lg p-6 mb-6">
-                  <h2 className="text-xl font-semibold mb-4">Attendance Report</h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                      <input
-                        type="date"
-                        value={reportStartDate}
-                        onChange={(e) => setReportStartDate(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                      <input
-                        type="date"
-                        value={reportEndDate}
-                        onChange={(e) => setReportEndDate(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={generateAttendanceReport}
-                        disabled={isLoading('report')}
-                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        {isLoading('report') ? "Generating..." : "Generate Report"}
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {attendanceReportData.length > 0 && (
-                    <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium">Report Results</h3>
-                        <button
-                          onClick={printAttendanceReport}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
-                        >
-                          Print Report
-                        </button>
-                      </div>
-                      
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Late</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Days</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {attendanceReportData.map((student) => (
-                              <tr key={student.studentId}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.present}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.absent}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.late}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.totalDays}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <span className={
-                                    student.percentage >= 90 ? "text-green-600" :
-                                    student.percentage >= 75 ? "text-yellow-600" : "text-red-600"
-                                  }>
-                                    {student.percentage}%
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Subject Selection */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">Select Subject</label>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="">Select a subject</option>
+                {getUserSubjects().map(subject => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+            </div>
           </div>
+        )}
+
+        {/* Manage Class View */}
+        {mainView === 'manageClass' && selectedClass && (
+          <ManageClassView
+            state={state}
+            actions={actions}
+            formClass={selectedClass}
+            students={filteredLearners}
+            userSubjects={getUserSubjects()}
+            loadingStates={loadingStates}
+            errors={errors}
+            saving={saving}
+          />
         )}
 
         {/* Confirmation Dialog */}
@@ -1159,7 +1755,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => handleConfirmDialog('cancel')}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-white/30 rounded-md text-white hover:bg-white/20"
                 >
                   Cancel
                 </button>
@@ -1172,6 +1768,180 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
               </div>
             </div>
           </div>
+        )}
+
+        {/* Enter Scores View */}
+        {mainView === 'enterScores' && selectedClass && selectedSubject && (
+          <EnterScoresView
+            state={state}
+            actions={actions}
+            userSubjects={getUserSubjects()}
+            userClasses={getUserClasses()}
+            students={filteredLearners}
+            loadingStates={loadingStates}
+            errors={errors}
+            saving={savingScores}
+          />
+        )}
+
+        {/* Empty state for Enter Scores view */}
+        {mainView === 'enterScores' && (!selectedClass || !selectedSubject) && (
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <span className="text-6xl mb-4 block">✏️</span>
+            <h3 className="text-xl font-bold text-white mb-2">Ready to Enter Scores</h3>
+            <p className="text-white/90 mb-6">Select a class and subject to start entering scores</p>
+            <div className="text-sm text-white/70 max-w-md mx-auto">
+              <p>💡 Tip: Your entered scores are automatically saved to the database as you work.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Print Section View */}
+        {mainView === 'printSection' && (
+          <div className="space-y-6">
+            {/* Class Selection */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4 text-white">Print Reports & Broadsheets</h2>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-white mb-2">Select Class</label>
+                <select
+                  value={printClass}
+                  onChange={(e) => handlePrintClassChange(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Choose Class</option>
+                  {getUserClasses().map(cls => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
+              </div>
+
+              {printClass && (
+                <>
+                  {/* Print Actions */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <button
+                      onClick={printAllClassReports}
+                      disabled={printing || printClassStudents.length === 0}
+                      className={`bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-3 rounded-md font-medium transition-colors ${
+                        printing ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {printing ? "Printing..." : `📄 Print All Reports (${printClassStudents.length})`}
+                    </button>
+
+                    <button
+                      onClick={printCompleteBroadsheet}
+                      disabled={printing}
+                      className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-3 rounded-md font-medium transition-colors ${
+                        printing ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      📊 Print Complete Broadsheet
+                    </button>
+
+                    <button
+                      onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
+                      disabled={printing}
+                      className={`bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-3 rounded-md font-medium transition-colors ${
+                        printing ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      📋 Print Subject Broadsheet
+                    </button>
+                  </div>
+
+                  {/* Subject Dropdown */}
+                  {showSubjectDropdown && (
+                    <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                      <h4 className="text-md font-bold mb-3 text-white">Select Subject</h4>
+                      <div className="max-h-48 overflow-y-auto bg-white rounded p-2 border border-gray-200">
+                        {printClassSubjects.length > 0 ? (
+                          printClassSubjects.map((subject) => (
+                            <button
+                              key={subject}
+                              onClick={() => {
+                                printSubjectBroadsheetFromPrintSection(subject);
+                                setShowSubjectDropdown(false);
+                              }}
+                              disabled={printing}
+                              className="w-full text-left px-3 py-2 mb-1 hover:bg-purple-100 rounded transition-colors disabled:opacity-50"
+                            >
+                              {subject}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="text-white/80 text-sm p-3">No subjects with marks found</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Student Selection */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-lg font-bold mb-3 text-white">Select Individual Students</h3>
+                    <div className="flex items-center mb-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedPrintStudents.length === printClassStudents.length && printClassStudents.length > 0}
+                        onChange={handleSelectAllPrintStudents}
+                        className="mr-2 w-4 h-4 text-purple-600 focus:ring-purple-500"
+                      />
+                      <label className="font-medium text-white">Select All ({printClassStudents.length} students)</label>
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto bg-white rounded p-3 mb-4 border border-gray-200">
+                      {printClassStudents.map((student) => (
+                        <div key={student.id} className="flex items-center mb-2 hover:bg-gray-50 p-1 rounded">
+                          <input
+                            type="checkbox"
+                            checked={selectedPrintStudents.includes(student.id)}
+                            onChange={() => handlePrintStudentSelection(student.id)}
+                            className="mr-2 w-4 h-4 text-purple-600 focus:ring-purple-500"
+                          />
+                          <label className="text-white/90">
+                            {student.first_name} {student.last_name} ({student.id_number})
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={printSelectedReports}
+                      disabled={printing || selectedPrintStudents.length === 0}
+                      className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-400 w-full text-white px-4 py-2 rounded-md font-medium transition-colors ${
+                        printing || selectedPrintStudents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {printing ? "Printing..." : `Print Selected (${selectedPrintStudents.length})`}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Teacher Leaderboard - At Bottom */}
+        <TeacherLeaderboard />
+
+        {/* Promote Students Modal */}
+        {isPromoteModalOpen && (
+          <PromoteStudentsModal
+            isOpen={isPromoteModalOpen}
+            onClose={() => setIsPromoteModalOpen(false)}
+            students={learners.filter(l => {
+              // Form Master can only promote students from their assigned form class
+              const assignedClass = user.form_class || user.classAssigned;
+              const studentClass = l.className || l.class_name;
+              return studentClass === assignedClass;
+            })}
+            onPromotionComplete={() => {
+              setIsPromoteModalOpen(false);
+              window.location.reload();
+            }}
+          />
         )}
       </div>
     </Layout>

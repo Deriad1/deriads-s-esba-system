@@ -3,7 +3,7 @@ import React from 'react';
 const PerformanceChart = ({ data, title, type = 'bar' }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+      <div className="glass-extra-transparent rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">{title}</h3>
         <div className="text-center py-8 text-gray-500">
           <p>No data available for visualization</p>
@@ -17,7 +17,7 @@ const PerformanceChart = ({ data, title, type = 'bar' }) => {
     const maxValue = Math.max(...data.map(item => item.value));
     
     return (
-      <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+      <div className="glass-extra-transparent rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">{title}</h3>
         <div className="flex items-end justify-between h-64 mt-8">
           {data.map((item, index) => (
@@ -48,7 +48,7 @@ const PerformanceChart = ({ data, title, type = 'bar' }) => {
     ];
     
     return (
-      <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+      <div className="glass-extra-transparent rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">{title}</h3>
         <div className="flex flex-col items-center">
           <div className="relative w-48 h-48">
@@ -112,7 +112,7 @@ const PerformanceChart = ({ data, title, type = 'bar' }) => {
     const range = maxValue - minValue || 1; // Avoid division by zero
     
     return (
-      <div className="bg-white/10 backdrop-blur-xl border border-white/40 ring-1 ring-white/20 shadow-2xl rounded-lg p-6">
+      <div className="glass-extra-transparent rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">{title}</h3>
         <div className="relative h-64 mt-8">
           <svg viewBox="0 0 100 100" className="w-full h-full">
