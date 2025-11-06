@@ -85,7 +85,8 @@ app.get('/api/health', (req, res) => {
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // All remaining requests return the React app, so it can handle routing
-app.get('*', (req, res) => {
+// Express v5 requires regex pattern instead of '*'
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
