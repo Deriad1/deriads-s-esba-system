@@ -666,22 +666,25 @@ body { background-color: #f6f7fb; }
    MOBILE MODAL SCROLLING FIX
    ============================================================================ */
 
-/* Only target modal backdrops with z-50 (modals typically use this) */
-.fixed.inset-0.z-50 {
+/* Target modal backdrops with z-50 or z-[9999] */
+.fixed.inset-0.z-50,
+.fixed.inset-0[class*="z-[9999]"] {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
 
 /* Ensure modal containers are scrollable on mobile */
-.fixed.inset-0.z-50.overflow-y-auto {
+.fixed.inset-0.z-50.overflow-y-auto,
+.fixed.inset-0[class*="z-[9999]"].overflow-y-auto {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto !important;
   overscroll-behavior: contain;
 }
 
-/* Fix for modals with flex centering - allow scrolling on mobile only */
+/* Fix for modals with flex centering - align to top on mobile */
 @media (max-width: 639px) {
-  .fixed.inset-0.z-50.flex {
+  .fixed.inset-0.z-50.flex,
+  .fixed.inset-0[class*="z-[9999]"].flex {
     align-items: flex-start !important;
     padding-top: 1rem;
     padding-bottom: 1rem;
@@ -691,7 +694,10 @@ body { background-color: #f6f7fb; }
 /* Ensure modal content is scrollable - more specific selectors */
 .fixed.inset-0.z-50 .glass-card-golden,
 .fixed.inset-0.z-50 .glass-modal-transparent,
-.fixed.inset-0.z-50 .bg-white.rounded-lg {
+.fixed.inset-0.z-50 .bg-white.rounded-lg,
+.fixed.inset-0[class*="z-[9999]"] .glass-card-golden,
+.fixed.inset-0[class*="z-[9999]"] .glass-modal-transparent,
+.fixed.inset-0[class*="z-[9999]"] .bg-white.rounded-lg {
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -703,7 +709,10 @@ body { background-color: #f6f7fb; }
   /* Make modal content scrollable on mobile */
   .fixed.inset-0.z-50 .glass-card-golden,
   .fixed.inset-0.z-50 .glass-modal-transparent,
-  .fixed.inset-0.z-50 > div > div {
+  .fixed.inset-0.z-50 > div > div,
+  .fixed.inset-0[class*="z-[9999]"] .glass-card-golden,
+  .fixed.inset-0[class*="z-[9999]"] .glass-modal-transparent,
+  .fixed.inset-0[class*="z-[9999]"] > div > div {
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
