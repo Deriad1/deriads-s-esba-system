@@ -241,8 +241,14 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] overflow-y-auto flex items-center justify-center p-4">
-        <div className="glass-card-golden rounded-xl p-4 sm:p-6 w-full max-w-full sm:max-w-6xl my-8 border-2 border-white/30 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] overflow-y-auto flex items-start sm:items-center justify-center p-4"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+      >
+        <div
+          className="glass-card-golden rounded-xl p-4 sm:p-6 w-full max-w-full sm:max-w-6xl my-8 border-2 border-white/30 shadow-2xl max-h-[90vh] overflow-y-auto"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
         <div className="flex justify-between items-center mb-6 pb-4 border-b-4 border-yellow-500/50">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/90 to-indigo-600/90 backdrop-blur-sm flex items-center justify-center text-white text-2xl shadow-lg border-2 border-white/50">
