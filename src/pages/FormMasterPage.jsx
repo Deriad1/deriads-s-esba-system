@@ -111,8 +111,8 @@ const FormMasterPage = () => {
 
   // Auto-select form class when switching to Manage Class view
   useEffect(() => {
-    if (mainView === 'manageClass' && user?.form_class) {
-      setSelectedClass(user.form_class);
+    if (mainView === 'manageClass' && user?.formClass) {
+      setSelectedClass(user.formClass);
     } else if (mainView === 'enterScores') {
       // Clear selection when switching to Enter Scores view
       setSelectedClass('');
@@ -691,7 +691,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     }
 
     // Verify this is the form class
-    if (selectedClass !== user?.form_class) {
+    if (selectedClass !== user?.formClass) {
       showNotification({message: "You can only print reports for your assigned form class.", type: 'error'});
       return;
     }
@@ -778,7 +778,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     }
 
     // Verify this is the form class
-    if (selectedClass !== user?.form_class) {
+    if (selectedClass !== user?.formClass) {
       showNotification({message: "You can only print broadsheets for your assigned form class.", type: 'error'});
       return;
     }
@@ -1649,21 +1649,21 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
             <h2 className="text-xl font-semibold mb-4 text-white">Select a Class to Manage</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {/* Form Class Card - Glass Morphism */}
-              {user?.form_class && (
+              {user?.formClass && (
                 <button
-                  onClick={() => setSelectedClass(user.form_class)}
+                  onClick={() => setSelectedClass(user.formClass)}
                   className={`bg-gradient-to-br from-blue-500/70 to-blue-600/70 backdrop-blur-xl hover:from-blue-600/80 hover:to-blue-700/80 text-white rounded-2xl shadow-2xl p-8 transition-all duration-300 transform hover:scale-105 border border-white/30 ${
-                    selectedClass === user.form_class ? 'ring-4 ring-blue-300/60 scale-105 shadow-blue-500/50' : ''
+                    selectedClass === user.formClass ? 'ring-4 ring-blue-300/60 scale-105 shadow-blue-500/50' : ''
                   }`}
                 >
                   <div className="text-center">
                     <div className="text-5xl mb-4 drop-shadow-lg">🎓</div>
-                    <h3 className="text-2xl font-bold mb-3 drop-shadow-md">{user.form_class}</h3>
+                    <h3 className="text-2xl font-bold mb-3 drop-shadow-md">{user.formClass}</h3>
                     <div className="text-sm font-medium bg-white/20 backdrop-blur-md px-4 py-2 rounded-full inline-block border border-white/30">
                       Form Class
                     </div>
                     <div className="text-sm font-semibold mt-4 bg-white/10 backdrop-blur-sm px-3 py-2 rounded-lg inline-block">
-                      {filteredLearners.filter(l => (l.className || l.class_name) === user.form_class).length} Students
+                      {filteredLearners.filter(l => (l.className || l.class_name) === user.formClass).length} Students
                     </div>
                   </div>
                 </button>
@@ -1933,7 +1933,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
             onClose={() => setIsPromoteModalOpen(false)}
             students={learners.filter(l => {
               // Form Master can only promote students from their assigned form class
-              const assignedClass = user.form_class || user.classAssigned;
+              const assignedClass = user.formClass || user.classAssigned;
               const studentClass = l.className || l.class_name;
               return studentClass === assignedClass;
             })}
