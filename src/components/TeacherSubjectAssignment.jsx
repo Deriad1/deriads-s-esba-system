@@ -71,15 +71,21 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
     setSaving(true);
     try {
       // Determine roles based on assignments
-      let updatedRoles = [...(selectedTeacher.all_roles || [])];
+      const currentPrimaryRole = selectedTeacher.teacher_primary_role || selectedTeacher.primaryRole || 'subject_teacher';
+      let updatedRoles = [...(selectedTeacher.all_roles || [currentPrimaryRole])];
+
+      // Ensure primary role is always in the roles list
+      if (!updatedRoles.includes(currentPrimaryRole)) {
+        updatedRoles.push(currentPrimaryRole);
+      }
 
       // Add subject_teacher role if they have subjects
       if (teacherSubjects.length > 0 && !updatedRoles.includes('subject_teacher')) {
         updatedRoles.push('subject_teacher');
       }
 
-      // Remove subject_teacher role if they have no subjects
-      if (teacherSubjects.length === 0) {
+      // Remove subject_teacher role if they have no subjects (unless it's their primary role)
+      if (teacherSubjects.length === 0 && currentPrimaryRole !== 'subject_teacher') {
         updatedRoles = updatedRoles.filter(r => r !== 'subject_teacher');
       }
 
@@ -93,7 +99,7 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
         subjects: teacherSubjects,
         classes: teacherClasses,
         formClass: formClass || null, // Form Master's administrative class
-        primaryRole: selectedTeacher.teacher_primary_role,
+        primaryRole: currentPrimaryRole, // Use the determined primary role
         all_roles: updatedRoles,
         allRoles: updatedRoles
       };
