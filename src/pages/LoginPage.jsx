@@ -119,7 +119,7 @@ const LoginPage = () => {
     }
 
     try {
-      await changeTeacherPassword(tempUserData.id, newPassword);
+      await changeTeacherPassword(tempUserData.id, password, newPassword);
       // ✅ FIXED: Use notification instead of alert
       showNotification({
         message: 'Password changed successfully! Please login with your new password.',
