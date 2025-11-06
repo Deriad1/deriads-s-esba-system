@@ -13,3 +13,6 @@ if (!databaseUrl) {
 
 // Export sql for use in API routes only
 export const sql = neon(databaseUrl);
+
+// Also export as 'query' for compatibility with some API files
+export const query = sql;
