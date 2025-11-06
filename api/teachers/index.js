@@ -45,6 +45,11 @@ export default async function handler(req, res) {
 // GET /api/teachers
 async function handleGet(req, res) {
   try {
+    // Set cache-control headers to prevent stale data
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const result = await sql`
       SELECT id, first_name, last_name, email, gender,
              teacher_primary_role, all_roles, classes, subjects,
