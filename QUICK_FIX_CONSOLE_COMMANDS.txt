@@ -1,0 +1,48 @@
+========================================
+QUICK FIX FOR STORAGE ERROR
+========================================
+
+Press F12 to open Browser Console, then copy-paste ONE of these commands:
+
+========================================
+OPTION 1: NUCLEAR FIX (FASTEST)
+========================================
+This clears everything. You'll need to login again, but it works instantly.
+
+localStorage.clear(); location.reload();
+
+
+========================================
+OPTION 2: SMART CLEANUP
+========================================
+This keeps essential data. Copy the ENTIRE block:
+
+(function(){var k=['currentTerm','currentAcademicYear','authToken','currentUser','schoolInfo','onlineMode'];var r=0;for(var i in localStorage){if(localStorage.hasOwnProperty(i)&&k.indexOf(i)===-1){localStorage.removeItem(i);r++;}}console.log('Removed '+r+' items');location.reload();})();
+
+
+========================================
+OPTION 3: CHECK STORAGE FIRST
+========================================
+See what's taking up space:
+
+(function(){var t=0;var items=[];for(var k in localStorage){if(localStorage.hasOwnProperty(k)){var s=new Blob([localStorage.getItem(k)]).size;t+=s;items.push({key:k,kb:(s/1024).toFixed(2)});}}items.sort(function(a,b){return parseFloat(b.kb)-parseFloat(a.kb);});console.log('Total: '+(t/1024/1024).toFixed(2)+' MB');console.log('Top 10 largest:');items.slice(0,10).forEach(function(item,i){console.log((i+1)+'. '+item.key+': '+item.kb+' KB');});})();
+
+
+========================================
+WHICH ONE TO USE?
+========================================
+
+- If you just want it fixed NOW → Use OPTION 1
+- If you want to keep your login → Use OPTION 2
+- If you want to see what's wrong first → Use OPTION 3, then use OPTION 2
+
+========================================
+AFTER RUNNING THE FIX
+========================================
+
+1. The page will reload automatically
+2. If you used OPTION 1, login again
+3. Your Archive Viewer should now work!
+4. The storage error should be gone
+
+========================================

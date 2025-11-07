@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Environment Variables
+.env
+.env.local
+.env*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +27,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Vercel
+.vercel
+
+# AI Assistant
+.claude/
+
+# Development & Documentation (optional - uncomment if you don't want to track)
+# *.md
+# !README.md
+# *.sql
+# server/
+# dev-server.js
+
+# Archives & Temporary
+*.zip
+nul

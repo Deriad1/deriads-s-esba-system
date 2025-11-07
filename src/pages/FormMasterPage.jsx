@@ -1672,65 +1672,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           </div>
         )}
 
-        {/* Enter Scores View - Show Overview Cards with Glass Morphism */}
-        {mainView === 'enterScores' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Subjects Card - Glass Morphism */}
-            <div className="bg-gradient-to-r from-purple-500/70 to-purple-600/70 backdrop-blur-xl text-white rounded-2xl shadow-2xl p-8 md:col-span-2 border border-white/30">
-              <div className="flex items-center mb-3">
-                <span className="text-4xl mr-4 drop-shadow-lg">📖</span>
-                <div>
-                  <h2 className="text-sm font-medium opacity-90 uppercase tracking-wide">Your Teaching Subjects</h2>
-                  <p className="text-3xl font-bold drop-shadow-md">{getUserSubjects().length} {getUserSubjects().length === 1 ? 'Subject' : 'Subjects'}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-4">
-                {getUserSubjects().map(subject => (
-                  <span key={subject} className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-sm font-semibold border border-white/30 hover:bg-white/30 transition-all duration-200">
-                    {subject}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Class and Subject Selection - Only for Enter Scores View */}
-        {mainView === 'enterScores' && (
-          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Class Selection */}
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Select Class (Enter Scores)
-              </label>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                <option value="">Select a class</option>
-                {getUserClasses().map(cls => (
-                  <option key={cls} value={cls}>{cls}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Subject Selection */}
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">Select Subject</label>
-              <select
-                value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                <option value="">Select a subject</option>
-                {getUserSubjects().map(subject => (
-                  <option key={subject} value={subject}>{subject}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
+        {/* Enter Scores View - delegated to EnterScoresView component */}
 
         {/* Manage Class View */}
         {mainView === 'manageClass' && selectedClass && (

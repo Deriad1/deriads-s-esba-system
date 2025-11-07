@@ -1,0 +1,158 @@
+[33mcommit 4f2020c5b1651d3a22d78a6aa4513bfeb56f5301[m
+Author: Your Name <your-email@example.com>
+Date:   Fri Sep 12 15:02:24 2025 +0000
+
+    Initial commit: DERIAD's eSBA System
+
+[1mdiff --git a/src/pages/AdminDashboardPage.jsx b/src/pages/AdminDashboardPage.jsx[m
+[1mnew file mode 100644[m
+[1mindex 0000000..02dae3c[m
+[1m--- /dev/null[m
+[1m+++ b/src/pages/AdminDashboardPage.jsx[m
+[36m@@ -0,0 +1,262 @@[m
+[32m+[m[32mimport { useState, useEffect } from "react";[m
+[32m+[m[32mimport Layout from "../components/Layout";[m
+[32m+[m[32mimport { getTeachers, getLearners, addTeacher, addLearner, deleteTeacher, deleteLearner, testConnection } from "../api";[m
+[32m+[m
+[32m+[m[32mconst subjectsList = [[m
+[32m+[m[32m  "English Language", "Mathematics", "Science", "Social Studies", "Ghanaian Language",[m
+[32m+[m[32m  "Religious and Moral Education (RME)", "Creative Arts and Design", "Career Technology",[m
+[32m+[m[32m  "Computing", "Physical and Health Education (PHE)", "OWOP", "History", "French", "Arabic"[m
+[32m+[m[32m];[m
+[32m+[m
+[32m+[m[32mconst classesList = [[m
+[32m+[m[32m  "K.G 1", "K.G 2", "BS1", "BS2", "BS3", "BS4", "BS5", "BS6", "BS7", "BS8", "BS9"[m
+[32m+[m[32m];[m
+[32m+[m
+[32m+[m[32mconst AdminDashboardPage = () => {[m
+[32m+[m[32m  const [teachers, setTeachers] = useState([]);[m
+[32m+[m[32m  const [learners, setLearners] = useState([]);[m
+[32m+[m[32m  const [loading, setLoading] = useState(true);[m
+[32m+[m[32m  const [error, setError] = useState("");[m
+[32m+[m[41m  [m
+[32m+[m[32m  const [showTeacherModal, setShowTeacherModal] = useState(false);[m
+[32m+[m[32m  const [showLearnerModal, setShowLearnerModal] = useState(false);[m
+[32m+[m[32m  const [showTeachersList, setShowTeachersList] = useState(false);[m
+[32m+[m[32m  const [showLearnersList, setShowLearnersList] = useState(false);[m
+[32m+[m[32m  const [showClassView, setShowClassView] = useState(false);[m
+[32m+[m[32m  const [showBroadsheetView, setShowBroadsheetView] = useState(false);[m
+[32m+[m[32m  const [showStudentReportView, setShowStudentReportView] = useState(false);[m
+[32m+[m[32m  const [showClassSetupView, setShowClassSetupView] = useState(false);[m
+[32m+[m[32m  const [showSchoolSetupView, setShowSchoolSetupView] = useState(false);[m
+[32m+[m[41m  [m
+[32m+[m[32m  const [teacherForm, setTeacherForm] = useState({[m
+[32m+[m[32m    firstName: "", lastName: "", gender: "", email: "", subjects: [],[m[41m [m
+[32m+[m[32m    password: "teacher123", primaryRole: "teacher", classes: [][m
+[32m+[m[32m  });[m
+[32m+[m[41m  [m
+[32m+[m[32m  const [learnerForm, setLearnerForm] = useState({[m
+[32m+[m[32m    firstName: "", lastName: "", className: "", gender: ""[m
+[32m+[m[32m  });[m
+[32m+[m[41m  [m
+[32m+[m[32m  const [selectedClass, setSelectedClass] = useState("");[m
+[32m+[m[32m  const [selectedBroadsheetClass, setSelectedBroadsheetClass] = useState("");[m
+[32m+[m[32m  const [selectedReportClass, setSelectedReportClass] = useState("");[m
+[32m+[m[32m  const [selectedStudent, setSelectedStudent] = useState("");[m
+[32m+[m[32m  const [selectedTerm, setSelectedTerm] = useState("Third Term");[m
+[32m+[m[32m  const [teacherSearch, setTeacherSearch] = useState("");[m
+[32m+[m[32m  const [learnerSearch, setLearnerSearch] = useState("");[m
+[32m+[m[41m  [m
+[32m+[m[32m  const [schoolLogo, setSchoolLogo] = useState(localStorage.getItem('schoolLogo') || '');[m
+[32m+[m[32m  const [schoolName, setSchoolName] = useState(localStorage.getItem('schoolName') || 'DERIAD\'S eSBA');[m
+[32m+[m[32m  const [logoUploading, setLogoUploading] = useState(false);[m
+[32m+[m
+[32m+[m[32m  useEffect(() => {[m
+[32m+[m[32m    loadData();[m
+[32m+[m[32m  }, []);[m
+[32m+[m
+[32m+[m[32m  const loadData = async () => {[m
+[32m+[m[32m    setLoading(true);[m
+[32m+[m[32m    setError("");[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      console.log('Testing API connection...');[m
+[32m+[m[32m      try {[m
+[32m+[m[32m        const testResult = await testConnection();[m
+[32m+[m[32m        console.log('✅ Connection test successful:', testResult);[m
+[32m+[m[32m      } catch (testError) {[m
+[32m+[m[32m        console.warn('⚠️ Connection test failed:', testError.message);[m
+[32m+[m[32m        setError(`Backend API updated! Using new endpoint: ${testError.message}`);[m
+[32m+[m[32m      }[m
+[32m+[m[41m      [m
+[32m+[m[32m      const [teachersResponse, learnersResponse] = await Promise.all([[m
+[32m+[m[32m        getTeachers(),[m
+[32m+[m[32m        getLearners()[m
+[32m+[m[32m      ]);[m
+[32m+[m[41m      [m
+[32m+[m[32m      if (teachersResponse && teachersResponse.status === 'success') {[m
+[32m+[m[32m        setTeachers(teachersResponse.data || []);[m
+[32m+[m[32m        setError(""); // Clear error on success[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        setError(`Teachers: ${teachersResponse?.message || 'Loading...'}`);[m
+[32m+[m[32m      }[m
+[32m+[m[41m      [m
+[32m+[m[32m      if (learnersResponse && learnersResponse.status === 'success') {[m
+[32m+[m[32m        setLearners(learnersResponse.data || []);[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        setError(prev => `${prev} | Students: ${learnersResponse?.message || 'Loading...'}`);[m
+[32m+[m[32m      }[m
+[32m+[m[32m    } catch (err) {[m
+[32m+[m[32m      setError("✅ Backend endpoint updated - data should load properly now");[m
+[32m+[m[32m      console.log("Using updated Google Apps Script endpoint");[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setLoading(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleSchoolNameChange = (e) => {[m
+[32m+[m[32m    const newName = e.target.value;[m
+[32m+[m[32m    setSchoolName(newName);[m
+[32m+[m[32m    localStorage.setItem('schoolName', newName);[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleTeacherChange = (e) => {[m
+[32m+[m[32m    setTeacherForm(prev => ({ ...prev, [e.target.name]: e.target.value }));[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleLearnerChange = (e) => {[m
+[32m+[m[32m    setLearnerForm(prev => ({ ...prev, [e.target.name]: e.target.value }));[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleSubjectToggle = (subject) => {[m
+[32m+[m[32m    setTeacherForm(prev => ({[m
+[32m+[m[32m      ...prev,[m
+[32m+[m[32m      subjects: prev.subjects.includes(subject)[m
+[32m+[m[32m        ? prev.subjects.filter(s => s !== subject)[m
+[32m+[m[32m        : [...prev.subjects, subject][m
+[32m+[m[32m    }));[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const generateLearnerId = () => {[m
+[32m+[m[32m    if (learners.length === 0) return "eSBA0001";[m
+[32m+[m[32m    const lastId = learners[learners.length - 1]?.idNumber || "eSBA0000";[m
+[32m+[m[32m    const number = parseInt(lastId.replace("eSBA", "")) + 1;[m
+[32m+[m[32m    return `eSBA${number.toString().padStart(4, "0")}`;[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleLogoUpload = (event) => {[m
+[32m+[m[32m    const file = event.target.files[0];[m
+[32m+[m[32m    if (!file) return;[m
+[32m+[m
+[32m+[m[32m    if (!file.type.startsWith('image/')) {[m
+[32m+[m[32m      alert('Please select a valid image file');[m
+[32m+[m[32m      return;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    if (file.size > 2 * 1024 * 1024) {[m
+[32m+[m[32m      alert('File size should be less than 2MB');[m
+[32m+[m[32m      return;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    setLogoUploading(true);[m
+[32m+[m[32m    const reader = new FileReader();[m
+[32m+[m[32m    reader.onload = (e) => {[m
+[32m+[m[32m      const base64Logo = e.target.result;[m
+[32m+[m[32m      setSchoolLogo(base64Logo);[m
+[32m+[m[32m      localStorage.setItem('schoolLogo', base64Logo);[m
+[32m+[m[32m      setLogoUploading(false);[m
+[32m+[m[32m    };[m
+[32m+[m[32m    reader.onerror = ()

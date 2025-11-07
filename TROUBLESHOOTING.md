@@ -1,102 +1,98 @@
-# 🚨 Connection Troubleshooting Guide
+# 🚨 PostgreSQL Connection Troubleshooting Guide
 
-## "Failed to fetch" Error Solutions
+## "Database Connection Failed" Error Solutions
 
-### 🔍 **Step 1: Verify API URL**
+### 🔍 **Step 1: Verify Environment Variables**
 
-**Current API URL:** `https://script.google.com/macros/s/AKfycbx8vZGD2AnOpyKXKIrF2HUX1rBjO7iXLAIW_tgj7N3LBp6n9Qnide1Eq0-BujnwFmwzJQ/exec`
+**Check your .env file:**
+1. Open `.env` in your project root
+2. Verify `VITE_POSTGRES_URL` is set correctly
+3. Format should be: `postgresql://username:password@hostname/database?sslmode=require`
 
 **Test manually:**
-1. Open this URL in your browser: 
-   ```
-   https://script.google.com/macros/s/AKfycbx8vZGD2AnOpyKXKIrF2HUX1rBjO7iXLAIW_tgj7N3LBp6n9Qnide1Eq0-BujnwFmwzJQ/exec?action=test
-   ```
+```bash
+npm run db:test
+```
 
-2. **Expected Response:**
-   ```json
-   {"status":"success","data":{"message":"API is working!","timestamp":"..."}}
-   ```
+**Expected Response:**
+```
+✅ Database connection successful!
+📅 Current time: 2024-01-15 10:30:00
+🐘 PostgreSQL version: PostgreSQL 15.4
+📊 Found tables: users, students, teachers, student_scores, form_master_remarks, system_config
+```
 
-3. **If you get an error:**
-   - ❌ **Permission denied**: Web app not deployed properly
-   - ❌ **404 Not Found**: Wrong script ID
-   - ❌ **500 Internal Error**: Code error in Google Apps Script
+### 🛠️ **Step 2: Check Database Provider**
 
-### 🛠️ **Step 2: Check Google Apps Script Deployment**
-
-1. **Go to your Google Apps Script project**
-2. **Check deployment status:**
-   - Click **Deploy** → **Manage Deployments**
-   - Verify **Type: Web app**
-   - Verify **Execute as: Me**
-   - Verify **Who has access: Anyone**
-
-3. **If not deployed:**
-   - Click **Deploy** → **New Deployment**
-   - Set correct permissions and deploy
+**If you get connection errors:**
+1. **Neon Database**: Check your connection string in the Neon dashboard
+2. **Supabase**: Verify your database is running and accessible
+3. **Railway**: Ensure your database is deployed and running
+4. **Local PostgreSQL**: Check if the service is running
 
 ### 🔧 **Step 3: Common Fixes**
 
-#### **Fix 1: Redeploy with new version**
-```
-1. In Google Apps Script: Deploy → Manage Deployments
-2. Click the edit icon (pencil)
-3. Change version to "New"
-4. Click "Deploy"
-5. Copy the NEW URL to your api.js
+#### **Fix 1: Update Connection String**
+```bash
+# Make sure your .env file has the correct format:
+VITE_POSTGRES_URL=postgresql://username:password@hostname/database?sslmode=require
 ```
 
-#### **Fix 2: Check CORS (Cross-Origin Resource Sharing)**
-Google Apps Script should handle CORS automatically, but ensure:
-- You're using the **deployed web app URL** (not the script editor URL)
-- The URL ends with `/exec` (not `/edit` or `/dev`)
+#### **Fix 2: Check SSL Settings**
+- Most cloud providers require SSL
+- Make sure `sslmode=require` is in your connection string
+- Some providers use `sslmode=prefer`
 
-#### **Fix 3: Test with Browser Network Tab**
-1. Open Chrome DevTools (F12)
-2. Go to **Network** tab
-3. Try to load your app
-4. Look for failed requests to see exact error
+#### **Fix 3: Verify Database Access**
+1. Test your connection string directly in a PostgreSQL client
+2. Ensure your database user has proper permissions
+3. Check if your IP is whitelisted (if required)
 
 ### 🧪 **Step 4: Alternative Testing Methods**
 
-#### **Test with cURL (if you have it):**
+#### **Test with psql (if installed):**
 ```bash
-curl "https://script.google.com/macros/s/AKfycbx8vZGD2AnOpyKXKIrF2HUX1rBjO7iXLAIW_tgj7N3LBp6n9Qnide1Eq0-BujnwFmwzJQ/exec?action=test"
+psql "your_connection_string_here"
 ```
 
-#### **Test with Postman or similar tool:**
-- Method: GET
-- URL: Your API URL + `?action=test`
+#### **Test with online PostgreSQL client:**
+- Use pgAdmin, DBeaver, or similar tools
+- Test the connection string directly
 
 ### 🔍 **Step 5: Enable Debugging**
 
-Open your browser console (F12) and look for detailed error messages. The updated frontend now provides more debugging information.
+Run the test script to see detailed error messages:
+```bash
+npm run db:test
+```
 
 ### 📋 **Step 6: Verification Checklist**
 
-- [ ] ✅ Google Apps Script contains the backend code
-- [ ] ✅ Web app is deployed with correct permissions
-- [ ] ✅ API URL in `src/api.js` matches deployment URL
-- [ ] ✅ URL ends with `/exec` not `/execc` (typo fixed)
-- [ ] ✅ Browser can access the test URL directly
-- [ ] ✅ No browser extensions blocking requests
-- [ ] ✅ Network allows HTTPS requests to Google
+- [ ] ✅ `.env` file exists and contains `VITE_POSTGRES_URL`
+- [ ] ✅ Connection string format is correct
+- [ ] ✅ Database is accessible from the internet
+- [ ] ✅ SSL settings are correct (`sslmode=require`)
+- [ ] ✅ Database user has CREATE TABLE permissions
+- [ ] ✅ No firewall blocking the connection
 
-### 🆘 **Step 7: Emergency Offline Mode**
+### 🆘 **Step 7: Emergency Setup**
 
-If you still can't connect, the app has fallback authentication in `AuthContext.jsx`:
+If you still can't connect, create a new database:
 
-**Demo accounts that work offline:**
-- Admin: `admin@school.com` / `admin123` 
-- Teacher: `teacher1@example.com` / `teacher123`
+**Quick Neon Setup:**
+1. Go to [neon.tech](https://neon.tech)
+2. Create a new project
+3. Copy the connection string
+4. Update your `.env` file
+5. Run `npm run db:init`
 
 ### 📞 **Step 8: Get Help**
 
 If you're still having issues, please provide:
-1. The exact error message from browser console
-2. Response when testing the API URL directly in browser
-3. Screenshot of Google Apps Script deployment settings
-4. Network tab errors from DevTools
+1. The exact error message from `npm run db:test`
+2. Your database provider (Neon, Supabase, etc.)
+3. Whether you can connect with other PostgreSQL clients
+4. Your connection string format (redact sensitive parts)
 
 ---
 
@@ -104,15 +100,24 @@ If you're still having issues, please provide:
 
 | Issue | Solution |
 |-------|----------|
-| Wrong URL | Update API_URL in `src/api.js` |
-| Not deployed | Deploy as web app in Google Apps Script |
-| Permission denied | Set "Who has access: Anyone" |
-| CORS error | Use deployed URL, not editor URL |
-| Network blocked | Check firewall/proxy settings |
+| Missing .env file | Create `.env` with `VITE_POSTGRES_URL` |
+| Wrong connection string | Update format to `postgresql://...` |
+| SSL errors | Add `?sslmode=require` to connection string |
+| Permission denied | Check database user permissions |
+| Connection timeout | Verify database is running and accessible |
 
 ## 🔄 **After Fixing**
 
-1. **Restart your React development server**
-2. **Clear browser cache** (Ctrl+Shift+R)
-3. **Test the connection** using the browser preview
-4. **Check console logs** for success messages
+1. **Test the connection**: `npm run db:test`
+2. **Initialize tables**: `npm run db:init`
+3. **Start the application**: `npm run dev`
+4. **Test login**: Use demo credentials or create new users
+
+## 🎉 **Success Indicators**
+
+When everything is working, you should see:
+- ✅ Database connection successful
+- ✅ Tables created successfully
+- ✅ Application starts without errors
+- ✅ Login works with proper authentication
+- ✅ All CRUD operations function correctly
