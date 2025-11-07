@@ -127,6 +127,8 @@ async function handlePost(req, res) {
   // Validate score data
   const validation = validateScoreData(scoreData);
   if (!validation.isValid) {
+    console.error('Score validation failed:', validation.errors);
+    console.error('Score data received:', scoreData);
     return res.status(400).json({
       status: 'error',
       message: 'Validation failed',

@@ -531,6 +531,8 @@ export const updateStudentScores = async (scoreData) => {
   try {
     const sanitized = sanitizeInput(scoreData);
 
+    console.log('Sending score data:', sanitized);
+
     const result = await apiCallWithOfflineSupport(
       '/marks',
       {
@@ -548,6 +550,7 @@ export const updateStudentScores = async (scoreData) => {
     return result;
   } catch (error) {
     console.error('Update student scores error:', error);
+    console.error('Score data that failed:', scoreData);
     throw error;
   }
 };
