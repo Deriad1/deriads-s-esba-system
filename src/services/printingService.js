@@ -199,22 +199,39 @@ class PrintingService {
       for (let i = 0; i < students.length; i++) {
         const student = students[i];
 
-        // Get formatted student data with positions (uses helper method)
-        const { subjectsData, remarksInfo } = await this._getFormattedStudentData(student, term);
+        try {
+          // Get formatted student data with positions (uses helper method)
+          const { subjectsData, remarksInfo } = await this._getFormattedStudentData(student, term);
 
-        // Generate PDF with form master remarks
-        const pdf = generateStudentReportPDF(student, subjectsData, schoolInfo, remarksInfo);
+          // Generate PDF with form master remarks
+          const pdf = generateStudentReportPDF(student, subjectsData, schoolInfo, remarksInfo);
 
-        // Convert PDF to base64 for server-side processing
-        const pdfOutput = pdf.output('arraybuffer');
-        const pdfBase64 = this._arrayBufferToBase64(pdfOutput);
-        pdfDataArray.push(pdfBase64);
+          // Convert PDF to base64 for server-side processing
+          const pdfOutput = pdf.output('arraybuffer');
+          const pdfBase64 = this._arrayBufferToBase64(pdfOutput);
 
-        // Update progress
-        if (progressCallback) {
-          const progress = Math.round(((i + 1) / totalStudents) * 50); // 0-50% for generation
-          progressCallback(progress);
+          // Validate PDF data before adding
+          if (!pdfBase64 || pdfBase64.length === 0) {
+            console.error(`Invalid PDF generated for student: ${student.firstName || student.first_name} ${student.lastName || student.last_name}`);
+            continue; // Skip this student
+          }
+
+          pdfDataArray.push(pdfBase64);
+
+          // Update progress
+          if (progressCallback) {
+            const progress = Math.round(((i + 1) / totalStudents) * 50); // 0-50% for generation
+            progressCallback(progress);
+          }
+        } catch (error) {
+          console.error(`Error generating PDF for student ${i + 1}:`, error);
+          // Continue with other students
         }
+      }
+
+      // Check if we have any PDFs to merge
+      if (pdfDataArray.length === 0) {
+        throw new Error('Failed to generate any PDFs. Please check student data and try again.');
       }
 
       // Update progress: merging phase
@@ -224,6 +241,8 @@ class PrintingService {
 
       // Send PDFs to server for high-quality merging
       const apiEndpoint = '/api/generate-bulk-pdfs';
+      console.log(`Sending ${pdfDataArray.length} PDFs to server for merging...`);
+
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
@@ -233,7 +252,19 @@ class PrintingService {
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        let errorMessage = `Server returned ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage += ` - ${errorData.message}`;
+          }
+          if (errorData.error) {
+            errorMessage += ` (${errorData.error})`;
+          }
+        } catch (e) {
+          // Response is not JSON, use status text
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -241,6 +272,8 @@ class PrintingService {
       if (!result.success) {
         throw new Error(result.message || 'Server-side PDF generation failed');
       }
+
+      console.log(`Server successfully merged ${pdfDataArray.length} PDFs into ${result.pageCount} pages`);
 
       // Update progress: downloading
       if (progressCallback) {
