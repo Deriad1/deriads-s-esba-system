@@ -1467,7 +1467,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         // Save regular term scores
         const { testsTotal, classScore50, examScore50, total, grade } = calculateStudentTotals(studentMarks);
 
-        const scorePayload = {
+        await updateStudentScores({
           studentId,
           className: selectedClass,
           subject: selectedSubject,
@@ -1484,11 +1484,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           examScore50: examScore50.toFixed(1),
           total: total.toFixed(1),
           grade: grade
-        };
-
-        console.log('Saving scores with payload:', scorePayload);
-
-        await updateStudentScores(scorePayload);
+        });
 
         setSavedStudents(prev => new Set([...prev, studentId]));
         showNotification({message: "Scores saved successfully!", type: 'success'});
