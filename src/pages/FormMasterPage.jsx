@@ -1407,6 +1407,11 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       return;
     }
 
+    if (!selectedAssessment) {
+      showNotification({message: "Please select an assessment type", type: 'error'});
+      return;
+    }
+
     const studentMarks = subjectMarks[studentId];
     if (!studentMarks) return;
 
@@ -1467,6 +1472,11 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   const saveAllSubjectScores = async () => {
     if (!selectedClass || !selectedSubject) {
       showNotification({message: "Please select both class and subject", type: 'error'});
+      return;
+    }
+
+    if (!selectedAssessment) {
+      showNotification({message: "Please select an assessment type", type: 'error'});
       return;
     }
 
