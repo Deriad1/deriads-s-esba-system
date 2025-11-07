@@ -222,7 +222,7 @@ export const validateScoreData = (scoreData) => {
   
   // Score validation (all scores are optional but if provided, must be valid numbers)
   const scoreFields = ['test1', 'test2', 'test3', 'test4', 'exam', 'ca1', 'ca2'];
-  
+
   scoreFields.forEach(field => {
     if (scoreData[field] !== undefined && scoreData[field] !== '') {
       const value = parseFloat(scoreData[field]);
@@ -232,8 +232,10 @@ export const validateScoreData = (scoreData) => {
         errors[field] = `${field} cannot be negative`;
       } else if (field === 'exam' && value > VALIDATION_CONSTRAINTS.MAX_EXAM_SCORE) {
         errors[field] = `Exam score cannot exceed ${VALIDATION_CONSTRAINTS.MAX_EXAM_SCORE}`;
-      } else if (field !== 'exam' && value > VALIDATION_CONSTRAINTS.MAX_TEST_SCORE) {
+      } else if (['test1', 'test2', 'test3', 'test4'].includes(field) && value > VALIDATION_CONSTRAINTS.MAX_TEST_SCORE) {
         errors[field] = `Test score cannot exceed ${VALIDATION_CONSTRAINTS.MAX_TEST_SCORE}`;
+      } else if (['ca1', 'ca2'].includes(field) && value > (VALIDATION_CONSTRAINTS.MAX_TEST_SCORE * 2)) {
+        errors[field] = `${field} cannot exceed ${VALIDATION_CONSTRAINTS.MAX_TEST_SCORE * 2}`;
       }
     }
   });
