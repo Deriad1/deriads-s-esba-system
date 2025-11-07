@@ -1887,7 +1887,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                             className="mr-3 w-4 h-4 text-purple-600 focus:ring-purple-500 rounded"
                           />
                           <label className="text-white font-medium">
-                            {student.first_name} {student.last_name} ({student.id_number})
+                            {student.firstName || student.first_name} {student.lastName || student.last_name} ({student.idNumber || student.id_number})
                           </label>
                         </div>
                       ))}
