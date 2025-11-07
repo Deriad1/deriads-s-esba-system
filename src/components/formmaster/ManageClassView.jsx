@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import {
   AttendanceTab,
-  MarksTab,
   BroadsheetTab,
   AnalyticsTab,
   DailyAttendanceTab,
@@ -16,7 +15,6 @@ import {
  *
  * This is the primary view for Form Masters to manage their assigned class:
  * - Attendance tracking (term-based)
- * - Marks entry and review
  * - Class broadsheet
  * - Analytics and performance trends
  * - Daily attendance
@@ -56,11 +54,6 @@ const ManageClassView = ({
       id: 'attendance',
       label: '📊 Attendance',
       description: 'Track term-based attendance and conduct'
-    },
-    {
-      id: 'marks',
-      label: '📝 Marks',
-      description: 'View and manage student marks across subjects'
     },
     {
       id: 'broadsheet',
@@ -166,19 +159,6 @@ const ManageClassView = ({
             onFootnoteChange={actions.handleFootnoteChange}
             onSaveAll={actions.confirmSave}
             onSaveFootnote={actions.saveFootnoteInfo}
-          />
-        )}
-
-        {/* Marks Tab */}
-        {activeTab === 'marks' && (
-          <MarksTab
-            students={students}
-            marksData={state.marksData || {}}
-            subjects={userSubjects}
-            errors={errors}
-            saving={saving}
-            isLoading={loadingStates?.marks || false}
-            onSaveAll={actions.saveAllMarksData}
           />
         )}
 
