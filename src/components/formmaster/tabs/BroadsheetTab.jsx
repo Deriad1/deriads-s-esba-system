@@ -21,6 +21,7 @@ const BroadsheetTab = ({
   students,
   marksData,
   subjects,
+  subjectTeachers,
   isLoading,
   onPrintBroadsheet
 }) => {
@@ -76,7 +77,14 @@ const BroadsheetTab = ({
           <div key={subject} className="mb-6 p-4 border border-gray-200 rounded-lg">
             {/* Subject Header with Print Button */}
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-medium">{subject}</h3>
+              <div>
+                <h3 className="text-lg font-medium">{subject}</h3>
+                {subjectTeachers && subjectTeachers[subject] && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Teacher: {subjectTeachers[subject]}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => onPrintBroadsheet(subject)}
                 className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center gap-2"
@@ -264,6 +272,9 @@ BroadsheetTab.propTypes = {
 
   /** Array of subject names */
   subjects: PropTypes.arrayOf(PropTypes.string).isRequired,
+
+  /** Mapping of subject names to teacher names */
+  subjectTeachers: PropTypes.objectOf(PropTypes.string),
 
   /** Whether data is being loaded */
   isLoading: PropTypes.bool,

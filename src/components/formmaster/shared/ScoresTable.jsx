@@ -251,7 +251,7 @@ const ScoresTable = ({
                         min="0"
                         max="15"
                         step="0.5"
-                        value={studentMarks.test1 || ''}
+                        value={studentMarks.test1 ?? ''}
                         onChange={(e) => onMarkChange(studentId, 'test1', e.target.value)}
                         className="w-16 p-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500"
                         placeholder="0-15"
@@ -265,7 +265,7 @@ const ScoresTable = ({
                         min="0"
                         max="15"
                         step="0.5"
-                        value={studentMarks.test2 || ''}
+                        value={studentMarks.test2 ?? ''}
                         onChange={(e) => onMarkChange(studentId, 'test2', e.target.value)}
                         className="w-16 p-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500"
                         placeholder="0-15"
@@ -279,7 +279,7 @@ const ScoresTable = ({
                         min="0"
                         max="15"
                         step="0.5"
-                        value={studentMarks.test3 || ''}
+                        value={studentMarks.test3 ?? ''}
                         onChange={(e) => onMarkChange(studentId, 'test3', e.target.value)}
                         className="w-16 p-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500"
                         placeholder="0-15"
@@ -293,7 +293,7 @@ const ScoresTable = ({
                         min="0"
                         max="15"
                         step="0.5"
-                        value={studentMarks.test4 || ''}
+                        value={studentMarks.test4 ?? ''}
                         onChange={(e) => onMarkChange(studentId, 'test4', e.target.value)}
                         className="w-16 p-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500"
                         placeholder="0-15"
@@ -317,7 +317,7 @@ const ScoresTable = ({
                         min="0"
                         max="100"
                         step="0.5"
-                        value={studentMarks.exam || ''}
+                        value={studentMarks.exam ?? ''}
                         onChange={(e) => onMarkChange(studentId, 'exam', e.target.value)}
                         className="w-20 p-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500"
                         placeholder="0-100"

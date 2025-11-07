@@ -1,7 +1,7 @@
 import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getLearners, updateFormMasterRemarks, getMarks, updateStudentScores, getClassPerformanceTrends, getClassSubjects, getStudentsByClass, getCustomAssessments, saveCustomAssessmentScores } from '../api-client';
+import { getLearners, updateFormMasterRemarks, getMarks, updateStudentScores, getClassPerformanceTrends, getClassSubjects, getStudentsByClass, getCustomAssessments, saveCustomAssessmentScores, getTeachers } from '../api-client';
 import { useNotification } from '../context/NotificationContext';
 import { useLoading } from '../context/LoadingContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -42,7 +42,10 @@ const FormMasterPage = () => {
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState("");
   const [customAssessments, setCustomAssessments] = useState([]);
-  
+
+  // State for teachers and subject-to-teacher mapping
+  const [subjectTeachers, setSubjectTeachers] = useState({});
+
   // New states for daily attendance
   const [dailyAttendance, setDailyAttendance] = useState({});
   const [dailyAttendanceDate, setDailyAttendanceDate] = useState("");
@@ -107,6 +110,7 @@ const FormMasterPage = () => {
   useEffect(() => {
     loadLearners();
     loadCustomAssessments();
+    loadTeachers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -147,6 +151,31 @@ const FormMasterPage = () => {
       }
     } catch (error) {
       console.error('Error loading custom assessments:', error);
+    }
+  };
+
+  // Load teachers and create subject-to-teacher mapping
+  const loadTeachers = async () => {
+    try {
+      const response = await getTeachers();
+      if (response.status === 'success') {
+        const teachers = response.data || [];
+
+        // Create a mapping of subject -> teacher name
+        const mapping = {};
+        teachers.forEach(teacher => {
+          const teacherName = `${teacher.firstName} ${teacher.lastName}`;
+          if (Array.isArray(teacher.subjects)) {
+            teacher.subjects.forEach(subject => {
+              mapping[subject] = teacherName;
+            });
+          }
+        });
+
+        setSubjectTeachers(mapping);
+      }
+    } catch (error) {
+      console.error('Error loading teachers:', error);
     }
   };
 
@@ -1708,6 +1737,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
             formClass={selectedClass}
             students={filteredLearners}
             userSubjects={getUserSubjects()}
+            subjectTeachers={subjectTeachers}
             loadingStates={loadingStates}
             errors={errors}
             saving={saving}

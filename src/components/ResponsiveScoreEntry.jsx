@@ -191,7 +191,7 @@ const ResponsiveScoreEntry = ({
                     type="number"
                     inputMode="decimal"
                     pattern="[0-9]*"
-                    value={studentMarks[field] || ''}
+                    value={studentMarks[field] ?? ''}
                     onChange={(e) => {
                       const value = e.target.value;
                       if (value === '' || /^\d*\.?\d*$/.test(value)) {
@@ -406,7 +406,7 @@ const ResponsiveScoreEntry = ({
                     <td className="border border-gray-300 p-1">
                       <input
                         type="text"
-                        value={studentMarks.score || ''}
+                        value={studentMarks.score ?? ''}
                         onChange={(e) => {
                           const value = e.target.value;
                           if (value === '' || /^\d*\.?\d*$/.test(value)) {
@@ -467,7 +467,7 @@ const ResponsiveScoreEntry = ({
                       <td key={test} className="border border-gray-300 p-1">
                         <input
                           type="text"
-                          value={studentMarks[test] || ''}
+                          value={studentMarks[test] ?? ''}
                           onChange={(e) => {
                             const value = e.target.value;
                             if (value === '' || /^\d*\.?\d*$/.test(value)) {
@@ -492,7 +492,7 @@ const ResponsiveScoreEntry = ({
                     <td className="border border-gray-300 p-1">
                       <input
                         type="text"
-                        value={studentMarks.exam || ''}
+                        value={studentMarks.exam ?? ''}
                         onChange={(e) => {
                           const value = e.target.value;
                           if (value === '' || /^\d*\.?\d*$/.test(value)) {

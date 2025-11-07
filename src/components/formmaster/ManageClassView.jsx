@@ -45,6 +45,7 @@ const ManageClassView = ({
   formClass,
   students,
   userSubjects,
+  subjectTeachers,
   loadingStates,
   errors,
   saving
@@ -187,6 +188,7 @@ const ManageClassView = ({
             students={students}
             marksData={state.marksData || {}}
             subjects={userSubjects}
+            subjectTeachers={subjectTeachers}
             isLoading={loadingStates?.broadsheet || false}
             onPrintBroadsheet={actions.printBroadsheet}
           />
@@ -317,6 +319,11 @@ ManageClassView.propTypes = {
    * Array of subjects taught by the form master
    */
   userSubjects: PropTypes.arrayOf(PropTypes.string).isRequired,
+
+  /**
+   * Mapping of subject names to teacher names
+   */
+  subjectTeachers: PropTypes.objectOf(PropTypes.string),
 
   /**
    * Loading states for different operations
