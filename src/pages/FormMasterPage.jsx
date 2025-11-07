@@ -106,6 +106,7 @@ const FormMasterPage = () => {
 
   useEffect(() => {
     loadLearners();
+    loadCustomAssessments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -135,6 +136,17 @@ const FormMasterPage = () => {
       showNotification({message: "Error loading students: " + error.message, type: 'error'});
     } finally {
       setLoading('learners', false);
+    }
+  };
+
+  const loadCustomAssessments = async () => {
+    try {
+      const response = await getCustomAssessments();
+      if (response.status === 'success') {
+        setCustomAssessments(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading custom assessments:', error);
     }
   };
 
@@ -1554,6 +1566,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     // Enter Scores handlers
     setSelectedClass,
     setSelectedSubject,
+    setSelectedAssessment,
     handleScoreChange: handleSubjectMarkChange,
     saveScore: saveStudentScores,
     saveAllScores: saveAllSubjectScores
@@ -1589,7 +1602,10 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     selectedClass,
     selectedSubject,
     subjectMarks,
-    savedStudents
+    savedStudents,
+    savingScores,
+    selectedAssessment,
+    customAssessments
   };
 
   return (

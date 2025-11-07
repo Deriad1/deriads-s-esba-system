@@ -1,7 +1,5 @@
 import PropTypes from 'prop-types';
 import { ScoresTable, SyncStatusPanel } from './shared';
-import { useState, useEffect } from 'react';
-import { getCustomAssessments } from '../../api-client';
 import ResponsiveScoreEntry from '../ResponsiveScoreEntry';
 
 /**
@@ -17,33 +15,15 @@ const EnterScoresView = ({
   userClasses,
   students
 }) => {
-  // Local state for custom assessments
-  const [customAssessments, setCustomAssessments] = useState([]);
-  const [selectedAssessment, setSelectedAssessment] = useState('');
-
-  // Load custom assessments on mount
-  useEffect(() => {
-    loadCustomAssessments();
-  }, []);
-
-  const loadCustomAssessments = async () => {
-    try {
-      const response = await getCustomAssessments();
-      if (response.status === 'success') {
-        setCustomAssessments(response.data || []);
-      }
-    } catch (error) {
-      console.error('Error loading custom assessments:', error);
-    }
-  };
-
   // Extract state values
   const {
     selectedClass,
     selectedSubject,
     subjectMarks,
     savingScores,
-    savedStudents
+    savedStudents,
+    selectedAssessment,
+    customAssessments
   } = state;
 
   // Calculate sync stats for SyncStatusPanel
@@ -155,7 +135,7 @@ const EnterScoresView = ({
             <select
               id="assessment-select"
               value={selectedAssessment}
-              onChange={(e) => setSelectedAssessment(e.target.value)}
+              onChange={(e) => actions.setSelectedAssessment(e.target.value)}
               className="w-full p-3 md:p-4 border-2 border-white/30 rounded-xl bg-white/90 backdrop-blur-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all text-gray-900 font-medium"
             >
               <option value="">-- Choose assessment --</option>
@@ -331,11 +311,14 @@ EnterScoresView.propTypes = {
     selectedSubject: PropTypes.string,
     subjectMarks: PropTypes.object.isRequired,
     savingScores: PropTypes.bool.isRequired,
-    savedStudents: PropTypes.instanceOf(Set).isRequired
+    savedStudents: PropTypes.instanceOf(Set).isRequired,
+    selectedAssessment: PropTypes.string,
+    customAssessments: PropTypes.array
   }).isRequired,
   actions: PropTypes.shape({
     setSelectedClass: PropTypes.func.isRequired,
     setSelectedSubject: PropTypes.func.isRequired,
+    setSelectedAssessment: PropTypes.func.isRequired,
     handleScoreChange: PropTypes.func.isRequired,
     saveScore: PropTypes.func.isRequired,
     saveAllScores: PropTypes.func.isRequired
