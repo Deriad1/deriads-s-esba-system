@@ -15,16 +15,16 @@ const EnterScoresView = ({
   userClasses,
   students
 }) => {
-  // Extract state values
+  // Extract state values with defaults to prevent undefined errors
   const {
-    selectedClass,
-    selectedSubject,
-    subjectMarks,
-    savingScores,
-    savedStudents,
-    selectedAssessment,
-    customAssessments
-  } = state;
+    selectedClass = '',
+    selectedSubject = '',
+    subjectMarks = {},
+    savingScores = false,
+    savedStudents = new Set(),
+    selectedAssessment = '',
+    customAssessments = []
+  } = state || {};
 
   // Calculate sync stats for SyncStatusPanel
   const calculateSyncStats = () => {
@@ -135,7 +135,7 @@ const EnterScoresView = ({
             <select
               id="assessment-select"
               value={selectedAssessment}
-              onChange={(e) => actions.setSelectedAssessment(e.target.value)}
+              onChange={(e) => actions?.setSelectedAssessment?.(e.target.value)}
               className="w-full p-3 md:p-4 border-2 border-white/30 rounded-xl bg-white/90 backdrop-blur-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all text-gray-900 font-medium"
             >
               <option value="">-- Choose assessment --</option>
