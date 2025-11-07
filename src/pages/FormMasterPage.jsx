@@ -1738,8 +1738,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           </div>
         )}
 
-        {/* Enter Scores View */}
-        {mainView === 'enterScores' && selectedClass && selectedSubject && (
+        {/* Enter Scores View - EnterScoresView handles all states internally */}
+        {mainView === 'enterScores' && (
           <EnterScoresView
             state={state}
             actions={actions}
@@ -1750,18 +1750,6 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
             errors={errors}
             saving={savingScores}
           />
-        )}
-
-        {/* Empty state for Enter Scores view - Glass Morphism */}
-        {mainView === 'enterScores' && (!selectedClass || !selectedSubject) && (
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-12 text-center border border-white/30">
-            <span className="text-7xl mb-6 block drop-shadow-2xl">✏️</span>
-            <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-md">Ready to Enter Scores</h3>
-            <p className="text-white/90 mb-6 text-lg">Select a class and subject to start entering scores</p>
-            <div className="text-sm text-white/80 max-w-md mx-auto bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
-              <p>💡 Tip: Your entered scores are automatically saved to the database as you work.</p>
-            </div>
-          </div>
         )}
 
         {/* Print Section View - Glass Morphism */}
