@@ -45,10 +45,10 @@ const ScoreEntryCard = React.memo(({
   const isCustomAssessment = selectedAssessment && selectedAssessment.assessment_type !== 'standard';
 
   return (
-    <div className={`glass-light border-2 rounded-xl p-4 shadow-lg transition-all ${
+    <div className={`glass-card-golden border-2 rounded-xl p-4 sm:p-5 shadow-xl transition-all ${
       isSaved
-        ? "border-green-400 bg-green-50/20"
-        : "border-yellow-400/50 hover:border-yellow-400"
+        ? "border-green-400/80 shadow-green-500/20"
+        : "border-yellow-400/60 hover:border-yellow-400/80 shadow-yellow-500/20"
     }`}>
       {/* Student Name Header */}
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/20">
@@ -77,7 +77,7 @@ const ScoreEntryCard = React.memo(({
         // Custom Assessment Layout
         <div className="space-y-4">
           {/* Score Input */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+          <div className="glass-ultra rounded-xl p-4 border border-white/30 shadow-lg">
             <label className="block text-xs font-semibold text-white/80 mb-2">
               Score (Max: {selectedAssessment.max_score})
             </label>
@@ -94,7 +94,7 @@ const ScoreEntryCard = React.memo(({
 
           {/* Remarks */}
           {remarks && (
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+            <div className="glass-ultra rounded-xl p-4 border border-white/30 shadow-lg">
               <label className="block text-xs font-semibold text-white/80 mb-2">Remark</label>
               <span className={`inline-block px-4 py-2 rounded-lg text-sm font-bold border-2 ${getRemarksColorClass(remarks)}`}>
                 {remarks}
@@ -106,7 +106,7 @@ const ScoreEntryCard = React.memo(({
         // Standard Assessment Layout
         <div className="space-y-4">
           {/* Tests Grid */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+          <div className="glass-ultra rounded-xl p-4 border border-white/30 shadow-lg">
             <label className="block text-xs font-semibold text-white/80 mb-3">Class Tests (15 marks each)</label>
             <div className="grid grid-cols-2 gap-3">
               {["test1", "test2", "test3", "test4"].map((test, idx) => (
@@ -127,7 +127,7 @@ const ScoreEntryCard = React.memo(({
           </div>
 
           {/* Exam Input */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+          <div className="glass-ultra rounded-xl p-4 border border-white/30 shadow-lg">
             <label className="block text-xs font-semibold text-white/80 mb-2">Exam (100 marks)</label>
             <input
               type="text"
@@ -142,13 +142,13 @@ const ScoreEntryCard = React.memo(({
 
           {/* Total & Remarks */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-blue-500/20 backdrop-blur-sm rounded-lg p-3 border-2 border-blue-400/50">
+            <div className="glass-ultra rounded-xl p-4 border-2 border-blue-400/60 shadow-lg">
               <label className="block text-xs font-semibold text-white/80 mb-1">Total</label>
               <div className="text-2xl font-bold text-blue-300">{calculateTotal()}</div>
               <div className="text-xs text-white/60">out of 100</div>
             </div>
             {remarks && (
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+              <div className="glass-ultra rounded-xl p-4 border border-white/30 shadow-lg">
                 <label className="block text-xs font-semibold text-white/80 mb-1">Remark</label>
                 <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold border-2 ${getRemarksColorClass(remarks)}`}>
                   {remarks}

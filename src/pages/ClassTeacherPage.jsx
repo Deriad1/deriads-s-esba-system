@@ -10,7 +10,7 @@ import TeacherLeaderboard from "../components/TeacherLeaderboard";
 import ScoreEntryRow from "../components/ScoreEntryRow";
 import ScoreEntryCard from "../components/ScoreEntryCard";
 import PromoteStudentsModal from "../components/PromoteStudentsModal";
-import { calculatePositions, calculateScoreDetails } from "../utils/gradeHelpers";
+import { calculatePositions, calculateScoreDetails, getRemarksColorClass } from "../utils/gradeHelpers";
 import { DEFAULT_TERM } from "../constants/terms";
 import { useGlobalSettings } from "../context/GlobalSettingsContext";
 
@@ -1043,6 +1043,17 @@ const ClassTeacherPage = () => {
                 >
                   📋 Assessments
                 </button>
+                <button
+                  onClick={() => setActiveTab("viewMarks")}
+                  className={`px-4 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
+                    activeTab === "viewMarks"
+                      ? "text-blue-600 border-b-2 border-blue-600"
+                      : "text-white/70 hover:text-white"
+                  }`}
+                  style={{ minHeight: '44px' }}
+                >
+                  👁️ View Marks
+                </button>
               </div>
 
               {/* Save All Scores Button and Auto-save Indicator - Only show when on scores tab with subject selected */}
@@ -1401,7 +1412,30 @@ const ClassTeacherPage = () => {
                   </div>
 
                   {/* Mobile Card View - Hidden on Desktop */}
-                  <div className="block md:hidden space-y-4">
+                  <div className="block md:hidden">
+                    {/* Mobile Header with Close Button */}
+                    <div className="sticky top-0 z-10 glass-strong rounded-xl p-4 mb-4 shadow-lg border border-white/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-base font-bold text-white">
+                            📝 Entering Scores
+                          </h4>
+                          <p className="text-xs text-white/80 mt-1">
+                            {filteredLearners.length} students • {selectedSubject}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedSubject("")}
+                          className="ml-3 px-4 py-2 bg-red-500/90 hover:bg-red-600 text-white rounded-lg font-semibold transition-all shadow-lg active:scale-95"
+                          style={{ minHeight: '44px', fontSize: '16px' }}
+                        >
+                          ✕ Close
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Student Cards */}
+                    <div className="space-y-4">
                     {(() => {
                       // Calculate scores and positions for all students (same logic as table)
                       const isCustomAssessment = selectedAssessment && selectedAssessment.assessment_type !== 'standard';
@@ -1460,6 +1494,7 @@ const ClassTeacherPage = () => {
                         );
                       });
                     })()}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1671,8 +1706,162 @@ const ClassTeacherPage = () => {
             </div>
           )}
 
+          {/* View Marks Tab - shown when activeTab === "viewMarks" */}
+          {activeTab === "viewMarks" && selectedClass && (
+            <div className="glass-card-golden">
+              <h3 className="text-lg sm:text-xl font-bold mb-6 text-white">
+                👁️ View Entered Marks for {selectedClass}
+              </h3>
+
+              {/* Subject Selection for Viewing */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-white/90 mb-2">Select Subject to View</label>
+                <select
+                  className="w-full sm:w-64 px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                  style={{ minHeight: '44px', fontSize: '16px' }}
+                  value={selectedSubject}
+                  onChange={e => setSelectedSubject(e.target.value)}
+                >
+                  <option value="">Choose Subject</option>
+                  {getUserSubjects().map(subj => (
+                    <option key={subj} value={subj}>{subj}</option>
+                  ))}
+                </select>
+              </div>
+
+              {!selectedSubject ? (
+                <div className="text-center py-12 text-white/80">
+                  <svg className="mx-auto h-16 w-16 text-white/50 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="font-medium text-lg">Select a subject to view marks</p>
+                  <p className="mt-2 text-sm">Choose a subject from the dropdown above</p>
+                </div>
+              ) : filteredLearners.length === 0 ? (
+                <div className="text-center py-12 text-white/80">
+                  <p className="font-medium">No students found in {selectedClass}</p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop View - Table */}
+                  <div className="hidden md:block overflow-x-auto rounded-lg border-2 border-blue-500/30">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-b-2 border-blue-500/30">
+                          <th className="p-4 text-left font-bold text-white">Student Name</th>
+                          <th className="p-4 text-center font-bold text-white">Test 1</th>
+                          <th className="p-4 text-center font-bold text-white">Test 2</th>
+                          <th className="p-4 text-center font-bold text-white">Test 3</th>
+                          <th className="p-4 text-center font-bold text-white">Test 4</th>
+                          <th className="p-4 text-center font-bold text-white">Exam</th>
+                          <th className="p-4 text-center font-bold text-white">Total</th>
+                          <th className="p-4 text-center font-bold text-white">Grade</th>
+                          <th className="p-4 text-center font-bold text-white">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white/90">
+                        {filteredLearners.map(learner => {
+                          const studentId = learner.idNumber;
+                          const studentMarks = marks[studentId] || {};
+                          const scoreDetails = calculateScoreDetails(studentMarks);
+                          const studentName = `${learner.firstName} ${learner.lastName}`;
+
+                          return (
+                            <tr key={studentId} className="border-b border-gray-200/50 hover:bg-blue-50/50">
+                              <td className="p-4 font-semibold text-gray-900">{studentName}</td>
+                              <td className="p-4 text-center text-gray-900">{studentMarks.test1 || '-'}</td>
+                              <td className="p-4 text-center text-gray-900">{studentMarks.test2 || '-'}</td>
+                              <td className="p-4 text-center text-gray-900">{studentMarks.test3 || '-'}</td>
+                              <td className="p-4 text-center text-gray-900">{studentMarks.test4 || '-'}</td>
+                              <td className="p-4 text-center text-gray-900">{studentMarks.exam || '-'}</td>
+                              <td className="p-4 text-center font-bold text-blue-600">{scoreDetails.total || '-'}</td>
+                              <td className="p-4 text-center font-bold text-purple-600">{scoreDetails.grade || '-'}</td>
+                              <td className="p-4 text-center">
+                                {scoreDetails.remarks ? (
+                                  <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold border-2 ${getRemarksColorClass(scoreDetails.remarks)}`}>
+                                    {scoreDetails.remarks}
+                                  </span>
+                                ) : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View - Cards */}
+                  <div className="block md:hidden space-y-4">
+                    {filteredLearners.map(learner => {
+                      const studentId = learner.idNumber;
+                      const studentMarks = marks[studentId] || {};
+                      const scoreDetails = calculateScoreDetails(studentMarks);
+                      const studentName = `${learner.firstName} ${learner.lastName}`;
+                      const hasMarks = Object.values(studentMarks).some(v => v && v.trim() !== "");
+
+                      return (
+                        <div key={studentId} className={`glass-ultra border-2 rounded-xl p-4 shadow-lg ${
+                          hasMarks ? 'border-green-400/60' : 'border-gray-400/40'
+                        }`}>
+                          <h4 className="text-base font-bold text-white mb-3">{studentName}</h4>
+
+                          {!hasMarks ? (
+                            <p className="text-white/60 text-sm text-center py-4">No marks entered yet</p>
+                          ) : (
+                            <>
+                              {/* Tests */}
+                              <div className="glass-light rounded-lg p-3 mb-3 border border-white/20">
+                                <label className="block text-xs font-semibold text-white/70 mb-2">Class Tests</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                  {['test1', 'test2', 'test3', 'test4'].map((test, idx) => (
+                                    <div key={test} className="text-center">
+                                      <div className="text-xs text-white/60 mb-1">T{idx + 1}</div>
+                                      <div className="text-sm font-bold text-white">{studentMarks[test] || '-'}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Exam and Total */}
+                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                <div className="glass-light rounded-lg p-3 border border-white/20">
+                                  <label className="block text-xs font-semibold text-white/70 mb-1">Exam</label>
+                                  <div className="text-lg font-bold text-white">{studentMarks.exam || '-'}</div>
+                                </div>
+                                <div className="glass-ultra rounded-lg p-3 border-2 border-blue-400/60">
+                                  <label className="block text-xs font-semibold text-white/70 mb-1">Total</label>
+                                  <div className="text-lg font-bold text-blue-300">{scoreDetails.total || '-'}</div>
+                                </div>
+                              </div>
+
+                              {/* Grade and Remarks */}
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="glass-light rounded-lg p-3 border border-white/20">
+                                  <label className="block text-xs font-semibold text-white/70 mb-1">Grade</label>
+                                  <div className="text-base font-bold text-purple-300">{scoreDetails.grade || '-'}</div>
+                                </div>
+                                <div className="glass-light rounded-lg p-3 border border-white/20">
+                                  <label className="block text-xs font-semibold text-white/70 mb-1">Remark</label>
+                                  {scoreDetails.remarks ? (
+                                    <span className={`inline-block px-2 py-1 rounded text-xs font-bold border ${getRemarksColorClass(scoreDetails.remarks)}`}>
+                                      {scoreDetails.remarks}
+                                    </span>
+                                  ) : <div className="text-white/40 text-sm">-</div>}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* No students message */}
-          {selectedClass && filteredLearners.length === 0 && activeTab !== "assessments" && (
+          {selectedClass && filteredLearners.length === 0 && activeTab !== "assessments" && activeTab !== "viewMarks" && (
             <div className="text-center py-8 text-white">
               <p>No students found in {selectedClass}</p>
             </div>
