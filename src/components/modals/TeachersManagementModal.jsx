@@ -28,10 +28,10 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
     email: '',
     password: '',
     gender: 'male',
-    primaryRole: 'subject_teacher',
-    allRoles: ['subject_teacher'],
-    classAssigned: '', // For form masters - the one class they manage
-    teachingLevel: 'PRIMARY'
+    primaryRole: 'class_teacher',
+    allRoles: ['class_teacher'],
+    classAssigned: '', // For form masters/class teachers - the one class they manage
+    teachingLevel: 'Lower Primary'
   });
   const [selectedTeacherIds, setSelectedTeacherIds] = useState([]);
   const [teacherFilters, setTeacherFilters] = useState({
@@ -114,10 +114,10 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
         email: '',
         password: '',
         gender: 'male',
-        primaryRole: 'subject_teacher',
-        allRoles: ['subject_teacher'],
+        primaryRole: 'class_teacher',
+        allRoles: ['class_teacher'],
         classAssigned: '',
-        teachingLevel: 'PRIMARY'
+        teachingLevel: 'Lower Primary'
       });
       loadData();
     } catch (error) {
@@ -136,6 +136,73 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
       primaryRole: role,
       allRoles: prev?.allRoles || ['subject_teacher']
     }));
+  };
+
+  // Handle teaching level change and auto-assign appropriate role
+  const handleTeachingLevelChange = (level) => {
+    let defaultRole = 'subject_teacher';
+    let classAssigned = newTeacher.classAssigned;
+
+    // Determine default role based on teaching level
+    if (['KG', 'Lower Primary', 'Upper Primary'].includes(level)) {
+      // PRIMARY levels (KG to BS6) → class_teacher
+      defaultRole = 'class_teacher';
+    } else if (level === 'JHS') {
+      // JHS (BS7 to BS9) → form_master if they have a class, subject_teacher otherwise
+      defaultRole = newTeacher.classAssigned ? 'form_master' : 'subject_teacher';
+    }
+    // For 'All Levels', keep the current role or default to subject_teacher
+
+    setNewTeacher(prev => ({
+      ...prev,
+      teachingLevel: level,
+      primaryRole: defaultRole,
+      allRoles: [defaultRole],
+      classAssigned: classAssigned
+    }));
+  };
+
+  // Check if a role is allowed based on teaching level
+  const isRoleAllowedForLevel = (role, teachingLevel) => {
+    // Admin and head_teacher are always allowed (they can teach any level)
+    if (role === 'admin' || role === 'head_teacher') {
+      return true;
+    }
+
+    // For PRIMARY levels (KG to BS6): only class_teacher allowed
+    if (['KG', 'Lower Primary', 'Upper Primary'].includes(teachingLevel)) {
+      return role === 'class_teacher';
+    }
+
+    // For JHS (BS7 to BS9): only form_master or subject_teacher allowed
+    if (teachingLevel === 'JHS') {
+      return role === 'form_master' || role === 'subject_teacher';
+    }
+
+    // For "All Levels": allow all roles
+    return true;
+  };
+
+  // Handle class assignment change for JHS teachers
+  const handleClassAssignmentChange = (classValue) => {
+    setNewTeacher(prev => {
+      const updates = { ...prev, classAssigned: classValue };
+
+      // For JHS teachers: auto-update role based on class assignment
+      if (prev.teachingLevel === 'JHS') {
+        if (classValue) {
+          // Has a class → make them form_master
+          updates.primaryRole = 'form_master';
+          updates.allRoles = ['form_master'];
+        } else {
+          // No class → make them subject_teacher
+          updates.primaryRole = 'subject_teacher';
+          updates.allRoles = ['subject_teacher'];
+        }
+      }
+
+      return updates;
+    });
   };
 
   const handleDeleteTeacher = async (teacherId) => {
@@ -279,10 +346,10 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                   email: '',
                   password: '',
                   gender: 'male',
-                  primaryRole: 'subject_teacher',
-                  allRoles: ['subject_teacher'],
+                  primaryRole: 'class_teacher',
+                  allRoles: ['class_teacher'],
                   classAssigned: '',
-                  teachingLevel: 'PRIMARY'
+                  teachingLevel: 'Lower Primary'
                 });
               }}
               className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-600 border-2 border-white/70 text-white rounded-xl hover:from-green-600 hover:to-blue-700 transition-all font-bold shadow-2xl backdrop-blur-sm"
@@ -414,7 +481,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => setNewTeacher({...newTeacher, teachingLevel: 'KG'})}
+                      onClick={() => handleTeachingLevelChange('KG')}
                       className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                         newTeacher.teachingLevel === 'KG'
                           ? 'bg-pink-400 text-white shadow-lg scale-105'
@@ -426,7 +493,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewTeacher({...newTeacher, teachingLevel: 'Lower Primary'})}
+                      onClick={() => handleTeachingLevelChange('Lower Primary')}
                       className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                         newTeacher.teachingLevel === 'Lower Primary'
                           ? 'bg-blue-300 text-white shadow-lg scale-105'
@@ -438,7 +505,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewTeacher({...newTeacher, teachingLevel: 'Upper Primary'})}
+                      onClick={() => handleTeachingLevelChange('Upper Primary')}
                       className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                         newTeacher.teachingLevel === 'Upper Primary'
                           ? 'bg-blue-500 text-white shadow-lg scale-105'
@@ -450,7 +517,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewTeacher({...newTeacher, teachingLevel: 'JHS'})}
+                      onClick={() => handleTeachingLevelChange('JHS')}
                       className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                         newTeacher.teachingLevel === 'JHS'
                           ? 'bg-green-400 text-white shadow-lg scale-105'
@@ -462,7 +529,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewTeacher({...newTeacher, teachingLevel: 'All Levels'})}
+                      onClick={() => handleTeachingLevelChange('All Levels')}
                       className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                         newTeacher.teachingLevel === 'All Levels'
                           ? 'bg-purple-400 text-white shadow-lg scale-105'
@@ -479,8 +546,23 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                 </div>
 
                 {/* Primary Role Selection */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-white mb-2">Primary Role</label>
+                  {/* Show role guidance based on teaching level */}
+                  {['KG', 'Lower Primary', 'Upper Primary'].includes(newTeacher.teachingLevel) && (
+                    <div className="mb-2 p-2 bg-blue-500/20 border border-blue-400/50 rounded-lg">
+                      <p className="text-xs text-white">
+                        ℹ️ <strong>PRIMARY Teachers</strong> (KG-BS6) are automatically assigned as <strong>Class Teachers</strong>
+                      </p>
+                    </div>
+                  )}
+                  {newTeacher.teachingLevel === 'JHS' && (
+                    <div className="mb-2 p-2 bg-green-500/20 border border-green-400/50 rounded-lg">
+                      <p className="text-xs text-white">
+                        ℹ️ <strong>JHS Teachers</strong> (BS7-BS9) can be <strong>Form Masters</strong> (managing a class) or <strong>Subject Teachers</strong> (teaching only)
+                      </p>
+                    </div>
+                  )}
                   <select
                     value={newTeacher?.primaryRole || 'subject_teacher'}
                     onChange={(e) => handlePrimaryRoleChange(e.target.value)}
@@ -488,12 +570,40 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                     style={{ minHeight: '44px', fontSize: '16px' }}
                     required
                   >
-                    <option value="admin" className="bg-white text-gray-900">Admin</option>
-                    <option value="head_teacher" className="bg-white text-gray-900">Head Teacher</option>
-                    <option value="subject_teacher" className="bg-white text-gray-900">Subject Teacher</option>
-                    <option value="class_teacher" className="bg-white text-gray-900">Class Teacher</option>
-                    <option value="form_master" className="bg-white text-gray-900">
-                      {newTeacher?.gender === 'female' ? 'Form Mistress' : 'Form Master'}
+                    <option
+                      value="admin"
+                      className="bg-white text-gray-900"
+                      disabled={!isRoleAllowedForLevel('admin', newTeacher.teachingLevel)}
+                    >
+                      Admin {!isRoleAllowedForLevel('admin', newTeacher.teachingLevel) ? '(Not available)' : ''}
+                    </option>
+                    <option
+                      value="head_teacher"
+                      className="bg-white text-gray-900"
+                      disabled={!isRoleAllowedForLevel('head_teacher', newTeacher.teachingLevel)}
+                    >
+                      Head Teacher {!isRoleAllowedForLevel('head_teacher', newTeacher.teachingLevel) ? '(Not available)' : ''}
+                    </option>
+                    <option
+                      value="subject_teacher"
+                      className="bg-white text-gray-900"
+                      disabled={!isRoleAllowedForLevel('subject_teacher', newTeacher.teachingLevel)}
+                    >
+                      Subject Teacher {!isRoleAllowedForLevel('subject_teacher', newTeacher.teachingLevel) ? '(Not available for PRIMARY)' : ''}
+                    </option>
+                    <option
+                      value="class_teacher"
+                      className="bg-white text-gray-900"
+                      disabled={!isRoleAllowedForLevel('class_teacher', newTeacher.teachingLevel)}
+                    >
+                      Class Teacher {!isRoleAllowedForLevel('class_teacher', newTeacher.teachingLevel) ? '(PRIMARY only)' : ''}
+                    </option>
+                    <option
+                      value="form_master"
+                      className="bg-white text-gray-900"
+                      disabled={!isRoleAllowedForLevel('form_master', newTeacher.teachingLevel)}
+                    >
+                      {newTeacher?.gender === 'female' ? 'Form Mistress' : 'Form Master'} {!isRoleAllowedForLevel('form_master', newTeacher.teachingLevel) ? '(JHS only)' : ''}
                     </option>
                   </select>
                 </div>
@@ -521,7 +631,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                     </div>
                     <select
                       value={newTeacher.classAssigned || ''}
-                      onChange={(e) => setNewTeacher(prev => ({...prev, classAssigned: e.target.value}))}
+                      onChange={(e) => handleClassAssignmentChange(e.target.value)}
                       className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 font-medium transition-all"
                       style={{ minHeight: '44px', fontSize: '16px' }}
                       required

@@ -69,33 +69,86 @@ export const validateRoleAssignment = ({ primaryRole, allRoles = [], classAssign
     };
   }
 
-  // Rule 4: Form Masters must have a class assigned (only for JHS)
-  if (roles.includes(TEACHER_ROLES.FORM_MASTER)) {
-    // Form Master role should only be validated for JHS teachers
-    if (teachingLevel === 'JHS' || teachingLevel === TEACHING_LEVELS.JHS) {
-      if (!classAssigned) {
-        return {
-          valid: false,
-          error: 'Form Masters must have a class assigned to manage'
-        };
-      }
+  // Rule 4: Teaching level-based role restrictions
+  // PRIMARY teachers (KG, Lower Primary, Upper Primary) can ONLY be class_teacher
+  if (['KG', 'Lower Primary', 'Upper Primary'].includes(teachingLevel)) {
+    // Admin and head_teacher are exempt from this rule
+    const restrictedRoles = roles.filter(role =>
+      role !== 'admin' && role !== 'head_teacher' && role !== TEACHER_ROLES.CLASS_TEACHER
+    );
 
-      // Also validate that the class matches the teaching level
-      const formMasterValidation = validateFormMasterAssignment({ className: classAssigned, teachingLevel });
-      if (!formMasterValidation.valid) {
-        return formMasterValidation;
-      }
+    if (restrictedRoles.length > 0) {
+      return {
+        valid: false,
+        error: 'PRIMARY teachers (KG-BS6) can only have the Class Teacher role'
+      };
+    }
+
+    // Primary role must be class_teacher for PRIMARY teachers (unless admin/head_teacher)
+    if (primaryRole !== 'admin' && primaryRole !== 'head_teacher' && primaryRole !== TEACHER_ROLES.CLASS_TEACHER) {
+      return {
+        valid: false,
+        error: 'PRIMARY teachers (KG-BS6) must be assigned as Class Teachers'
+      };
     }
   }
 
-  // Rule 5: Form Master role is only for JHS teachers (optional constraint)
-  // Commented out as it may not be needed based on current system
-  // if (roles.includes(TEACHER_ROLES.FORM_MASTER) && teachingLevel !== TEACHING_LEVELS.JHS) {
-  //   return {
-  //     valid: false,
-  //     error: 'Form Master/Mistress role is only available for JHS teachers'
-  //   };
-  // }
+  // Rule 5: JHS teachers can ONLY be form_master or subject_teacher
+  if (teachingLevel === 'JHS' || teachingLevel === TEACHING_LEVELS.JHS) {
+    // Admin and head_teacher are exempt from this rule
+    const restrictedRoles = roles.filter(role =>
+      role !== 'admin' &&
+      role !== 'head_teacher' &&
+      role !== TEACHER_ROLES.FORM_MASTER &&
+      role !== TEACHER_ROLES.SUBJECT_TEACHER
+    );
+
+    if (restrictedRoles.length > 0) {
+      return {
+        valid: false,
+        error: 'JHS teachers (BS7-BS9) can only be Form Masters or Subject Teachers'
+      };
+    }
+
+    // Primary role must be form_master or subject_teacher for JHS (unless admin/head_teacher)
+    if (
+      primaryRole !== 'admin' &&
+      primaryRole !== 'head_teacher' &&
+      primaryRole !== TEACHER_ROLES.FORM_MASTER &&
+      primaryRole !== TEACHER_ROLES.SUBJECT_TEACHER
+    ) {
+      return {
+        valid: false,
+        error: 'JHS teachers (BS7-BS9) must be Form Masters or Subject Teachers'
+      };
+    }
+  }
+
+  // Rule 6: Form Masters must have a class assigned
+  if (roles.includes(TEACHER_ROLES.FORM_MASTER)) {
+    if (!classAssigned) {
+      return {
+        valid: false,
+        error: 'Form Masters must have a class assigned to manage'
+      };
+    }
+
+    // Also validate that the class matches the teaching level
+    const formMasterValidation = validateFormMasterAssignment({ className: classAssigned, teachingLevel });
+    if (!formMasterValidation.valid) {
+      return formMasterValidation;
+    }
+  }
+
+  // Rule 7: Class Teachers must have a class assigned
+  if (roles.includes(TEACHER_ROLES.CLASS_TEACHER)) {
+    if (!classAssigned) {
+      return {
+        valid: false,
+        error: 'Class Teachers must have a class assigned to manage'
+      };
+    }
+  }
 
   return { valid: true };
 };
