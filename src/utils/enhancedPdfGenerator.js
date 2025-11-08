@@ -60,14 +60,14 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   doc.text(`${(student.firstName || student.first_name || '').toUpperCase()} ${(student.lastName || student.last_name || '').toUpperCase()}`, 40, boxY + 7);
 
   doc.setFont('helvetica', 'bold');
-  doc.text('NO. ROLL:', 110, boxY + 7);
+  doc.text('ENROLLMENT:', 110, boxY + 7);
   doc.setFont('helvetica', 'normal');
-  doc.text(student.idNumber || student.id_number || '', 135, boxY + 7);
+  doc.text(formMasterInfo.totalStudents?.toString() || student.totalStudents?.toString() || '__', 145, boxY + 7);
 
   doc.setFont('helvetica', 'bold');
   doc.text('POS:', 20, boxY + 17);
   doc.setFont('helvetica', 'normal');
-  doc.text(student.classPosition?.toString() || formMasterInfo.position?.toString() || '__', 35, boxY + 17);
+  doc.text(formMasterInfo.overallPosition?.toString() || student.classPosition?.toString() || formMasterInfo.position?.toString() || '__', 35, boxY + 17);
 
   doc.setFont('helvetica', 'bold');
   doc.text('CLASS:', 60, boxY + 17);
@@ -163,6 +163,18 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   doc.text('ATTITUDE:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
   doc.text(student.attitude || formMasterInfo.attitude || '__________________', 50, yPosition);
+
+  yPosition += 8;
+  doc.setFont('helvetica', 'bold');
+  doc.text('REMARKS:', 20, yPosition);
+  doc.setFont('helvetica', 'normal');
+  doc.text(student.remarks || formMasterInfo.remarks || '__________________', 50, yPosition);
+
+  yPosition += 8;
+  doc.setFont('helvetica', 'bold');
+  doc.text('COMMENTS:', 20, yPosition);
+  doc.setFont('helvetica', 'normal');
+  doc.text(student.comments || formMasterInfo.comments || '__________________', 50, yPosition);
 
   // Class Teacher's Remarks Box
   yPosition += 10;

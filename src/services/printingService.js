@@ -145,6 +145,10 @@ class PrintingService {
           };
         });
 
+        // Add total students count (all students in this batch have same class)
+        remarksInfo.totalStudents = totalStudents;
+        remarksInfo.overallPosition = '-'; // Skip for bulk print (would require all student data)
+
         // Generate PDF
         const pdf = generateStudentReportPDF(student, subjectsData, schoolInfo, remarksInfo);
 
@@ -479,6 +483,46 @@ class PrintingService {
         remark: this.getRemarks(total)
       };
     });
+
+    // Calculate overall class position and total students count
+    let overallPosition = '-';
+    let totalStudents = 0;
+
+    if (broadsheetData && broadsheetData.status === 'success') {
+      const students = broadsheetData.data.students || [];
+      totalStudents = students.length;
+
+      // Calculate total marks for each student across all subjects
+      const studentTotals = students.map(s => {
+        const studentScores = broadsheetData.data.scores?.filter(score =>
+          score.student_id === s.id
+        ) || [];
+
+        const totalMarks = studentScores.reduce((sum, score) => {
+          return sum + (parseFloat(score.total) || 0);
+        }, 0);
+
+        return {
+          studentId: s.id,
+          idNumber: s.id_number,
+          totalMarks
+        };
+      });
+
+      // Sort by total marks (descending) to determine positions
+      studentTotals.sort((a, b) => b.totalMarks - a.totalMarks);
+
+      // Find this student's position
+      const studentIdNumber = student.idNumber || student.id_number;
+      const studentIndex = studentTotals.findIndex(s => s.idNumber === studentIdNumber);
+      if (studentIndex !== -1) {
+        overallPosition = studentIndex + 1;
+      }
+    }
+
+    // Add overall position and total students to remarksInfo
+    remarksInfo.overallPosition = overallPosition;
+    remarksInfo.totalStudents = totalStudents;
 
     return { subjectsData, remarksInfo };
   }
