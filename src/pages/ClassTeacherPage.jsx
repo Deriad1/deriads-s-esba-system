@@ -670,13 +670,14 @@ const ClassTeacherPage = () => {
 
     try {
       const promises = filteredLearners.map(async (learner) => {
-        const studentId = learner.idNumber;
-        const studentData = formMasterData[studentId];
+        const displayId = learner.idNumber; // For UI tracking (e.g., "eSBA026")
+        const databaseId = learner.id; // For database operations (integer)
+        const studentData = formMasterData[displayId];
 
         if (studentData && (studentData.remarks || studentData.attendance || studentData.attitude || studentData.interest || studentData.comments)) {
           try {
             const response = await updateFormMasterRemarks({
-              studentId,
+              studentId: databaseId, // Use database ID for API
               className: selectedClass,
               term: settings.term || DEFAULT_TERM,
               academicYear: settings.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
@@ -693,7 +694,7 @@ const ClassTeacherPage = () => {
               errorCount++;
             }
           } catch (error) {
-            console.error(`Error saving data for ${studentId}:`, error);
+            console.error(`Error saving data for ${displayId}:`, error);
             errorCount++;
           }
         }
