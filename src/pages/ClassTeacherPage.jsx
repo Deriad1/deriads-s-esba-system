@@ -976,13 +976,14 @@ const ClassTeacherPage = () => {
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">Select Class</label>
               <select
-                className="w-full p-3 glass-light border border-white/30 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-white/10"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                style={{ minHeight: '44px', fontSize: '16px' }}
                 value={selectedClass}
                 onChange={e => setSelectedClass(e.target.value)}
               >
-                <option value="">Choose Class</option>
+                <option value="" className="bg-white text-gray-900">Choose Class</option>
                 {getUserClasses().map(cls => (
-                  <option key={cls} value={cls}>{cls}</option>
+                  <option key={cls} value={cls} className="bg-white text-gray-900">{cls}</option>
                 ))}
               </select>
             </div>
@@ -990,14 +991,15 @@ const ClassTeacherPage = () => {
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">Select Subject (for score entry)</label>
               <select
-                className="w-full p-3 glass-light border border-white/30 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-white bg-white/10"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ minHeight: '44px', fontSize: '16px' }}
                 value={selectedSubject}
                 onChange={e => setSelectedSubject(e.target.value)}
                 disabled={!selectedClass}
               >
-                <option value="">Choose Subject</option>
+                <option value="" className="bg-white text-gray-900">Choose Subject</option>
                 {getUserSubjects().map(subj => (
-                  <option key={subj} value={subj}>{subj}</option>
+                  <option key={subj} value={subj} className="bg-white text-gray-900">{subj}</option>
                 ))}
               </select>
             </div>
