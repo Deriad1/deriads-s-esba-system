@@ -203,7 +203,7 @@ const ResponsiveScoreEntry = ({
                     }}
                     onKeyDown={(e) => handleKeyDown(e, field)}
                     onFocus={() => setCurrentField(field)}
-                    className="w-full text-3xl font-bold text-center p-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200 focus:outline-none"
+                    className="w-full text-4xl font-bold text-center p-6 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-200 focus:outline-none touch-manipulation"
                     placeholder="0"
                     min="0"
                     max={getMaxScore(field)}
@@ -306,18 +306,18 @@ const ResponsiveScoreEntry = ({
             <button
               onClick={prevStudent}
               disabled={currentStudentIndex === 0}
-              className="flex items-center justify-center gap-2 px-6 py-4 bg-gray-200 text-gray-700 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:bg-gray-300 transition-colors"
+              className="flex items-center justify-center gap-2 px-6 py-5 bg-gray-200 text-gray-700 rounded-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed active:bg-gray-300 transition-colors touch-manipulation"
             >
-              <span>←</span>
+              <span className="text-xl">←</span>
               <span>Previous</span>
             </button>
             <button
               onClick={nextStudent}
               disabled={currentStudentIndex === learners.length - 1}
-              className="flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:bg-blue-700 transition-colors"
+              className="flex items-center justify-center gap-2 px-6 py-5 bg-blue-600 text-white rounded-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed active:bg-blue-700 transition-colors touch-manipulation"
             >
               <span>Next</span>
-              <span>→</span>
+              <span className="text-xl">→</span>
             </button>
           </div>
 
@@ -325,7 +325,7 @@ const ResponsiveScoreEntry = ({
           <button
             onClick={() => onSaveStudent(studentId)}
             disabled={saving}
-            className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
+            className={`w-full py-5 rounded-xl font-bold text-xl transition-colors touch-manipulation ${
               isSaved
                 ? 'bg-green-500 text-white'
                 : 'bg-green-600 text-white hover:bg-green-700'
@@ -406,6 +406,7 @@ const ResponsiveScoreEntry = ({
                     <td className="border border-gray-300 p-1">
                       <input
                         type="text"
+                        inputMode="decimal"
                         value={studentMarks.score ?? ''}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -417,7 +418,7 @@ const ResponsiveScoreEntry = ({
                             }
                           }
                         }}
-                        className="w-20 p-2 border rounded text-center focus:ring-2 focus:ring-blue-500"
+                        className="w-24 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation"
                         placeholder="0"
                         maxLength="5"
                       />
@@ -467,6 +468,7 @@ const ResponsiveScoreEntry = ({
                       <td key={test} className="border border-gray-300 p-1">
                         <input
                           type="text"
+                          inputMode="decimal"
                           value={studentMarks[test] ?? ''}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -474,7 +476,7 @@ const ResponsiveScoreEntry = ({
                               onMarkChange(studentId, test, value);
                             }
                           }}
-                          className="w-16 p-2 border rounded text-center focus:ring-2 focus:ring-blue-500"
+                          className="w-20 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation"
                           placeholder="0"
                           maxLength="4"
                         />
@@ -492,6 +494,7 @@ const ResponsiveScoreEntry = ({
                     <td className="border border-gray-300 p-1">
                       <input
                         type="text"
+                        inputMode="decimal"
                         value={studentMarks.exam ?? ''}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -499,7 +502,7 @@ const ResponsiveScoreEntry = ({
                             onMarkChange(studentId, 'exam', value);
                           }
                         }}
-                        className="w-20 p-2 border rounded text-center focus:ring-2 focus:ring-blue-500"
+                        className="w-24 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation"
                         placeholder="0"
                         maxLength="5"
                       />
