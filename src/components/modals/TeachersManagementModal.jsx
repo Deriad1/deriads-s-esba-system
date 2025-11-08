@@ -107,6 +107,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
         message: 'Teacher added successfully!'
       });
       setShowAddTeacherForm(false);
+      // Reset form to initial state with all required fields
       setNewTeacher({
         firstName: '',
         lastName: '',
@@ -272,7 +273,17 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
             <button
               onClick={() => {
                 setShowAddTeacherForm(!showAddTeacherForm);
-                setNewTeacher({ firstName: '', lastName: '', email: '', password: '', gender: 'male' });
+                setNewTeacher({
+                  firstName: '',
+                  lastName: '',
+                  email: '',
+                  password: '',
+                  gender: 'male',
+                  primaryRole: 'subject_teacher',
+                  allRoles: ['subject_teacher'],
+                  classAssigned: '',
+                  teachingLevel: 'PRIMARY'
+                });
               }}
               className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-600 border-2 border-white/70 text-white rounded-xl hover:from-green-600 hover:to-blue-700 transition-all font-bold shadow-2xl backdrop-blur-sm"
               style={{ minHeight: '44px', boxShadow: '0 4px 20px rgba(34, 197, 94, 0.4)' }}
@@ -473,15 +484,15 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                   <select
                     value={newTeacher?.primaryRole || 'subject_teacher'}
                     onChange={(e) => handlePrimaryRoleChange(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/20 border-2 border-white/30 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 backdrop-blur-md font-medium transition-all"
+                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
                     style={{ minHeight: '44px', fontSize: '16px' }}
                     required
                   >
-                    <option value="admin">Admin</option>
-                    <option value="head_teacher">Head Teacher</option>
-                    <option value="subject_teacher">Subject Teacher</option>
-                    <option value="class_teacher">Class Teacher</option>
-                    <option value="form_master">
+                    <option value="admin" className="bg-white text-gray-900">Admin</option>
+                    <option value="head_teacher" className="bg-white text-gray-900">Head Teacher</option>
+                    <option value="subject_teacher" className="bg-white text-gray-900">Subject Teacher</option>
+                    <option value="class_teacher" className="bg-white text-gray-900">Class Teacher</option>
+                    <option value="form_master" className="bg-white text-gray-900">
                       {newTeacher?.gender === 'female' ? 'Form Mistress' : 'Form Master'}
                     </option>
                   </select>

@@ -398,12 +398,6 @@ export const addTeacher = async (teacherData) => {
   try {
     const sanitized = sanitizeInput(teacherData);
 
-    // Debug: Log what we're sending to the API
-    console.log('🔍 Original teacher data:', teacherData);
-    console.log('🔍 Sanitized teacher data:', sanitized);
-    console.log('🔍 primaryRole value:', sanitized.primaryRole);
-    console.log('🔍 primaryRole type:', typeof sanitized.primaryRole);
-
     const result = await apiCall('/teachers', {
       method: 'POST',
       body: JSON.stringify(sanitized),
