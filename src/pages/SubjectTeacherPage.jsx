@@ -938,25 +938,25 @@ const SubjectTeacherPage = () => {
         {/* Scores Entry Modal */}
         {showScoresModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            {/* Removed glass-morphism from modal for better mobile performance */}
-            <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            {/* Frosted Glass Modal */}
+            <div className="glass-card-golden rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border-2 border-white/30 shadow-2xl">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-white text-shadow">Enter Student Scores</h2>
-                  <button 
-                    onClick={() => setShowScoresModal(false)} 
-                    className="text-4xl text-white/70 hover:text-white focus:outline-none"
+                  <h2 className="text-xl font-bold text-white">📝 Enter Student Scores</h2>
+                  <button
+                    onClick={() => setShowScoresModal(false)}
+                    className="text-4xl text-white/70 hover:text-white focus:outline-none transition-colors"
                   >
                     ✕
                   </button>
                 </div>
 
                 {/* Current Selection Info in Modal */}
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
-                  <h3 className="font-bold text-blue-900 text-shadow">
+                <div className="glass-ultra border border-white/30 rounded-xl p-4 mb-6 shadow-lg">
+                  <h3 className="font-bold text-white text-lg">
                     {selectedSubject} - {selectedClass}
                   </h3>
-                  <p className="text-blue-700 text-sm text-shadow">
+                  <p className="text-white/80 text-sm mt-1">
                     {filteredLearners.length} students | Teacher: {user?.name}
                   </p>
                 </div>
@@ -992,9 +992,9 @@ const SubjectTeacherPage = () => {
 
                 {/* Grading Scale */}
                 {selectedClass && selectedSubject && filteredLearners.length > 0 && (
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="mt-4 p-4 glass-ultra rounded-xl border border-white/30 shadow-lg">
                     <div className="overflow-x-auto">
-                      <div className="text-xs text-white/90">
+                      <div className="text-xs text-white">
                         <strong>Grading Scale:</strong> 80-100: Excellent | 70-79: Very Good | 60-69: Good | 50-59: Satisfactory | 40-49: Fair | Below 40: Needs Improvement
                       </div>
                     </div>
@@ -1008,16 +1008,16 @@ const SubjectTeacherPage = () => {
                       <button
                         onClick={saveProgress}
                         disabled={saving}
-                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors font-medium"
+                        className="glass-button px-6 py-3 rounded-xl text-white border-2 border-green-400/50 hover:border-green-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
                       >
-                        {saving ? 'Saving...' : 'Save Progress'}
+                        {saving ? 'Saving...' : '💾 Save Progress'}
                       </button>
                       <button
                         onClick={saveAllMarks}
                         disabled={saving}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors font-medium"
+                        className="glass-button-primary px-6 py-3 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
                       >
-                        {saving ? 'Saving...' : 'Save All Marks'}
+                        {saving ? 'Saving...' : '💾 Save All Marks'}
                       </button>
                     </div>
                   </div>
@@ -1027,23 +1027,23 @@ const SubjectTeacherPage = () => {
                 <div className="hidden md:flex mt-6 justify-end space-x-3">
                   <button
                     onClick={() => setShowScoresModal(false)}
-                    className="px-4 py-2 border border-white/30 rounded-lg text-white hover:bg-white/20"
+                    className="glass-button px-4 py-2 border-2 border-white/30 rounded-xl text-white hover:border-white/50 hover:bg-white/20 transition-all font-medium shadow-lg"
                   >
-                    Cancel
+                    ✕ Cancel
                   </button>
                   <button
                     onClick={saveProgress}
                     disabled={saving}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
+                    className="glass-button px-4 py-2 rounded-xl text-white border-2 border-green-400/50 hover:border-green-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
                   >
-                    {saving ? "Saving..." : "Save Progress"}
+                    {saving ? "Saving..." : "💾 Save Progress"}
                   </button>
                   <button
                     onClick={saveAllMarks}
                     disabled={saving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                    className="glass-button-primary px-4 py-2 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
                   >
-                    {saving ? "Saving..." : "Save All Marks"}
+                    {saving ? "Saving..." : "💾 Save All Marks"}
                   </button>
                 </div>
               </div>
