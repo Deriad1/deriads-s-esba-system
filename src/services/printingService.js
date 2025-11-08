@@ -115,7 +115,7 @@ class PrintingService {
             comments: remarksResponse.data.comments || '',
             attendance: {
               present: remarksResponse.data.attendance || 0,
-              total: 0
+              total: remarksResponse.data.attendance_total || remarksResponse.data.attendanceTotal || 0
             }
           } : {};
         } catch (error) {
@@ -431,7 +431,7 @@ class PrintingService {
         comments: remarksResponse.data.comments || '',
         attendance: {
           present: remarksResponse.data.attendance || 0,
-          total: 0
+          total: remarksResponse.data.attendance_total || remarksResponse.data.attendanceTotal || 0
         }
       } : {};
     }
