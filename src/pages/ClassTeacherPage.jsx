@@ -935,9 +935,9 @@ const ClassTeacherPage = () => {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="glass-strong p-6 rounded-lg shadow-xl">
-          <h1 className="text-2xl font-bold text-white">Class Teacher Dashboard</h1>
-          <p className="text-white/80 mt-1">Enter scores for subjects you teach and manage your class</p>
+        <div className="glass-strong p-4 sm:p-6 rounded-lg shadow-xl">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Class Teacher Dashboard</h1>
+          <p className="text-white/80 mt-1 text-sm sm:text-base">Enter scores for subjects you teach and manage your class</p>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -969,10 +969,10 @@ const ClassTeacherPage = () => {
         )}
 
         {/* Class & Subject Selection */}
-        <div className="glass-medium p-6 rounded-lg shadow-lg">
-          <h2 className="text-lg font-semibold mb-4 text-white">Manage Your Class</h2>
+        <div className="glass-medium p-4 sm:p-6 rounded-lg shadow-lg">
+          <h2 className="text-base sm:text-lg font-semibold mb-4 text-white">Manage Your Class</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">Select Class</label>
               <select
@@ -1007,35 +1007,38 @@ const ClassTeacherPage = () => {
 
           {/* Tabs for switching between Score Entry and Remarks */}
           {selectedClass && (
-            <div className="flex justify-between items-center gap-2 mb-6 border-b">
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-6 border-b pb-2">
+              <div className="flex gap-2 overflow-x-auto">
                 <button
                   onClick={() => setActiveTab("scores")}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`px-4 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                     activeTab === "scores"
                       ? "text-blue-600 border-b-2 border-blue-600"
                       : "text-white/70 hover:text-white"
                   }`}
+                  style={{ minHeight: '44px' }}
                 >
                   📊 Enter Scores {selectedSubject && `(${selectedSubject})`}
                 </button>
                 <button
                   onClick={() => setActiveTab("remarks")}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`px-4 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                     activeTab === "remarks"
                       ? "text-blue-600 border-b-2 border-blue-600"
                       : "text-white/70 hover:text-white"
                   }`}
+                  style={{ minHeight: '44px' }}
                 >
                   📝 Remarks & Attendance
                 </button>
                 <button
                   onClick={() => setActiveTab("assessments")}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`px-4 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                     activeTab === "assessments"
                       ? "text-blue-600 border-b-2 border-blue-600"
                       : "text-white/70 hover:text-white"
                   }`}
+                  style={{ minHeight: '44px' }}
                 >
                   📋 Assessments
                 </button>
@@ -1043,10 +1046,10 @@ const ClassTeacherPage = () => {
 
               {/* Save All Scores Button and Auto-save Indicator - Only show when on scores tab with subject selected */}
               {activeTab === "scores" && selectedSubject && (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                   {/* Auto-save indicator */}
                   {(autoSaving || lastAutoSaved) && (
-                    <div className="text-xs text-white/80 flex items-center gap-1">
+                    <div className="text-xs text-white/80 flex items-center gap-1 justify-center sm:justify-start">
                       {autoSaving ? (
                         <>
                           <svg className="animate-spin h-3 w-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1069,7 +1072,8 @@ const ClassTeacherPage = () => {
                   <button
                     onClick={saveAllScores}
                     disabled={batchSaving || !selectedClass || !selectedSubject}
-                    className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
+                    className="w-full sm:w-auto bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
+                    style={{ minHeight: '44px' }}
                   >
                     {batchSaving ? "Saving All..." : "💾 Save All Scores"}
                   </button>
@@ -1113,105 +1117,98 @@ const ClassTeacherPage = () => {
 
           {/* Action Buttons Row */}
           {selectedClass && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
 
             {/* Save Button */}
-            <div className="flex items-end">
-              <button
-                className="w-full bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
-                onClick={saveAllData}
-                disabled={saving || !selectedClass}
-              >
-                {saving ? "Saving..." : "💾 Save All Data"}
-              </button>
-            </div>
+            <button
+              className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 disabled:bg-gray-400 transition-colors font-medium"
+              style={{ minHeight: '44px', fontSize: '16px' }}
+              onClick={saveAllData}
+              disabled={saving || !selectedClass}
+            >
+              {saving ? "Saving..." : "💾 Save All Data"}
+            </button>
 
             {/* Print Student Reports */}
-            <div className="flex items-end">
-              <button
-                className="w-full bg-purple-600 text-white px-4 py-3 rounded-md hover:bg-purple-700 disabled:bg-gray-400 transition-colors text-sm"
-                onClick={printStudentReports}
-                disabled={printing || !selectedClass}
-                title="Print individual terminal reports for all students"
-              >
-                {printing ? "⏳" : "📄 Student Reports"}
-              </button>
-            </div>
+            <button
+              className="w-full bg-purple-600 text-white px-4 py-3 rounded-xl hover:bg-purple-700 disabled:bg-gray-400 transition-colors font-medium"
+              style={{ minHeight: '44px', fontSize: '16px' }}
+              onClick={printStudentReports}
+              disabled={printing || !selectedClass}
+              title="Print individual terminal reports for all students"
+            >
+              {printing ? "⏳ Printing..." : "📄 Student Reports"}
+            </button>
 
             {/* Print Subject Broadsheet */}
-            <div className="flex items-end">
-              <button
-                className="w-full bg-orange-600 text-white px-4 py-3 rounded-md hover:bg-orange-700 disabled:bg-gray-400 transition-colors text-sm"
-                onClick={printSubjectBroadsheet}
-                disabled={printing || !selectedClass || !selectedSubject}
-                title="Print broadsheet for selected subject only"
-              >
-                {printing ? "⏳" : "📊 Subject Sheet"}
-              </button>
-            </div>
+            <button
+              className="w-full bg-orange-600 text-white px-4 py-3 rounded-xl hover:bg-orange-700 disabled:bg-gray-400 transition-colors font-medium"
+              style={{ minHeight: '44px', fontSize: '16px' }}
+              onClick={printSubjectBroadsheet}
+              disabled={printing || !selectedClass || !selectedSubject}
+              title="Print broadsheet for selected subject only"
+            >
+              {printing ? "⏳ Printing..." : "📊 Subject Sheet"}
+            </button>
 
             {/* Print Class Broadsheet */}
-            <div className="flex items-end">
-              <button
-                className="w-full bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm"
-                onClick={printClassBroadsheet}
-                disabled={printing || !selectedClass}
-                title="Print complete broadsheet with all subjects"
-              >
-                {printing ? "⏳" : "📋 Class Sheet"}
-              </button>
-            </div>
-            
-            <div className="flex items-end">
-              <button
-                className={`flex-1 px-4 py-3 rounded-md transition-colors ${
-                  showAnalytics
-                    ? "bg-purple-600 text-white hover:bg-purple-700"
-                    : "bg-gray-200 text-white hover:bg-gray-300"
-                }`}
-                onClick={() => setShowAnalytics(!showAnalytics)}
-                disabled={!selectedClass}
-              >
-                {showAnalytics ? "Hide Analytics" : "Show Analytics"}
-              </button>
-            </div>
+            <button
+              className="w-full bg-green-600 text-white px-4 py-3 rounded-xl hover:bg-green-700 disabled:bg-gray-400 transition-colors font-medium"
+              style={{ minHeight: '44px', fontSize: '16px' }}
+              onClick={printClassBroadsheet}
+              disabled={printing || !selectedClass}
+              title="Print complete broadsheet with all subjects"
+            >
+              {printing ? "⏳ Printing..." : "📋 Class Sheet"}
+            </button>
+
+            <button
+              className={`w-full px-4 py-3 rounded-xl transition-colors font-medium ${
+                showAnalytics
+                  ? "bg-purple-600 text-white hover:bg-purple-700"
+                  : "bg-gray-200 text-gray-900 hover:bg-gray-300"
+              }`}
+              style={{ minHeight: '44px', fontSize: '16px' }}
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              disabled={!selectedClass}
+            >
+              {showAnalytics ? "📉 Hide Analytics" : "📈 Show Analytics"}
+            </button>
 
             {/* Promote Students Button */}
-            <div className="flex items-end">
-              <button
-                className="w-full bg-gradient-to-r from-green-500 to-blue-600 text-white px-4 py-3 rounded-md hover:from-green-600 hover:to-blue-700 transition-colors text-sm font-semibold"
-                onClick={() => setIsPromoteModalOpen(true)}
-                disabled={!selectedClass}
-                title="Promote students to next class"
-              >
-                📈 Promote
-              </button>
-            </div>
+            <button
+              className="w-full bg-gradient-to-r from-green-500 to-blue-600 text-white px-4 py-3 rounded-xl hover:from-green-600 hover:to-blue-700 transition-colors font-semibold"
+              style={{ minHeight: '44px', fontSize: '16px' }}
+              onClick={() => setIsPromoteModalOpen(true)}
+              disabled={!selectedClass}
+              title="Promote students to next class"
+            >
+              📈 Promote Students
+            </button>
 
-            {/* New Trend Analysis Button */}
-            <div className="flex items-end">
-              <button 
-                className={`flex-1 px-4 py-3 rounded-md transition-colors ${
-                  showTrendAnalysis 
-                    ? "bg-indigo-600 text-white hover:bg-indigo-700" 
-                    : "bg-gray-200 text-white hover:bg-gray-300"
-                }`}
-                onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
-                disabled={!selectedClass}
-              >
-                {showTrendAnalysis ? "Hide Trends" : "Show Trends"}
-              </button>
-            </div>
+            {/* Trend Analysis Button */}
+            <button
+              className={`w-full px-4 py-3 rounded-xl transition-colors font-medium ${
+                showTrendAnalysis
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                  : "bg-gray-200 text-gray-900 hover:bg-gray-300"
+              }`}
+              style={{ minHeight: '44px', fontSize: '16px' }}
+              onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
+              disabled={!selectedClass}
+            >
+              {showTrendAnalysis ? "📉 Hide Trends" : "📊 Show Trends"}
+            </button>
           </div>
           )}
 
           {/* Current Selection Info */}
           {selectedClass && (
             <div className="glass-light border border-blue-300/50 rounded-lg p-4 mb-6 shadow-md">
-              <h3 className="font-bold text-white text-shadow">
+              <h3 className="font-bold text-white text-shadow text-base sm:text-lg">
                 Class: {selectedClass}
               </h3>
-              <p className="text-white/90 text-sm text-shadow">
+              <p className="text-white/90 text-xs sm:text-sm text-shadow">
                 {filteredLearners.length} students | Class Teacher: {user?.name}
               </p>
             </div>
@@ -1220,14 +1217,14 @@ const ClassTeacherPage = () => {
           {/* Analytics Section */}
           {showAnalytics && selectedClass && (
             <div className="space-y-6 mt-6">
-              <h2 className="text-xl font-bold text-white text-shadow">Class Analytics</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white text-shadow">Class Analytics</h2>
               
               {analyticsData ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Summary Stats */}
-                  <div className="glass-ultra rounded-lg p-6">
-                    <h3 className="text-lg font-bold mb-4 text-white text-shadow">Attendance Summary</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="glass-ultra rounded-lg p-4 sm:p-6">
+                    <h3 className="text-base sm:text-lg font-bold mb-4 text-white text-shadow">Attendance Summary</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="glass-ultra-light border border-blue-200/50 rounded-lg p-4 text-center">
                         <div className="text-3xl font-bold text-blue-600">{analyticsData.totalStudents}</div>
                         <div className="text-white/90 font-medium">Students with Data</div>
@@ -1266,7 +1263,7 @@ const ClassTeacherPage = () => {
           {/* Trend Analysis Section */}
           {showTrendAnalysis && selectedClass && (
             <div className="space-y-6 mt-6">
-              <h2 className="text-xl font-bold text-white">Class Performance Trends</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white">Class Performance Trends</h2>
               
               {classTrendData ? (
                 <div className="grid grid-cols-1 gap-6">
@@ -1296,7 +1293,7 @@ const ClassTeacherPage = () => {
                 </div>
               ) : (
                 <div className="glass-card-golden">
-                  <h3 className="text-xl font-bold mb-6 text-white">
+                  <h3 className="text-lg sm:text-xl font-bold mb-6 text-white">
                     📊 Enter Scores for {selectedSubject}
                   </h3>
                   <div className="overflow-x-auto rounded-lg border-2 border-yellow-500/30">
@@ -1407,7 +1404,7 @@ const ClassTeacherPage = () => {
           {/* Remarks and Attendance Entry Table - shown when activeTab === "remarks" */}
           {activeTab === "remarks" && selectedClass && filteredLearners.length > 0 && (
             <div className="glass-card-golden">
-              <h3 className="text-xl font-bold mb-6 text-white">
+              <h3 className="text-lg sm:text-xl font-bold mb-6 text-white">
                 📝 Class Remarks & Attendance
               </h3>
               <div className="overflow-x-auto rounded-lg border-2 border-yellow-500/30">
@@ -1523,7 +1520,7 @@ const ClassTeacherPage = () => {
           {/* Assessments Tab - shown when activeTab === "assessments" */}
           {activeTab === "assessments" && selectedClass && (
             <div className="glass-card-golden">
-              <h3 className="text-xl font-bold mb-6 text-white">
+              <h3 className="text-lg sm:text-xl font-bold mb-6 text-white">
                 📋 Available Assessments for {selectedClass}
               </h3>
 
@@ -1545,11 +1542,11 @@ const ClassTeacherPage = () => {
                   {assessments.map((assessment) => (
                     <div
                       key={assessment.id}
-                      className="glass-light border border-white/20 rounded-lg p-6 hover:shadow-xl transition-all hover:border-white/40"
+                      className="glass-light border border-white/20 rounded-lg p-4 sm:p-6 hover:shadow-xl transition-all hover:border-white/40"
                     >
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                         <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-white mb-2">
+                          <h4 className="text-base sm:text-lg font-semibold text-white mb-2">
                             {assessment.name}
                           </h4>
                           {assessment.description && (
@@ -1584,7 +1581,7 @@ const ClassTeacherPage = () => {
                             </div>
                           )}
                         </div>
-                        <div className="ml-4">
+                        <div className="w-full sm:w-auto sm:ml-4">
                           <button
                             onClick={() => {
                               setSelectedAssessment(assessment);
@@ -1595,9 +1592,10 @@ const ClassTeacherPage = () => {
                                 message: `Now entering scores for: ${assessment.name}`
                               });
                             }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                            className="w-full sm:w-auto px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                            style={{ minHeight: '44px', fontSize: '16px' }}
                           >
-                            Enter Scores
+                            📝 Enter Scores
                           </button>
                         </div>
                       </div>
