@@ -277,8 +277,7 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
                     }`}
                     style={{ minHeight: '44px' }}
                   >
-                    <div className="font-semibold">{teacher.first_name} {teacher.last_name}</div>
-                    <div className="text-xs opacity-80">{teacher.email}</div>
+                    <div className="font-bold text-base">{teacher.first_name} {teacher.last_name}</div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {teacher.all_roles?.map(role => (
                         <span
@@ -304,8 +303,8 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
                 {/* Teacher Info */}
                 <div className="bg-white/10 border-2 border-white/30 text-white rounded-xl p-4 backdrop-blur-md">
                   <h3 className="text-xl font-bold">{selectedTeacher.first_name} {selectedTeacher.last_name}</h3>
-                  <p className="text-sm opacity-90">{selectedTeacher.email}</p>
-                  <div className="flex flex-wrap gap-2 mt-2 items-center">
+                  <p className="text-sm opacity-70 mt-1">📧 {selectedTeacher.email}</p>
+                  <div className="flex flex-wrap gap-2 mt-3 items-center">
                     {selectedTeacher.teaching_level && (
                       <span className="bg-yellow-500/90 border-2 border-white/50 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
                         {selectedTeacher.teaching_level === 'KG' && '🎨 '}
