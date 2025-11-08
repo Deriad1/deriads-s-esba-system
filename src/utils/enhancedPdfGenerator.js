@@ -380,12 +380,18 @@ export const generateCompleteClassBroadsheetPDF = (students, subjects, allScores
     };
   }
 
+  // Determine if this is a Primary or KG class
+  // Primary: BS1-BS6, KG: KG1-KG2, JHS: BS7-BS9
+  const isPrimaryOrKG = className.startsWith('KG') ||
+                        (className.startsWith('BS') && !['BS7', 'BS8', 'BS9'].includes(className));
+
   let isFirstPage = true;
 
   // Generate subject-specific broadsheets
   subjects.forEach((subject, index) => {
     if (index > 0) {
       doc.addPage('landscape');
+      isFirstPage = false;
     }
 
     let yPosition = 15;
@@ -414,9 +420,14 @@ export const generateCompleteClassBroadsheetPDF = (students, subjects, allScores
     yPosition += 8;
     doc.setFontSize(10);
     doc.text('TEACHER:', 20, yPosition);
-    // Display teacher name if available in the teachersMap
+
+    // Display teacher name based on class type
+    // For Primary/KG: show teacher name only on first page
+    // For JHS: show teacher names on all pages
     const teacherName = teachersMap[subject];
-    if (teacherName) {
+    const shouldShowTeacherName = !isPrimaryOrKG || isFirstPage;
+
+    if (shouldShowTeacherName && teacherName) {
       doc.setFont('helvetica', 'normal');
       doc.text(teacherName.toUpperCase(), 45, yPosition);
       doc.setFont('helvetica', 'bold');

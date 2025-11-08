@@ -680,15 +680,38 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       // Get school information
       const schoolInfo = printingService.getSchoolInfo();
 
+      // Fetch teacher assigned to this subject for this class
+      let teacherName = '';
+      try {
+        const teachersResponse = await getTeachers();
+        if (teachersResponse.status === 'success') {
+          const teachers = teachersResponse.data || [];
+          const subjectTeacher = teachers.find(teacher => {
+            const teacherClasses = teacher.classes || [];
+            const teacherSubjects = teacher.subjects || [];
+            const teachesThisClass = teacherClasses.includes(selectedClass) ||
+                                     teacher.classAssigned === selectedClass ||
+                                     teacher.form_class === selectedClass;
+            return teachesThisClass && teacherSubjects.includes(subject);
+          });
+          if (subjectTeacher) {
+            teacherName = `${subjectTeacher.first_name || subjectTeacher.firstName || ''} ${subjectTeacher.last_name || subjectTeacher.lastName || ''}`.trim();
+          }
+        }
+      } catch (error) {
+        console.warn('Could not fetch teacher for subject:', error);
+        // Continue without teacher name
+      }
+
       // Generate and download subject broadsheet
       const result = await printingService.printSubjectBroadsheet(
         selectedClass,
         subject,
         schoolInfo,
-        '', // teacherName
+        teacherName, // Pass the subject teacher's name
         settings.term || DEFAULT_TERM // term from global settings
       );
-      
+
       if (result.success) {
         showNotification({message: result.message, type: 'success'});
       } else {

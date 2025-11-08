@@ -624,12 +624,15 @@ const SubjectTeacherPage = () => {
       // Get school information
       const schoolInfo = printingService.getSchoolInfo();
 
+      // Get teacher's full name
+      const teacherName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Teacher';
+
       // Generate and download subject broadsheet
       const result = await printingService.printSubjectBroadsheet(
         selectedClass,
         selectedSubject,
         schoolInfo,
-        '', // teacherName
+        teacherName, // Pass teacher's name
         settings.term // term from global settings
       );
 
