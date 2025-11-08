@@ -83,21 +83,19 @@ const ManageClassView = ({
   return (
     <div className="manage-class-view">
       {/* Header - Glassmorphism */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 mb-6 border border-white/30">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-white drop-shadow-md">
-              Manage Class: {formClass}
-            </h1>
-            <p className="text-white/80 mt-1">
-              {students.length} student{students.length !== 1 ? 's' : ''} enrolled
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-white/70">Active Tab</div>
-            <div className="text-lg font-semibold text-white drop-shadow-md">
+      <div className="bg-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl p-8 mb-6 border border-white/20 mx-auto max-w-5xl">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-white drop-shadow-md">
+            Manage Class: {formClass}
+          </h1>
+          <p className="text-white/80 mt-2 text-lg">
+            {students.length} student{students.length !== 1 ? 's' : ''} enrolled
+          </p>
+          <div className="mt-3">
+            <span className="text-sm text-white/60">Active Tab: </span>
+            <span className="text-base font-semibold text-white drop-shadow-md">
               {tabs.find(t => t.id === activeTab)?.label || 'Unknown'}
-            </div>
+            </span>
           </div>
         </div>
       </div>
