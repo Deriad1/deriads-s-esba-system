@@ -4,7 +4,8 @@ import {
   BroadsheetTab,
   AnalyticsTab,
   DailyAttendanceTab,
-  ReportTab
+  ReportTab,
+  ScoresTab
 } from './tabs';
 
 /**
@@ -51,6 +52,11 @@ const ManageClassView = ({
   // Tab configuration
   const tabs = [
     {
+      id: 'scores',
+      label: '📝 View Scores',
+      description: 'View all entered scores'
+    },
+    {
       id: 'attendance',
       label: '📊 Attendance',
       description: 'Track term-based attendance and conduct'
@@ -78,7 +84,7 @@ const ManageClassView = ({
   ];
 
   // Get active tab
-  const activeTab = state.activeTab || 'attendance';
+  const activeTab = state.activeTab || 'scores';
 
   return (
     <div className="manage-class-view">
@@ -136,6 +142,16 @@ const ManageClassView = ({
 
       {/* Tab Content Area */}
       <div className="tab-content">
+        {/* Scores Tab */}
+        {activeTab === 'scores' && (
+          <ScoresTab
+            students={students}
+            marksData={state.marksData || {}}
+            subjects={userSubjects}
+            isLoading={loadingStates?.marks || false}
+          />
+        )}
+
         {/* Attendance Tab */}
         {activeTab === 'attendance' && (
           <AttendanceTab
