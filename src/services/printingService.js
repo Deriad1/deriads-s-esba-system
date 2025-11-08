@@ -271,22 +271,16 @@ class PrintingService {
         console.warn('Server-side PDF merging failed, falling back to client-side:', serverError.message);
         useClientSide = true;
 
-        // Fall back to client-side merging
-        console.log('Using client-side PDF merging...');
+        // Fall back to client-side merging using pdf-lib
+        console.log(`Using client-side PDF merging for ${pdfDataArray.length} PDF(s)...`);
 
-        // Simply concatenate all PDFs by downloading them individually for now
-        // This is a simple workaround - download first PDF only
-        if (pdfDataArray.length > 0) {
-          mergedPdfData = pdfDataArray[0]; // For single student, just use their PDF
-
-          if (pdfDataArray.length > 1) {
-            // For multiple students, we need a different approach
-            // Download them separately
-            console.warn(`Client-side merging of ${pdfDataArray.length} PDFs not fully implemented. Downloading first PDF only.`);
-          }
-        } else {
+        if (pdfDataArray.length === 0) {
           throw new Error('No PDFs to download');
         }
+
+        // Use pdf-lib to merge PDFs in the browser
+        mergedPdfData = await this._mergeClientSide(pdfDataArray);
+        console.log('Client-side PDF merging completed successfully');
       }
 
       // Update progress: downloading
@@ -358,6 +352,57 @@ class PrintingService {
       bytes[i] = binaryString.charCodeAt(i);
     }
     return bytes.buffer;
+  }
+
+  /**
+   * PRIVATE: Merge multiple PDFs client-side using pdf-lib
+   * @param {Array} pdfDataArray - Array of base64-encoded PDF strings
+   * @returns {String} Base64-encoded merged PDF
+   */
+  async _mergeClientSide(pdfDataArray) {
+    // Dynamically import pdf-lib
+    const { PDFDocument } = await import('pdf-lib');
+
+    console.log(`Starting client-side merge of ${pdfDataArray.length} PDFs...`);
+
+    // Create a new PDF document for the merged result
+    const mergedPdf = await PDFDocument.create();
+
+    // Process each PDF
+    for (let i = 0; i < pdfDataArray.length; i++) {
+      try {
+        console.log(`Merging PDF ${i + 1}/${pdfDataArray.length}...`);
+
+        // Convert base64 to Uint8Array
+        const pdfBytes = this._base64ToArrayBuffer(pdfDataArray[i]);
+
+        // Load the PDF document
+        const pdf = await PDFDocument.load(pdfBytes);
+        const pageCount = pdf.getPageCount();
+        console.log(`PDF ${i + 1} has ${pageCount} pages`);
+
+        // Copy all pages from this PDF to the merged PDF
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => {
+          mergedPdf.addPage(page);
+        });
+
+        console.log(`Successfully merged PDF ${i + 1}`);
+      } catch (error) {
+        console.error(`Error merging PDF ${i + 1}:`, error);
+        // Continue with other PDFs even if one fails
+      }
+    }
+
+    // Serialize the merged PDF to bytes
+    console.log(`Saving merged PDF with ${mergedPdf.getPageCount()} total pages...`);
+    const mergedPdfBytes = await mergedPdf.save();
+
+    // Convert to base64
+    const mergedPdfBase64 = this._arrayBufferToBase64(mergedPdfBytes);
+    console.log(`Client-side merge complete. Result size: ${mergedPdfBase64.length} chars`);
+
+    return mergedPdfBase64;
   }
 
   /**
