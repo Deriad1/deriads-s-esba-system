@@ -86,9 +86,10 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
       return true;
     }
 
-    // For PRIMARY levels (KG to BS6): only Class Teacher allowed
+    // For PRIMARY levels (KG to BS6): Class Teacher or Subject Teacher allowed
+    // (class teachers manage a class, subject teachers teach across multiple classes)
     if (['KG', 'Lower Primary', 'Upper Primary'].includes(teachingLevel)) {
-      return role === 'Class Teacher';
+      return role === 'Class Teacher' || role === 'Subject Teacher';
     }
 
     // For JHS (BS7 to BS9): only Form Master or Subject Teacher allowed
@@ -323,7 +324,7 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
               {['KG', 'Lower Primary', 'Upper Primary'].includes(formData.teachingLevel) && (
                 <div className="mb-3 p-3 bg-blue-100 border-2 border-blue-400 rounded-lg">
                   <p className="text-sm text-blue-900 font-semibold">
-                    ℹ️ <strong>PRIMARY Teachers</strong> (KG-BS6) are automatically assigned as <strong>Class Teachers</strong>
+                    ℹ️ <strong>PRIMARY Teachers</strong> (KG-BS6) can be <strong>Class Teachers</strong> (managing one class) or <strong>Subject Teachers</strong> (teaching across multiple classes)
                   </p>
                 </div>
               )}

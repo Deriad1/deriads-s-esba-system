@@ -169,9 +169,10 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
       return true;
     }
 
-    // For PRIMARY levels (KG to BS6): only class_teacher allowed
+    // For PRIMARY levels (KG to BS6): class_teacher or subject_teacher allowed
+    // (class teachers manage a class, subject teachers teach across multiple classes)
     if (['KG', 'Lower Primary', 'Upper Primary'].includes(teachingLevel)) {
-      return role === 'class_teacher';
+      return role === 'class_teacher' || role === 'subject_teacher';
     }
 
     // For JHS (BS7 to BS9): only form_master or subject_teacher allowed
@@ -552,7 +553,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                   {['KG', 'Lower Primary', 'Upper Primary'].includes(newTeacher.teachingLevel) && (
                     <div className="mb-2 p-2 bg-blue-500/20 border border-blue-400/50 rounded-lg">
                       <p className="text-xs text-white">
-                        ℹ️ <strong>PRIMARY Teachers</strong> (KG-BS6) are automatically assigned as <strong>Class Teachers</strong>
+                        ℹ️ <strong>PRIMARY Teachers</strong> (KG-BS6) can be <strong>Class Teachers</strong> (managing one class) or <strong>Subject Teachers</strong> (teaching across multiple classes)
                       </p>
                     </div>
                   )}
@@ -589,14 +590,14 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                       className="bg-white text-gray-900"
                       disabled={!isRoleAllowedForLevel('subject_teacher', newTeacher.teachingLevel)}
                     >
-                      Subject Teacher {!isRoleAllowedForLevel('subject_teacher', newTeacher.teachingLevel) ? '(Not available for PRIMARY)' : ''}
+                      Subject Teacher {!isRoleAllowedForLevel('subject_teacher', newTeacher.teachingLevel) ? '(Not available)' : ''}
                     </option>
                     <option
                       value="class_teacher"
                       className="bg-white text-gray-900"
                       disabled={!isRoleAllowedForLevel('class_teacher', newTeacher.teachingLevel)}
                     >
-                      Class Teacher {!isRoleAllowedForLevel('class_teacher', newTeacher.teachingLevel) ? '(PRIMARY only)' : ''}
+                      Class Teacher {!isRoleAllowedForLevel('class_teacher', newTeacher.teachingLevel) ? '(Not available)' : ''}
                     </option>
                     <option
                       value="form_master"
