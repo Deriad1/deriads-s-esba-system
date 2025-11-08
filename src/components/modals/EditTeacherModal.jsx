@@ -35,20 +35,21 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
     if (teacher && isOpen) {
       // Map roles from database format to UI format (gender-aware)
       const gender = teacher.gender || 'male';
-      const allRolesUI = (teacher.all_roles || []).map(role => mapRoleToUI(role, gender));
+      const allRolesUI = (teacher.all_roles || teacher.allRoles || []).map(role => mapRoleToUI(role, gender));
 
       setFormData({
         id: teacher.id,
-        firstName: teacher.first_name || '',
-        lastName: teacher.last_name || '',
+        // Support both snake_case and camelCase formats
+        firstName: teacher.firstName || teacher.first_name || '',
+        lastName: teacher.lastName || teacher.last_name || '',
         email: teacher.email || '',
         gender: gender,
         subjects: teacher.subjects || [],
         classes: teacher.classes || [],
         primaryRole: allRolesUI[0] || 'Subject Teacher',
         additionalRoles: allRolesUI.slice(1) || [], // All roles except primary
-        teachingLevel: teacher.teaching_level || 'PRIMARY',
-        form_class: teacher.form_class || teacher.class_assigned || ''
+        teachingLevel: teacher.teachingLevel || teacher.teaching_level || 'PRIMARY',
+        form_class: teacher.form_class || teacher.class_assigned || teacher.formClass || teacher.classAssigned || ''
       });
     }
   }, [teacher, isOpen]);
