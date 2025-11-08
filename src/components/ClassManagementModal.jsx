@@ -515,66 +515,6 @@ const ClassManagementModal = ({ isOpen, onClose, classes, onClassAdded, allSubje
                       </div>
                     )}
 
-                    {/* Assigned Teacher */}
-                    <div className="mb-3 pb-3 border-b border-white/20">
-                      <div className="text-xs font-bold text-white mb-1">
-                        {isSeniorClass ? 'Form Master' : 'Class Teacher'}
-                      </div>
-                      {selectedClassForAssignment === className ? (
-                        <div className="flex flex-col gap-2">
-                          <select
-                            onChange={(e) => handleAssignTeacher(className, e.target.value)}
-                            className="w-full px-4 py-2 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
-                            style={{ minHeight: '44px', fontSize: '16px' }}
-                            defaultValue=""
-                            disabled={isSubmitting}
-                          >
-                            <option value="" className="bg-white text-gray-900">Select {isSeniorClass ? 'Form Master' : 'Class Teacher'}</option>
-                            {teachers?.map(teacher => (
-                              <option key={teacher.id} value={teacher.id} className="bg-white text-gray-900">
-                                {teacher.first_name} {teacher.last_name}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={() => setSelectedClassForAssignment(null)}
-                            className="text-xs text-white hover:text-white/80 text-left font-semibold underline"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          {assignedTeacher ? (
-                            <>
-                              <span className="text-sm text-white font-bold">
-                                {assignedTeacher.first_name} {assignedTeacher.last_name}
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedClassForAssignment(className);
-                                }}
-                                className="text-xs text-yellow-300 hover:text-yellow-100 font-semibold underline"
-                              >
-                                Change
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedClassForAssignment(className);
-                              }}
-                              className="text-yellow-300 hover:text-yellow-100 text-sm font-semibold underline"
-                            >
-                              Assign {isSeniorClass ? 'Form Master' : 'Class Teacher'}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
                     {/* Subjects */}
                     <div>
                       <div className="text-xs font-bold text-white mb-2">
