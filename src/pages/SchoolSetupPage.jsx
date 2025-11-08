@@ -498,10 +498,11 @@ const SchoolSetupPage = () => {
                 <select
                   value={currentTerm}
                   onChange={handleTermChange}
-                  className="glass-input w-full p-3 rounded-lg"
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                  style={{ minHeight: '44px', fontSize: '16px' }}
                 >
                   {terms.map(term => (
-                    <option key={term} value={term}>{term}</option>
+                    <option key={term} value={term} className="bg-white text-gray-900">{term}</option>
                   ))}
                 </select>
               </div>
@@ -512,11 +513,12 @@ const SchoolSetupPage = () => {
                 <select
                   value={currentAcademicYear}
                   onChange={handleAcademicYearChange}
-                  className="glass-input w-full p-3 rounded-lg"
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                  style={{ minHeight: '44px', fontSize: '16px' }}
                 >
-                  <option value="">Select Academic Year</option>
+                  <option value="" className="bg-white text-gray-900">Select Academic Year</option>
                   {generateAcademicYears().map(year => (
-                    <option key={year} value={year}>{year}</option>
+                    <option key={year} value={year} className="bg-white text-gray-900">{year}</option>
                   ))}
                 </select>
               </div>

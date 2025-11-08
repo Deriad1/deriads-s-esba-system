@@ -524,13 +524,14 @@ const ClassManagementModal = ({ isOpen, onClose, classes, onClassAdded, allSubje
                         <div className="flex flex-col gap-2">
                           <select
                             onChange={(e) => handleAssignTeacher(className, e.target.value)}
-                            className="glass-input px-2 py-1 rounded text-sm w-full"
+                            className="w-full px-4 py-2 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                            style={{ minHeight: '44px', fontSize: '16px' }}
                             defaultValue=""
                             disabled={isSubmitting}
                           >
-                            <option value="">Select {isSeniorClass ? 'Form Master' : 'Class Teacher'}</option>
+                            <option value="" className="bg-white text-gray-900">Select {isSeniorClass ? 'Form Master' : 'Class Teacher'}</option>
                             {teachers?.map(teacher => (
-                              <option key={teacher.id} value={teacher.id}>
+                              <option key={teacher.id} value={teacher.id} className="bg-white text-gray-900">
                                 {teacher.first_name} {teacher.last_name}
                               </option>
                             ))}
@@ -609,14 +610,14 @@ const ClassManagementModal = ({ isOpen, onClose, classes, onClassAdded, allSubje
                   <select
                     value={selectedClassFilter}
                     onChange={(e) => setSelectedClassFilter(e.target.value)}
-                    className="glass-input px-4 py-2 rounded-md w-full md:w-64"
-                    style={{ minHeight: '44px' }}
+                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-medium transition-all md:w-64"
+                    style={{ minHeight: '44px', fontSize: '16px' }}
                   >
-                    <option value="">All Students ({learners?.length || 0})</option>
+                    <option value="" className="bg-white text-gray-900">All Students ({learners?.length || 0})</option>
                     {classes.map(className => {
                       const count = learners?.filter(s => (s.class_name || s.className) === className).length || 0;
                       return (
-                        <option key={className} value={className}>
+                        <option key={className} value={className} className="bg-white text-gray-900">
                           {className} ({count} students)
                         </option>
                       );
