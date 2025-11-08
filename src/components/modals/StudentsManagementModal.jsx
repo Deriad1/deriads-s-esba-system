@@ -214,18 +214,20 @@ const StudentsManagementModal = ({ isOpen, onClose, learners, loadData }) => {
               <select
                 value={studentFilters.class}
                 onChange={(e) => handleFilterChange('class', e.target.value)}
-                className="glass-input w-full px-3 py-2 rounded-md"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-medium transition-all"
+                style={{ minHeight: '44px', fontSize: '16px' }}
               >
-                <option value="">All Classes</option>
-                {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="" className="bg-white text-gray-900">All Classes</option>
+                {uniqueClasses.map(c => <option key={c} value={c} className="bg-white text-gray-900">{c}</option>)}
               </select>
               <select
                 value={studentFilters.gender}
                 onChange={(e) => handleFilterChange('gender', e.target.value)}
-                className="glass-input w-full px-3 py-2 rounded-md"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-medium transition-all"
+                style={{ minHeight: '44px', fontSize: '16px' }}
               >
-                <option value="">All Genders</option>
-                {uniqueGenders.map(g => <option key={g} value={g}>{g}</option>)}
+                <option value="" className="bg-white text-gray-900">All Genders</option>
+                {uniqueGenders.map(g => <option key={g} value={g} className="bg-white text-gray-900">{g}</option>)}
               </select>
               <button
                 onClick={() => setStudentFilters({ search: '', class: '', gender: '' })}
@@ -290,10 +292,11 @@ const StudentsManagementModal = ({ isOpen, onClose, learners, loadData }) => {
                 <select
                   value={newStudent.gender}
                   onChange={(e) => setNewStudent({...newStudent, gender: e.target.value})}
-                  className="glass-input w-full px-3 py-2 rounded-md"
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                  style={{ minHeight: '44px', fontSize: '16px' }}
                 >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
+                  <option value="male" className="bg-white text-gray-900">Male</option>
+                  <option value="female" className="bg-white text-gray-900">Female</option>
                 </select>
                 <div className="md:col-span-2">
                   <button
