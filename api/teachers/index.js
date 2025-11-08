@@ -72,13 +72,18 @@ async function handleGet(req, res) {
 async function handlePost(req, res) {
   const teacherData = req.body;
 
+  console.log('Received teacher data:', JSON.stringify(teacherData, null, 2));
+
   // Validate teacher data
   const validation = validateTeacherData(teacherData);
   if (!validation.isValid) {
+    console.error('Teacher validation failed:', validation.errors);
+    console.error('Teacher data received:', JSON.stringify(teacherData, null, 2));
     return res.status(400).json({
       status: 'error',
-      message: 'Validation failed',
-      errors: validation.errors
+      message: `Validation failed: ${Object.keys(validation.errors).join(', ')}`,
+      errors: validation.errors,
+      details: validation.errors
     });
   }
 
