@@ -321,20 +321,20 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
               <select
                 value={teacherFilters.subject}
                 onChange={(e) => handleFilterChange('subject', e.target.value)}
-                className="w-full px-4 py-3 bg-white/20 border-2 border-white/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 backdrop-blur-md font-medium transition-all"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-medium transition-all"
                 style={{ minHeight: '44px', fontSize: '16px' }}
               >
-                <option value="">All Subjects</option>
-                {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                <option value="" className="bg-white text-gray-900">All Subjects</option>
+                {uniqueSubjects.map(s => <option key={s} value={s} className="bg-white text-gray-900">{s}</option>)}
               </select>
               <select
                 value={teacherFilters.class}
                 onChange={(e) => handleFilterChange('class', e.target.value)}
-                className="w-full px-4 py-3 bg-white/20 border-2 border-white/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 backdrop-blur-md font-medium transition-all"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-medium transition-all"
                 style={{ minHeight: '44px', fontSize: '16px' }}
               >
-                <option value="">All Classes</option>
-                {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="" className="bg-white text-gray-900">All Classes</option>
+                {uniqueClasses.map(c => <option key={c} value={c} className="bg-white text-gray-900">{c}</option>)}
               </select>
               <button
                 onClick={() => setTeacherFilters({ search: '', subject: '', class: '' })}
@@ -398,11 +398,11 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                 <select
                   value={newTeacher.gender}
                   onChange={(e) => setNewTeacher({...newTeacher, gender: e.target.value})}
-                  className="w-full px-4 py-3 bg-white/20 border-2 border-white/30 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 backdrop-blur-md font-medium transition-all"
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
                   style={{ minHeight: '44px', fontSize: '16px' }}
                 >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
+                  <option value="male" className="bg-white text-gray-900">Male</option>
+                  <option value="female" className="bg-white text-gray-900">Female</option>
                 </select>
 
                 {/* Teaching Level Selection */}
@@ -522,11 +522,11 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                     <select
                       value={newTeacher.classAssigned || ''}
                       onChange={(e) => setNewTeacher(prev => ({...prev, classAssigned: e.target.value}))}
-                      className="w-full px-4 py-3 bg-white/30 border-2 border-white/50 rounded-xl text-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 backdrop-blur-md font-medium transition-all"
+                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 font-medium transition-all"
                       style={{ minHeight: '44px', fontSize: '16px' }}
                       required
                     >
-                      <option value="">Select a class to manage as Form {newTeacher.teachingLevel === 'JHS' ? 'Master/Mistress' : 'Teacher'}</option>
+                      <option value="" className="bg-white text-gray-900">Select a class to manage as Form {newTeacher.teachingLevel === 'JHS' ? 'Master/Mistress' : 'Teacher'}</option>
                       {(() => {
                         // Filter classes based on teaching level
                         let filteredClasses = [];
@@ -543,7 +543,7 @@ const TeachersManagementModal = ({ isOpen, onClose, teachers, loadData, onEditTe
                         }
 
                         return filteredClasses.map(cls => (
-                          <option key={cls} value={cls}>{cls}</option>
+                          <option key={cls} value={cls} className="bg-white text-gray-900">{cls}</option>
                         ));
                       })()}
                     </select>
