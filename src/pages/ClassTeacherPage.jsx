@@ -679,6 +679,7 @@ const ClassTeacherPage = () => {
               studentId,
               className: selectedClass,
               term: settings.term || DEFAULT_TERM,
+              academicYear: settings.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
               remarks: studentData.remarks || "",
               attendance: studentData.attendance || "",
               attitude: studentData.attitude || "",
