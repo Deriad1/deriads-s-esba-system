@@ -26,10 +26,10 @@ const StudentRow = memo(({
     <tr>
       {/* Student Info */}
       <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-gray-900">
+        <div className="text-sm font-medium text-white drop-shadow-md">
           {learner.firstName} {learner.lastName}
         </div>
-        <div className="text-sm text-gray-500">{studentId}</div>
+        <div className="text-sm text-white/70">{studentId}</div>
       </td>
 
       {/* Attendance Input */}
@@ -40,11 +40,11 @@ const StudentRow = memo(({
           max="365"
           value={attendance || ""}
           onChange={(e) => onAttendanceChange(studentId, e.target.value)}
-          className="w-24 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-24 p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
           placeholder="0-365"
         />
         {error && (
-          <div className="text-red-500 text-sm mt-1">{error}</div>
+          <div className="text-red-400 text-sm mt-1 drop-shadow-md">{error}</div>
         )}
       </td>
 
@@ -53,17 +53,17 @@ const StudentRow = memo(({
         <select
           value={remarks || ""}
           onChange={(e) => onRemarkChange(studentId, e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white focus:ring-2 focus:ring-blue-400/50"
         >
-          <option value="">Select remark</option>
-          <option value="RESPECTFUL">RESPECTFUL</option>
-          <option value="WELL-BEHAVED">WELL-BEHAVED</option>
-          <option value="DISRESPECTFUL">DISRESPECTFUL</option>
-          <option value="CALM">CALM</option>
-          <option value="HUMBLE">HUMBLE</option>
-          <option value="APPROACHABLE">APPROACHABLE</option>
-          <option value="BULLY">BULLY</option>
-          <option value="TRUANT">TRUANT</option>
+          <option value="" className="bg-gray-800">Select remark</option>
+          <option value="RESPECTFUL" className="bg-gray-800">RESPECTFUL</option>
+          <option value="WELL-BEHAVED" className="bg-gray-800">WELL-BEHAVED</option>
+          <option value="DISRESPECTFUL" className="bg-gray-800">DISRESPECTFUL</option>
+          <option value="CALM" className="bg-gray-800">CALM</option>
+          <option value="HUMBLE" className="bg-gray-800">HUMBLE</option>
+          <option value="APPROACHABLE" className="bg-gray-800">APPROACHABLE</option>
+          <option value="BULLY" className="bg-gray-800">BULLY</option>
+          <option value="TRUANT" className="bg-gray-800">TRUANT</option>
         </select>
       </td>
 
@@ -74,7 +74,7 @@ const StudentRow = memo(({
           list={`attitude-options-${studentId}`}
           value={attitude || ""}
           onChange={(e) => onAttitudeChange(studentId, e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50"
           placeholder="Select or type attitude"
         />
         <datalist id={`attitude-options-${studentId}`}>
@@ -93,7 +93,7 @@ const StudentRow = memo(({
           list={`interest-options-${studentId}`}
           value={interest || ""}
           onChange={(e) => onInterestChange(studentId, e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50"
           placeholder="Select or type interest"
         />
         <datalist id={`interest-options-${studentId}`}>
@@ -111,7 +111,7 @@ const StudentRow = memo(({
           list={`comments-options-${studentId}`}
           value={comments || ""}
           onChange={(e) => onCommentsChange(studentId, e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50"
           placeholder="Select or type comments"
         />
         <datalist id={`comments-options-${studentId}`}>
@@ -185,38 +185,38 @@ const AttendanceTab = ({
   return (
     <div>
       {/* Main Attendance & Remarks Table */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Attendance & Remarks</h2>
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 mb-6 border border-white/30">
+        <h2 className="text-xl font-semibold mb-4 text-white drop-shadow-md">Attendance & Remarks</h2>
 
         {isLoading ? (
           <LoadingSpinner message="Loading students..." />
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-white/20">
+                <thead className="bg-white/20 backdrop-blur-md">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
                       Student
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
                       Attendance
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
                       Remarks
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
                       Attitude
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
                       Interest
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
                       Comments
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white/5 backdrop-blur-sm divide-y divide-white/10">
                   {students.map((learner) => {
                     const studentId = learner.idNumber || learner.LearnerID;
                     return (
@@ -245,7 +245,7 @@ const AttendanceTab = ({
               <button
                 onClick={onSaveAll}
                 disabled={saving}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="bg-blue-500/80 backdrop-blur-md text-white px-4 py-2 rounded-md hover:bg-blue-600/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg border border-white/20"
               >
                 {saving ? "Saving..." : "Save All"}
               </button>
@@ -255,22 +255,22 @@ const AttendanceTab = ({
       </div>
 
       {/* Footnote Section */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Footnote Information</h2>
-        <p className="text-sm text-gray-600 mb-3">
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 mb-6 border border-white/30">
+        <h2 className="text-xl font-semibold mb-4 text-white drop-shadow-md">Footnote Information</h2>
+        <p className="text-sm text-white/80 mb-3">
           Enter any additional information or notes for this class (appears on reports).
         </p>
         <textarea
           value={footnoteInfo}
           onChange={(e) => onFootnoteChange(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
           rows="3"
           placeholder="Enter any additional information for reports..."
         />
         <div className="mt-3 flex justify-end">
           <button
             onClick={onSaveFootnote}
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+            className="bg-green-500/80 backdrop-blur-md text-white px-4 py-2 rounded-md hover:bg-green-600/90 transition-all shadow-lg border border-white/20"
           >
             Save Footnote
           </button>

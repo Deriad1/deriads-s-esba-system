@@ -82,41 +82,41 @@ const ManageClassView = ({
 
   return (
     <div className="manage-class-view">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      {/* Header - Glassmorphism */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 mb-6 border border-white/30">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-white drop-shadow-md">
               Manage Class: {formClass}
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-white/80 mt-1">
               {students.length} student{students.length !== 1 ? 's' : ''} enrolled
             </p>
           </div>
           <div className="text-right">
-            <div className="text-sm text-gray-500">Active Tab</div>
-            <div className="text-lg font-semibold text-blue-600">
+            <div className="text-sm text-white/70">Active Tab</div>
+            <div className="text-lg font-semibold text-white drop-shadow-md">
               {tabs.find(t => t.id === activeTab)?.label || 'Unknown'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
-        <div className="flex flex-wrap border-b border-gray-200">
+      {/* Tab Navigation - Glassmorphism */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl mb-6 overflow-hidden border border-white/30">
+        <div className="flex flex-wrap border-b border-white/20">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => actions.setActiveTab(tab.id)}
               className={`
                 flex-1 min-w-[150px] px-4 py-3 text-sm font-medium
-                transition-colors duration-200
-                border-b-2 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500
+                transition-all duration-300
+                border-b-2 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-400/50
                 ${
                   activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'border-blue-400 text-white bg-white/20 backdrop-blur-md shadow-lg'
+                    : 'border-transparent text-white/80 hover:text-white hover:bg-white/10'
                 }
               `}
               title={tab.description}
@@ -128,9 +128,9 @@ const ManageClassView = ({
           ))}
         </div>
 
-        {/* Tab hint */}
-        <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-          <p className="text-sm text-gray-600">
+        {/* Tab hint - Glassmorphism */}
+        <div className="px-6 py-3 bg-white/5 backdrop-blur-md border-b border-white/20">
+          <p className="text-sm text-white/80">
             {tabs.find(t => t.id === activeTab)?.description}
           </p>
         </div>
