@@ -744,15 +744,16 @@ const SubjectTeacherPage = () => {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="glass-ultra rounded-lg p-6">
-          <div className="flex justify-between items-start">
+        <div className="glass-ultra rounded-lg p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">Subject Teacher Dashboard</h1>
-              <p className="text-white/90 mt-1">Enter scores for your assigned subjects</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">Subject Teacher Dashboard</h1>
+              <p className="text-white/90 mt-1 text-sm sm:text-base">Enter scores for your assigned subjects</p>
             </div>
             <button
               onClick={() => setShowChangePasswordModal(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+              className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap"
+              style={{ minHeight: '44px' }}
             >
               <span>🔒</span>
               <span>Change Password</span>
@@ -789,20 +790,22 @@ const SubjectTeacherPage = () => {
         )}
 
         {/* Class & Subject Selection */}
-        <div className="glass-ultra rounded-lg p-6">
-          <h2 className="text-lg font-semibold mb-4">Enter Student Scores</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="glass-ultra rounded-lg p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold mb-4 text-white">Enter Student Scores</h2>
+
+          {/* Dropdowns Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-white mb-2">Select Class</label>
               <select
-                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                style={{ minHeight: '44px', fontSize: '16px' }}
                 value={selectedClass}
                 onChange={e => setSelectedClass(e.target.value)}
               >
-                <option value="">Choose Class</option>
+                <option value="" className="bg-white text-gray-900">Choose Class</option>
                 {getUserClasses().map(cls => (
-                  <option key={cls} value={cls}>{cls}</option>
+                  <option key={cls} value={cls} className="bg-white text-gray-900">{cls}</option>
                 ))}
               </select>
             </div>
@@ -810,13 +813,14 @@ const SubjectTeacherPage = () => {
             <div>
               <label className="block text-sm font-medium text-white mb-2">Select Subject</label>
               <select
-                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                style={{ minHeight: '44px', fontSize: '16px' }}
                 value={selectedSubject}
                 onChange={e => setSelectedSubject(e.target.value)}
               >
-                <option value="">Choose Subject</option>
+                <option value="" className="bg-white text-gray-900">Choose Subject</option>
                 {getUserSubjects().map(sub => (
-                  <option key={sub} value={sub}>{sub}</option>
+                  <option key={sub} value={sub} className="bg-white text-gray-900">{sub}</option>
                 ))}
               </select>
             </div>
@@ -824,76 +828,77 @@ const SubjectTeacherPage = () => {
             <div>
               <label className="block text-sm font-medium text-white mb-2">Assessment Type</label>
               <select
-                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
+                style={{ minHeight: '44px', fontSize: '16px' }}
                 value={selectedAssessment}
                 onChange={e => setSelectedAssessment(e.target.value)}
               >
-                <option value="">Choose Assessment</option>
-                <option value="regular">Regular Term Scores</option>
+                <option value="" className="bg-white text-gray-900">Choose Assessment</option>
+                <option value="regular" className="bg-white text-gray-900">Regular Term Scores</option>
                 {customAssessments.map(assessment => (
-                  <option key={assessment.id} value={assessment.id}>
+                  <option key={assessment.id} value={assessment.id} className="bg-white text-gray-900">
                     {assessment.name} ({assessment.max_score} marks)
                   </option>
                 ))}
               </select>
             </div>
+          </div>
 
-            <div className="flex items-end gap-2">
-              <button
-                className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
-                onClick={() => setShowScoresModal(true)}
-                disabled={!selectedClass || !selectedSubject || !selectedAssessment}
-              >
-                Enter Scores
-              </button>
+          {/* Action Buttons Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <button
+              className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+              style={{ minHeight: '44px' }}
+              onClick={() => setShowScoresModal(true)}
+              disabled={!selectedClass || !selectedSubject || !selectedAssessment}
+            >
+              📝 Enter Scores
+            </button>
 
-              <button
-                className="flex-1 bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors"
-                onClick={printBroadsheet}
-                disabled={!selectedClass || !selectedSubject || selectedAssessment !== 'regular'}
-              >
-                Print
-              </button>
-            </div>
-            
-            <div className="flex items-end">
-              <button 
-                className={`flex-1 px-4 py-3 rounded-md transition-colors ${
-                  showAnalytics 
-                    ? "bg-purple-600 text-white hover:bg-purple-700" 
-                    : "bg-white/30 text-white hover:bg-white/40"
-                }`}
-                onClick={() => setShowAnalytics(!showAnalytics)}
-                disabled={!selectedClass || !selectedSubject}
-              >
-                {showAnalytics ? "Hide Analytics" : "Show Analytics"}
-              </button>
-            </div>
-            
-            {/* New Trend Analysis Button */}
-            <div className="flex items-end">
-              <button 
-                className={`flex-1 px-4 py-3 rounded-md transition-colors ${
-                  showTrendAnalysis 
-                    ? "bg-indigo-600 text-white hover:bg-indigo-700" 
-                    : "bg-white/30 text-white hover:bg-white/40"
-                }`}
-                onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
-                disabled={!selectedClass || !selectedSubject}
-              >
-                {showTrendAnalysis ? "Hide Trends" : "Show Trends"}
-              </button>
-            </div>
+            <button
+              className="w-full bg-green-600 text-white px-4 py-3 rounded-xl hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+              style={{ minHeight: '44px' }}
+              onClick={printBroadsheet}
+              disabled={!selectedClass || !selectedSubject || selectedAssessment !== 'regular'}
+            >
+              🖨️ Print
+            </button>
+
+            <button
+              className={`w-full px-4 py-3 rounded-xl transition-colors font-medium ${
+                showAnalytics
+                  ? "bg-purple-600 text-white hover:bg-purple-700"
+                  : "bg-white/30 text-white hover:bg-white/40"
+              } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+              style={{ minHeight: '44px' }}
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              disabled={!selectedClass || !selectedSubject}
+            >
+              📊 {showAnalytics ? "Hide Analytics" : "Show Analytics"}
+            </button>
+
+            <button
+              className={`w-full px-4 py-3 rounded-xl transition-colors font-medium ${
+                showTrendAnalysis
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                  : "bg-white/30 text-white hover:bg-white/40"
+              } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+              style={{ minHeight: '44px' }}
+              onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
+              disabled={!selectedClass || !selectedSubject}
+            >
+              📈 {showTrendAnalysis ? "Hide Trends" : "Show Trends"}
+            </button>
           </div>
 
           {/* Current Selection Info */}
           {selectedClass && selectedSubject && (
-            <div className="glass-ultra-light border border-blue-200/50 rounded-md p-4">
-              <h3 className="font-semibold text-blue-900">
+            <div className="mt-4 bg-white/10 border-2 border-white/30 rounded-xl p-4 backdrop-blur-md">
+              <h3 className="font-semibold text-white text-sm sm:text-base">
                 {selectedSubject} - {selectedClass}
               </h3>
-              <p className="text-blue-700 text-sm">
-                {filteredLearners.length} students | Teacher: {user?.name}
+              <p className="text-white/80 text-xs sm:text-sm mt-1">
+                {filteredLearners.length} student{filteredLearners.length !== 1 ? 's' : ''} | Teacher: {user?.name}
               </p>
             </div>
           )}
