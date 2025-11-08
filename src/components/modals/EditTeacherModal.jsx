@@ -58,6 +58,48 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Handle teaching level change and auto-assign appropriate role
+  const handleTeachingLevelChange = (level) => {
+    let defaultRole = 'Subject Teacher';
+
+    // Determine default role based on teaching level
+    if (['KG', 'Lower Primary', 'Upper Primary'].includes(level)) {
+      // PRIMARY levels (KG to BS6) → Class Teacher
+      defaultRole = 'Class Teacher';
+    } else if (level === 'JHS') {
+      // JHS (BS7 to BS9) → Form Master if they have a class, Subject Teacher otherwise
+      defaultRole = formData.form_class ? 'Form Master' : 'Subject Teacher';
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      teachingLevel: level,
+      primaryRole: defaultRole,
+      additionalRoles: [] // Clear additional roles when changing teaching level
+    }));
+  };
+
+  // Check if a role is allowed based on teaching level
+  const isRoleAllowedForLevel = (role, teachingLevel) => {
+    // Admin and head_teacher are always allowed
+    if (role === 'Admin' || role === 'Head Teacher') {
+      return true;
+    }
+
+    // For PRIMARY levels (KG to BS6): only Class Teacher allowed
+    if (['KG', 'Lower Primary', 'Upper Primary'].includes(teachingLevel)) {
+      return role === 'Class Teacher';
+    }
+
+    // For JHS (BS7 to BS9): only Form Master or Subject Teacher allowed
+    if (teachingLevel === 'JHS') {
+      return role === 'Form Master' || role === 'Subject Teacher';
+    }
+
+    // For "All Levels": allow all roles
+    return true;
+  };
+
   // Map UI role names to database format
   const mapRoleToDatabase = (role) => {
     const roleMap = {
@@ -215,7 +257,7 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleInputChange('teachingLevel', 'KG')}
+                  onClick={() => handleTeachingLevelChange('KG')}
                   className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                     formData.teachingLevel === 'KG'
                       ? 'bg-pink-400 text-white shadow-lg scale-105'
@@ -226,7 +268,7 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleInputChange('teachingLevel', 'Lower Primary')}
+                  onClick={() => handleTeachingLevelChange('Lower Primary')}
                   className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                     formData.teachingLevel === 'Lower Primary'
                       ? 'bg-blue-300 text-white shadow-lg scale-105'
@@ -237,7 +279,7 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleInputChange('teachingLevel', 'Upper Primary')}
+                  onClick={() => handleTeachingLevelChange('Upper Primary')}
                   className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                     formData.teachingLevel === 'Upper Primary'
                       ? 'bg-blue-500 text-white shadow-lg scale-105'
@@ -248,7 +290,7 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleInputChange('teachingLevel', 'JHS')}
+                  onClick={() => handleTeachingLevelChange('JHS')}
                   className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                     formData.teachingLevel === 'JHS'
                       ? 'bg-green-400 text-white shadow-lg scale-105'
@@ -259,7 +301,7 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleInputChange('teachingLevel', 'All Levels')}
+                  onClick={() => handleTeachingLevelChange('All Levels')}
                   className={`p-3 rounded-lg text-sm font-semibold transition-all ${
                     formData.teachingLevel === 'All Levels'
                       ? 'bg-purple-400 text-white shadow-lg scale-105'
@@ -277,14 +319,34 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
             {/* Primary Role */}
             <div className="glass rounded-lg p-4">
               <h3 className="text-lg font-bold text-gray-800 mb-3">Primary Role</h3>
+              {/* Show role guidance based on teaching level */}
+              {['KG', 'Lower Primary', 'Upper Primary'].includes(formData.teachingLevel) && (
+                <div className="mb-3 p-3 bg-blue-100 border-2 border-blue-400 rounded-lg">
+                  <p className="text-sm text-blue-900 font-semibold">
+                    ℹ️ <strong>PRIMARY Teachers</strong> (KG-BS6) are automatically assigned as <strong>Class Teachers</strong>
+                  </p>
+                </div>
+              )}
+              {formData.teachingLevel === 'JHS' && (
+                <div className="mb-3 p-3 bg-green-100 border-2 border-green-400 rounded-lg">
+                  <p className="text-sm text-green-900 font-semibold">
+                    ℹ️ <strong>JHS Teachers</strong> (BS7-BS9) can be <strong>Form Masters</strong> (managing a class) or <strong>Subject Teachers</strong> (teaching only)
+                  </p>
+                </div>
+              )}
               <select
                 value={formData.primaryRole}
                 onChange={(e) => handleInputChange('primaryRole', e.target.value)}
                 className="glass-input w-full px-3 py-2 rounded-md"
               >
-                {primaryRoles.map(role => (
-                  <option key={role} value={role}>{getRoleDisplayName(role)}</option>
-                ))}
+                {primaryRoles.map(role => {
+                  const isAllowed = isRoleAllowedForLevel(role, formData.teachingLevel);
+                  return (
+                    <option key={role} value={role} disabled={!isAllowed}>
+                      {getRoleDisplayName(role)} {!isAllowed ? '(Not available for this level)' : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -303,6 +365,7 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
               <div className="space-y-2">
                 {primaryRoles
                   .filter(role => role !== formData.primaryRole)
+                  .filter(role => isRoleAllowedForLevel(role, formData.teachingLevel)) // Only show allowed roles
                   .map(role => {
                     const isSelected = formData.additionalRoles.includes(role);
                     return (
@@ -331,6 +394,11 @@ const EditTeacherModal = ({ isOpen, onClose, teacher, onTeacherUpdate }) => {
                       </label>
                     );
                   })}
+                {primaryRoles.filter(role => role !== formData.primaryRole && isRoleAllowedForLevel(role, formData.teachingLevel)).length === 0 && (
+                  <p className="text-sm text-gray-600 italic p-3 bg-gray-100 rounded-lg">
+                    No additional roles available for {formData.teachingLevel} level teachers.
+                  </p>
+                )}
               </div>
 
               {formData.additionalRoles.length > 0 && (

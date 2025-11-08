@@ -260,6 +260,10 @@ const AdminDashboardPage = () => {
 
   const handleTeacherUpdate = async (updatedTeacherData) => {
     try {
+      // Use the roles directly from updatedTeacherData (EditTeacherModal already converts to snake_case)
+      const allRoles = updatedTeacherData.allRoles || updatedTeacherData.all_roles || [];
+      const primaryRole = updatedTeacherData.primaryRole || (allRoles.length > 0 ? allRoles[0] : 'subject_teacher');
+
       const apiTeacherData = {
         id: updatedTeacherData.id,
         firstName: updatedTeacherData.firstName || updatedTeacherData.first_name,
@@ -269,11 +273,8 @@ const AdminDashboardPage = () => {
         teachingLevel: updatedTeacherData.teachingLevel || updatedTeacherData.teaching_level || 'PRIMARY',
         subjects: updatedTeacherData.subjects || [],
         classes: updatedTeacherData.classes || [],
-        primaryRole: updatedTeacherData.primaryRole ||
-                    (updatedTeacherData.all_roles && updatedTeacherData.all_roles.length > 0
-                     ? updatedTeacherData.all_roles[0]
-                     : 'Subject Teacher'),
-        all_roles: updatedTeacherData.all_roles || ['Subject Teacher'],
+        primaryRole: primaryRole,
+        allRoles: allRoles,
         classAssigned: updatedTeacherData.classAssigned || updatedTeacherData.class_assigned || null,
         form_class: updatedTeacherData.form_class || null
       };
