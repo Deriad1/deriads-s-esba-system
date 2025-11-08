@@ -254,23 +254,28 @@ const FormMasterPage = () => {
         if (response.status === 'success') {
           // Initialize marks for this subject
           newMarksData[subject] = {};
-          
+
           // Populate with existing marks data
           response.data.forEach(mark => {
-            const studentId = mark.studentId || mark.student_id;
-            newMarksData[subject][studentId] = {
-              test1: mark.test1 || '',
-              test2: mark.test2 || '',
-              test3: mark.test3 || '',
-              test4: mark.test4 || '',
-              testsTotal: mark.tests_total || mark.testsTotal || '',
-              classScore50: mark.class_score_50 || mark.classScore50 || '',
-              exam: mark.exam || '',
-              examScore50: mark.exam_score_50 || mark.examScore50 || '',
-              total: mark.total || '',
-              ca1: mark.ca1 || '',
-              ca2: mark.ca2 || ''
-            };
+            // Try multiple possible student ID fields
+            const studentId = mark.id_number || mark.studentId || mark.student_id;
+
+            if (studentId) {
+              newMarksData[subject][studentId] = {
+                test1: mark.test1 ?? '',
+                test2: mark.test2 ?? '',
+                test3: mark.test3 ?? '',
+                test4: mark.test4 ?? '',
+                testsTotal: mark.tests_total || mark.testsTotal || '',
+                classScore50: mark.class_score_50 || mark.classScore50 || '',
+                exam: mark.exam ?? '',
+                examScore50: mark.exam_score_50 || mark.examScore50 || '',
+                total: mark.total ?? '',
+                remark: mark.remark || '',
+                ca1: mark.ca1 ?? '',
+                ca2: mark.ca2 ?? ''
+              };
+            }
           });
         }
       });

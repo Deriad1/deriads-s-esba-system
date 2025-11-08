@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import {
   AttendanceTab,
-  BroadsheetTab,
   AnalyticsTab,
   DailyAttendanceTab,
   ReportTab,
@@ -60,11 +59,6 @@ const ManageClassView = ({
       id: 'attendance',
       label: '📊 Attendance',
       description: 'Track term-based attendance and conduct'
-    },
-    {
-      id: 'broadsheet',
-      label: '📄 Broadsheet',
-      description: 'Class performance overview'
     },
     {
       id: 'analytics',
@@ -173,18 +167,6 @@ const ManageClassView = ({
             onFootnoteChange={actions.handleFootnoteChange}
             onSaveAll={actions.confirmSave}
             onSaveFootnote={actions.saveFootnoteInfo}
-          />
-        )}
-
-        {/* Broadsheet Tab */}
-        {activeTab === 'broadsheet' && (
-          <BroadsheetTab
-            students={students}
-            marksData={state.marksData || {}}
-            subjects={userSubjects}
-            subjectTeachers={subjectTeachers}
-            isLoading={loadingStates?.broadsheet || false}
-            onPrintBroadsheet={actions.printBroadsheet}
           />
         )}
 
