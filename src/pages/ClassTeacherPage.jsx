@@ -1133,7 +1133,7 @@ const ClassTeacherPage = () => {
 
             {/* Save Button */}
             <button
-              className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 disabled:bg-gray-400 transition-colors font-medium"
+              className="w-full glass-button-primary px-4 py-3 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
               style={{ minHeight: '44px', fontSize: '16px' }}
               onClick={saveAllData}
               disabled={saving || !selectedClass}
@@ -1143,7 +1143,7 @@ const ClassTeacherPage = () => {
 
             {/* Print Student Reports */}
             <button
-              className="w-full bg-purple-600 text-white px-4 py-3 rounded-xl hover:bg-purple-700 disabled:bg-gray-400 transition-colors font-medium"
+              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-purple-400/50 hover:border-purple-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
               style={{ minHeight: '44px', fontSize: '16px' }}
               onClick={printStudentReports}
               disabled={printing || !selectedClass}
@@ -1154,7 +1154,7 @@ const ClassTeacherPage = () => {
 
             {/* Print Subject Broadsheet */}
             <button
-              className="w-full bg-orange-600 text-white px-4 py-3 rounded-xl hover:bg-orange-700 disabled:bg-gray-400 transition-colors font-medium"
+              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-orange-400/50 hover:border-orange-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
               style={{ minHeight: '44px', fontSize: '16px' }}
               onClick={printSubjectBroadsheet}
               disabled={printing || !selectedClass || !selectedSubject}
@@ -1165,7 +1165,7 @@ const ClassTeacherPage = () => {
 
             {/* Print Class Broadsheet */}
             <button
-              className="w-full bg-green-600 text-white px-4 py-3 rounded-xl hover:bg-green-700 disabled:bg-gray-400 transition-colors font-medium"
+              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-green-400/50 hover:border-green-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
               style={{ minHeight: '44px', fontSize: '16px' }}
               onClick={printClassBroadsheet}
               disabled={printing || !selectedClass}
@@ -1175,11 +1175,11 @@ const ClassTeacherPage = () => {
             </button>
 
             <button
-              className={`w-full px-4 py-3 rounded-xl transition-colors font-medium ${
+              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${
                 showAnalytics
-                  ? "bg-purple-600 text-white hover:bg-purple-700"
-                  : "bg-gray-200 text-gray-900 hover:bg-gray-300"
-              }`}
+                  ? "text-white border-2 border-purple-400 bg-white/30"
+                  : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
               style={{ minHeight: '44px', fontSize: '16px' }}
               onClick={() => setShowAnalytics(!showAnalytics)}
               disabled={!selectedClass}
@@ -1189,7 +1189,7 @@ const ClassTeacherPage = () => {
 
             {/* Promote Students Button */}
             <button
-              className="w-full bg-gradient-to-r from-green-500 to-blue-600 text-white px-4 py-3 rounded-xl hover:from-green-600 hover:to-blue-700 transition-colors font-semibold"
+              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-emerald-400/50 hover:border-emerald-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg"
               style={{ minHeight: '44px', fontSize: '16px' }}
               onClick={() => setIsPromoteModalOpen(true)}
               disabled={!selectedClass}
@@ -1200,11 +1200,11 @@ const ClassTeacherPage = () => {
 
             {/* Trend Analysis Button */}
             <button
-              className={`w-full px-4 py-3 rounded-xl transition-colors font-medium ${
+              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${
                 showTrendAnalysis
-                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                  : "bg-gray-200 text-gray-900 hover:bg-gray-300"
-              }`}
+                  ? "text-white border-2 border-indigo-400 bg-white/30"
+                  : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
               style={{ minHeight: '44px', fontSize: '16px' }}
               onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
               disabled={!selectedClass}

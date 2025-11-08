@@ -847,7 +847,7 @@ const SubjectTeacherPage = () => {
           {/* Action Buttons Section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <button
-              className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+              className="w-full glass-button-primary px-4 py-3 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
               style={{ minHeight: '44px' }}
               onClick={() => setShowScoresModal(true)}
               disabled={!selectedClass || !selectedSubject || !selectedAssessment}
@@ -856,7 +856,7 @@ const SubjectTeacherPage = () => {
             </button>
 
             <button
-              className="w-full bg-green-600 text-white px-4 py-3 rounded-xl hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-green-400/50 hover:border-green-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
               style={{ minHeight: '44px' }}
               onClick={printBroadsheet}
               disabled={!selectedClass || !selectedSubject || selectedAssessment !== 'regular'}
@@ -865,11 +865,11 @@ const SubjectTeacherPage = () => {
             </button>
 
             <button
-              className={`w-full px-4 py-3 rounded-xl transition-colors font-medium ${
+              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${
                 showAnalytics
-                  ? "bg-purple-600 text-white hover:bg-purple-700"
-                  : "bg-white/30 text-white hover:bg-white/40"
-              } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                  ? "text-white border-2 border-purple-400 bg-white/30"
+                  : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
               style={{ minHeight: '44px' }}
               onClick={() => setShowAnalytics(!showAnalytics)}
               disabled={!selectedClass || !selectedSubject}
@@ -878,11 +878,11 @@ const SubjectTeacherPage = () => {
             </button>
 
             <button
-              className={`w-full px-4 py-3 rounded-xl transition-colors font-medium ${
+              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${
                 showTrendAnalysis
-                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                  : "bg-white/30 text-white hover:bg-white/40"
-              } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                  ? "text-white border-2 border-indigo-400 bg-white/30"
+                  : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
               style={{ minHeight: '44px' }}
               onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
               disabled={!selectedClass || !selectedSubject}
