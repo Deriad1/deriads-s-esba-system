@@ -8,6 +8,7 @@ import TrendAnalysisChart from "../components/TrendAnalysisChart";
 import printingService from "../services/printingService";
 import TeacherLeaderboard from "../components/TeacherLeaderboard";
 import ScoreEntryRow from "../components/ScoreEntryRow";
+import ScoreEntryCard from "../components/ScoreEntryCard";
 import PromoteStudentsModal from "../components/PromoteStudentsModal";
 import { calculatePositions, calculateScoreDetails } from "../utils/gradeHelpers";
 import { DEFAULT_TERM } from "../constants/terms";
@@ -1296,7 +1297,9 @@ const ClassTeacherPage = () => {
                   <h3 className="text-lg sm:text-xl font-bold mb-6 text-white">
                     📊 Enter Scores for {selectedSubject}
                   </h3>
-                  <div className="overflow-x-auto rounded-lg border-2 border-yellow-500/30">
+
+                  {/* Desktop Table View - Hidden on Mobile */}
+                  <div className="hidden md:block overflow-x-auto rounded-lg border-2 border-yellow-500/30">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-b-2 border-yellow-500/30">
@@ -1395,6 +1398,68 @@ const ClassTeacherPage = () => {
                         })()}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile Card View - Hidden on Desktop */}
+                  <div className="block md:hidden space-y-4">
+                    {(() => {
+                      // Calculate scores and positions for all students (same logic as table)
+                      const isCustomAssessment = selectedAssessment && selectedAssessment.assessment_type !== 'standard';
+
+                      const studentsWithScores = filteredLearners.map(learner => {
+                        const studentId = learner.idNumber;
+                        const studentMarks = marks[studentId] || {};
+
+                        let totalScore, remarks;
+
+                        if (isCustomAssessment) {
+                          totalScore = parseFloat(studentMarks.total) || 0;
+                          const percentage = (totalScore / parseFloat(selectedAssessment.max_score)) * 100;
+                          if (percentage >= 80) remarks = 'EXCELLENT';
+                          else if (percentage >= 70) remarks = 'VERY GOOD';
+                          else if (percentage >= 60) remarks = 'GOOD';
+                          else if (percentage >= 45) remarks = 'Credit';
+                          else if (percentage >= 35) remarks = 'PASS';
+                          else remarks = 'WEAK';
+                        } else {
+                          const scoreDetails = calculateScoreDetails(studentMarks);
+                          totalScore = scoreDetails.total;
+                          remarks = scoreDetails.remark;
+                        }
+
+                        return {
+                          ...learner,
+                          studentId,
+                          marks: studentMarks,
+                          total: totalScore,
+                          remarks: remarks
+                        };
+                      });
+
+                      const studentsWithPositions = calculatePositions(studentsWithScores, 'total');
+
+                      // Render cards
+                      return studentsWithPositions.map(student => {
+                        const isSaved = savedStudents.has(student.studentId);
+                        const studentName = `${student.firstName} ${student.lastName}`;
+
+                        return (
+                          <ScoreEntryCard
+                            key={student.studentId}
+                            studentId={student.studentId}
+                            studentName={studentName}
+                            marks={student.marks}
+                            isSaved={isSaved}
+                            position={student.position}
+                            remarks={student.remarks}
+                            onMarkChange={handleMarkChange}
+                            onSave={saveStudentScores}
+                            saving={saving}
+                            selectedAssessment={selectedAssessment}
+                          />
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               )}
