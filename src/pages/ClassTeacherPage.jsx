@@ -673,14 +673,17 @@ const ClassTeacherPage = () => {
         const studentId = learner.idNumber;
         const studentData = formMasterData[studentId];
 
-        if (studentData && (studentData.remarks || studentData.attendance)) {
+        if (studentData && (studentData.remarks || studentData.attendance || studentData.attitude || studentData.interest || studentData.comments)) {
           try {
             const response = await updateFormMasterRemarks({
               studentId,
               className: selectedClass,
               term: settings.term || DEFAULT_TERM,
               remarks: studentData.remarks || "",
-              attendance: studentData.attendance || ""
+              attendance: studentData.attendance || "",
+              attitude: studentData.attitude || "",
+              interest: studentData.interest || "",
+              comments: studentData.comments || ""
             });
 
             if (response.status === 'success') {
@@ -733,7 +736,10 @@ const ClassTeacherPage = () => {
       const studentData = formMasterData[studentId];
       return studentData &&
              ((studentData.remarks && studentData.remarks.trim() !== "") ||
-              (studentData.attendance && studentData.attendance.trim() !== ""));
+              (studentData.attendance && studentData.attendance.trim() !== "") ||
+              (studentData.attitude && studentData.attitude.trim() !== "") ||
+              (studentData.interest && studentData.interest.trim() !== "") ||
+              (studentData.comments && studentData.comments.trim() !== ""));
     });
 
     if (studentsWithData.length === 0) return null;
@@ -1613,6 +1619,18 @@ const ClassTeacherPage = () => {
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Save Button for Remarks */}
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={saveAllData}
+                  disabled={saving}
+                  className="glass-button-primary px-6 py-3 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
+                  style={{ minHeight: '44px', fontSize: '16px' }}
+                >
+                  {saving ? "Saving..." : "💾 Save All Remarks & Attendance"}
+                </button>
               </div>
             </div>
           )}
