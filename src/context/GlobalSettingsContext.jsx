@@ -3,6 +3,8 @@ import { DEFAULT_TERM } from '../constants/terms';
 
 const GlobalSettingsContext = createContext();
 
+const API_BASE_URL = 'http://localhost:3000/api';
+
 const getInitialSettings = () => {
   const storedSettings = localStorage.getItem('globalSettings');
   if (storedSettings) {
@@ -29,21 +31,106 @@ const getInitialSettings = () => {
 export const GlobalSettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(getInitialSettings);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mark as initialized after first render
+  // Fetch settings from backend on mount
   useEffect(() => {
-    setIsInitialized(true);
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/settings`);
+        if (response.ok) {
+          const result = await response.json();
+
+          if (result.status === 'success' && result.data) {
+            const backendSettings = result.data;
+
+            // Map backend field names to our context format
+            const mergedSettings = {
+              schoolName: backendSettings.schoolName || '',
+              schoolLogo: backendSettings.schoolLogo || '',
+              backgroundImage: backendSettings.backgroundImage || '',
+              term: backendSettings.term || DEFAULT_TERM,
+              academicYear: backendSettings.academicYear || '',
+              archivedTerms: [] // Keep archivedTerms in localStorage for now
+            };
+
+            // Get archivedTerms from localStorage
+            const localSettings = getInitialSettings();
+            if (localSettings.archivedTerms) {
+              mergedSettings.archivedTerms = localSettings.archivedTerms;
+            }
+
+            setSettings(mergedSettings);
+            localStorage.setItem('globalSettings', JSON.stringify(mergedSettings));
+            console.log('✅ Settings loaded from backend');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching settings from backend:', error);
+        // Use localStorage settings as fallback
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+    };
+
+    fetchSettings();
   }, []);
 
-  // Save settings to localStorage whenever they change (but skip initial render)
+  // Save settings to localStorage and backend whenever they change
   useEffect(() => {
-    if (!isInitialized) return; // Don't save on initial render
+    if (!isInitialized || isLoading) return; // Don't save during initialization
 
+    // Save to localStorage
     localStorage.setItem('globalSettings', JSON.stringify(settings));
+
+    // Save to backend
+    const syncToBackend = async () => {
+      try {
+        // Send settings to backend API
+        const settingsToSync = {
+          schoolName: settings.schoolName || '',
+          schoolLogo: settings.schoolLogo || '',
+          backgroundImage: settings.backgroundImage || '',
+          term: settings.term || DEFAULT_TERM,
+          academicYear: settings.academicYear || ''
+        };
+
+        const response = await fetch(`${API_BASE_URL}/settings`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settingsToSync)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            console.log('✅ Settings synced to backend');
+          }
+        } else {
+          // If settings don't exist yet, create them
+          if (response.status === 404) {
+            const createResponse = await fetch(`${API_BASE_URL}/settings`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(settingsToSync)
+            });
+
+            if (createResponse.ok) {
+              console.log('✅ Settings created in backend');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('⚠️ Error syncing settings to backend:', error);
+      }
+    };
+
+    syncToBackend();
 
     // Trigger event for other components to react
     window.dispatchEvent(new CustomEvent('settingsChanged', { detail: settings }));
-  }, [settings, isInitialized]);
+  }, [settings, isInitialized, isLoading]);
 
   const updateSettings = (newSettings) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
@@ -135,6 +222,7 @@ export const GlobalSettingsProvider = ({ children }) => {
 
   const value = {
     settings,
+    isLoading,
     updateSettings,
     updateSchoolName,
     updateSchoolLogo,
