@@ -308,31 +308,33 @@ export default async function handler(req, res) {
         });
       }
 
-      // Always update the updated_at timestamp
-      updateFields.push('updated_at = NOW()');
+      // Build SET clause parts
+      const setParts = [];
+      if (schoolName !== undefined) setParts.push(sql`school_name = ${schoolName}`);
+      if (schoolLogo !== undefined) setParts.push(sql`school_logo = ${schoolLogo}`);
+      if (backgroundImage !== undefined) setParts.push(sql`background_image = ${backgroundImage}`);
+      if (term !== undefined) setParts.push(sql`term = ${term}`);
+      if (academicYear !== undefined) setParts.push(sql`academic_year = ${academicYear}`);
+      if (currentYear !== undefined) setParts.push(sql`current_year = ${currentYear}`);
+      if (schoolAddress !== undefined) setParts.push(sql`school_address = ${schoolAddress}`);
+      if (schoolPhone !== undefined) setParts.push(sql`school_phone = ${schoolPhone}`);
+      if (schoolEmail !== undefined) setParts.push(sql`school_email = ${schoolEmail}`);
+      if (schoolMotto !== undefined) setParts.push(sql`school_motto = ${schoolMotto}`);
+      if (principalName !== undefined) setParts.push(sql`principal_name = ${principalName}`);
+      if (principalSignature !== undefined) setParts.push(sql`principal_signature = ${principalSignature}`);
+      if (gradeConfig !== undefined) setParts.push(sql`grade_config = ${JSON.stringify(gradeConfig)}`);
+      if (reportCardTemplate !== undefined) setParts.push(sql`report_card_template = ${reportCardTemplate}`);
+      if (enableAttendance !== undefined) setParts.push(sql`enable_attendance = ${enableAttendance}`);
+      if (enableRemarks !== undefined) setParts.push(sql`enable_remarks = ${enableRemarks}`);
+      if (enableBroadsheet !== undefined) setParts.push(sql`enable_broadsheet = ${enableBroadsheet}`);
+
+      // Always update the timestamp
+      setParts.push(sql`updated_at = NOW()`);
 
       // Use sql template for proper parameterization
       const result = await sql`
         UPDATE settings
-        SET
-          ${schoolName !== undefined ? sql`school_name = ${schoolName},` : sql``}
-          ${schoolLogo !== undefined ? sql`school_logo = ${schoolLogo},` : sql``}
-          ${backgroundImage !== undefined ? sql`background_image = ${backgroundImage},` : sql``}
-          ${term !== undefined ? sql`term = ${term},` : sql``}
-          ${academicYear !== undefined ? sql`academic_year = ${academicYear},` : sql``}
-          ${currentYear !== undefined ? sql`current_year = ${currentYear},` : sql``}
-          ${schoolAddress !== undefined ? sql`school_address = ${schoolAddress},` : sql``}
-          ${schoolPhone !== undefined ? sql`school_phone = ${schoolPhone},` : sql``}
-          ${schoolEmail !== undefined ? sql`school_email = ${schoolEmail},` : sql``}
-          ${schoolMotto !== undefined ? sql`school_motto = ${schoolMotto},` : sql``}
-          ${principalName !== undefined ? sql`principal_name = ${principalName},` : sql``}
-          ${principalSignature !== undefined ? sql`principal_signature = ${principalSignature},` : sql``}
-          ${gradeConfig !== undefined ? sql`grade_config = ${JSON.stringify(gradeConfig)},` : sql``}
-          ${reportCardTemplate !== undefined ? sql`report_card_template = ${reportCardTemplate},` : sql``}
-          ${enableAttendance !== undefined ? sql`enable_attendance = ${enableAttendance},` : sql``}
-          ${enableRemarks !== undefined ? sql`enable_remarks = ${enableRemarks},` : sql``}
-          ${enableBroadsheet !== undefined ? sql`enable_broadsheet = ${enableBroadsheet},` : sql``}
-          updated_at = NOW()
+        SET ${sql.join(setParts, sql`, `)}
         WHERE id = ${settingsId}
         RETURNING *
       `;
