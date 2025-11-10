@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
 import { useGlobalSettings } from "../context/GlobalSettingsContext";
-import { getLearners, updateStudentScores, getClassPerformanceTrends, getMarks, getCustomAssessments, saveCustomAssessmentScores, getCustomAssessmentScores } from '../api-client';
+import { getLearners, updateStudentScores, getClassPerformanceTrends, getMarks, getCustomAssessments, saveCustomAssessmentScores, getCustomAssessmentScores, getClasses, getSubjects } from '../api-client';
 import PerformanceChart from "../components/PerformanceChart";
 import TrendAnalysisChart from "../components/TrendAnalysisChart";
 import AnalyticsDashboard from "../components/AnalyticsDashboard";
@@ -52,27 +52,52 @@ const SubjectTeacherPage = () => {
   // State for modals
   const [showScoresModal, setShowScoresModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  // State for all classes and subjects
+  const [allClasses, setAllClasses] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
 
-  // Get user's subjects
+  // Get all subjects (not filtered by user)
   const getUserSubjects = () => {
-    if (Array.isArray(user?.subjects)) {
-      return user.subjects;
-    }
-    return [];
+    return allSubjects;
   };
 
-  // Get user's classes
+  // Get all classes (not filtered by user)
   const getUserClasses = () => {
-    if (Array.isArray(user?.classes)) {
-      return user.classes.filter(cls => cls !== 'ALL');
-    }
-    return [];
+    return allClasses;
   };
 
   useEffect(() => {
     loadLearners();
     loadCustomAssessments();
+    loadAllClasses();
+    loadAllSubjects();
   }, []);
+
+  // Load all classes
+  const loadAllClasses = async () => {
+    try {
+      const response = await getClasses();
+      if (response.status === 'success' && Array.isArray(response.data)) {
+        const classNames = response.data.map(c => c.name || c.class_name).filter(Boolean);
+        setAllClasses(classNames);
+      }
+    } catch (error) {
+      console.error("Error loading classes:", error);
+    }
+  };
+
+  // Load all subjects
+  const loadAllSubjects = async () => {
+    try {
+      const response = await getSubjects();
+      if (response.status === 'success' && Array.isArray(response.data)) {
+        const subjectNames = response.data.map(s => s.name).filter(Boolean);
+        setAllSubjects(subjectNames);
+      }
+    } catch (error) {
+      console.error("Error loading subjects:", error);
+    }
+  };
 
   // Load custom assessments
   const loadCustomAssessments = async () => {
@@ -327,12 +352,6 @@ const SubjectTeacherPage = () => {
       return;
     }
 
-    // Check if user has permission for this subject
-    if (!getUserSubjects().includes(selectedSubject)) {
-      showNotification({ message: "You don't have permission to enter scores for this subject.", type: 'error' });
-      return;
-    }
-
     const studentMarks = marks[studentId];
     if (!studentMarks) {
       showNotification({ message: "No marks to save for this student.", type: 'warning' });
@@ -463,12 +482,6 @@ const SubjectTeacherPage = () => {
       return;
     }
 
-    // Check if user has permission for this subject
-    if (!getUserSubjects().includes(selectedSubject)) {
-      showNotification({ message: "You don't have permission to enter scores for this subject.", type: 'error' });
-      return;
-    }
-
     setSaving(true);
     let successCount = 0;
     let errorCount = 0;
@@ -526,12 +539,6 @@ const SubjectTeacherPage = () => {
   const saveProgress = async () => {
     if (!selectedClass || !selectedSubject) {
       showNotification({ message: "Please select a class and subject first.", type: 'warning' });
-      return;
-    }
-
-    // Check if user has permission for this subject
-    if (!getUserSubjects().includes(selectedSubject)) {
-      showNotification({ message: "You don't have permission to enter scores for this subject.", type: 'error' });
       return;
     }
 

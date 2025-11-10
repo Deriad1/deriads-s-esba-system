@@ -1,7 +1,7 @@
 import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getLearners, updateFormMasterRemarks, getMarks, updateStudentScores, getClassPerformanceTrends, getClassSubjects, getStudentsByClass, getCustomAssessments, saveCustomAssessmentScores, getTeachers } from '../api-client';
+import { getLearners, updateFormMasterRemarks, getMarks, updateStudentScores, getClassPerformanceTrends, getClassSubjects, getStudentsByClass, getCustomAssessments, saveCustomAssessmentScores, getTeachers, getClasses, getSubjects } from '../api-client';
 import { useNotification } from '../context/NotificationContext';
 import { useLoading } from '../context/LoadingContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -49,7 +49,7 @@ const FormMasterPage = () => {
   // New states for daily attendance
   const [dailyAttendance, setDailyAttendance] = useState({});
   const [dailyAttendanceDate, setDailyAttendanceDate] = useState("");
-  
+
   // New states for attendance report
   const [reportStartDate, setReportStartDate] = useState("");
   const [reportEndDate, setReportEndDate] = useState("");
@@ -70,49 +70,54 @@ const FormMasterPage = () => {
   const [printing, setPrinting] = useState(false);
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
 
-  // Get user's assigned classes
+  // State for all classes and subjects
+  const [allClasses, setAllClasses] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
+
+  // Get all classes (not filtered by user)
   const getUserClasses = () => {
-    console.log('User object:', user);
-    console.log('User classes:', user?.classes);
-
-    if (Array.isArray(user?.classes)) {
-      const filtered = user.classes.filter(cls => cls !== 'ALL');
-      console.log('Filtered classes:', filtered);
-      return filtered;
-    }
-
-    // Handle if classes is a string (comma-separated or JSON)
-    if (typeof user?.classes === 'string') {
-      try {
-        // Try parsing as JSON
-        const parsed = JSON.parse(user.classes);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(cls => cls !== 'ALL');
-        }
-      } catch (e) {
-        // Try splitting by comma
-        return user.classes.split(',').map(cls => cls.trim()).filter(cls => cls && cls !== 'ALL');
-      }
-    }
-
-    console.log('No classes found, returning empty array');
-    return [];
+    return allClasses;
   };
 
-  // Get user's assigned subjects
+  // Get all subjects (not filtered by user)
   const getUserSubjects = () => {
-    if (Array.isArray(user?.subjects)) {
-      return user.subjects;
-    }
-    return [];
+    return allSubjects;
   };
 
   useEffect(() => {
     loadLearners();
     loadCustomAssessments();
     loadTeachers();
+    loadAllClasses();
+    loadAllSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load all classes
+  const loadAllClasses = async () => {
+    try {
+      const response = await getClasses();
+      if (response.status === 'success' && Array.isArray(response.data)) {
+        const classNames = response.data.map(c => c.name || c.class_name).filter(Boolean);
+        setAllClasses(classNames);
+      }
+    } catch (error) {
+      console.error("Error loading classes:", error);
+    }
+  };
+
+  // Load all subjects
+  const loadAllSubjects = async () => {
+    try {
+      const response = await getSubjects();
+      if (response.status === 'success' && Array.isArray(response.data)) {
+        const subjectNames = response.data.map(s => s.name).filter(Boolean);
+        setAllSubjects(subjectNames);
+      }
+    } catch (error) {
+      console.error("Error loading subjects:", error);
+    }
+  };
 
   // Auto-select form class when switching to Manage Class view
   useEffect(() => {

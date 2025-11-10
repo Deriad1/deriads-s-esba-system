@@ -2,7 +2,7 @@ import Layout from "../components/Layout";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { getLearners, updateFormMasterRemarks, getClassPerformanceTrends, updateStudentScores, getMarks } from '../api-client';
+import { getLearners, updateFormMasterRemarks, getClassPerformanceTrends, updateStudentScores, getMarks, getClasses, getSubjects } from '../api-client';
 import PerformanceChart from "../components/PerformanceChart";
 import TrendAnalysisChart from "../components/TrendAnalysisChart";
 import printingService from "../services/printingService";
@@ -49,21 +49,50 @@ const ClassTeacherPage = () => {
   const [classTrendData, setClassTrendData] = useState(null); // New state for trend data
   const [autoSaving, setAutoSaving] = useState(false); // Track auto-save status
   const [lastAutoSaved, setLastAutoSaved] = useState(null); // Track last auto-save time
+  // State for all classes and subjects
+  const [allClasses, setAllClasses] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
 
-  // Get user's assigned classes
+  // Get all classes (not filtered by user)
   const getUserClasses = () => {
-    if (Array.isArray(user?.classes)) {
-      return user.classes.filter(cls => cls !== 'ALL');
-    }
-    return [];
+    return allClasses;
   };
 
-  // Get user's subjects
+  // Get all subjects (not filtered by user)
   const getUserSubjects = () => {
-    if (Array.isArray(user?.subjects)) {
-      return user.subjects;
+    return allSubjects;
+  };
+
+  // Load all classes and subjects on mount
+  useEffect(() => {
+    loadAllClasses();
+    loadAllSubjects();
+  }, []);
+
+  // Load all classes
+  const loadAllClasses = async () => {
+    try {
+      const response = await getClasses();
+      if (response.status === 'success' && Array.isArray(response.data)) {
+        const classNames = response.data.map(c => c.name || c.class_name).filter(Boolean);
+        setAllClasses(classNames);
+      }
+    } catch (error) {
+      console.error("Error loading classes:", error);
     }
-    return [];
+  };
+
+  // Load all subjects
+  const loadAllSubjects = async () => {
+    try {
+      const response = await getSubjects();
+      if (response.status === 'success' && Array.isArray(response.data)) {
+        const subjectNames = response.data.map(s => s.name).filter(Boolean);
+        setAllSubjects(subjectNames);
+      }
+    } catch (error) {
+      console.error("Error loading subjects:", error);
+    }
   };
 
   // Load trend data when class is selected
