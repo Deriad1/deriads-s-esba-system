@@ -308,33 +308,28 @@ export default async function handler(req, res) {
         });
       }
 
-      // Build SET clause parts
-      const setParts = [];
-      if (schoolName !== undefined) setParts.push(sql`school_name = ${schoolName}`);
-      if (schoolLogo !== undefined) setParts.push(sql`school_logo = ${schoolLogo}`);
-      if (backgroundImage !== undefined) setParts.push(sql`background_image = ${backgroundImage}`);
-      if (term !== undefined) setParts.push(sql`term = ${term}`);
-      if (academicYear !== undefined) setParts.push(sql`academic_year = ${academicYear}`);
-      if (currentYear !== undefined) setParts.push(sql`current_year = ${currentYear}`);
-      if (schoolAddress !== undefined) setParts.push(sql`school_address = ${schoolAddress}`);
-      if (schoolPhone !== undefined) setParts.push(sql`school_phone = ${schoolPhone}`);
-      if (schoolEmail !== undefined) setParts.push(sql`school_email = ${schoolEmail}`);
-      if (schoolMotto !== undefined) setParts.push(sql`school_motto = ${schoolMotto}`);
-      if (principalName !== undefined) setParts.push(sql`principal_name = ${principalName}`);
-      if (principalSignature !== undefined) setParts.push(sql`principal_signature = ${principalSignature}`);
-      if (gradeConfig !== undefined) setParts.push(sql`grade_config = ${JSON.stringify(gradeConfig)}`);
-      if (reportCardTemplate !== undefined) setParts.push(sql`report_card_template = ${reportCardTemplate}`);
-      if (enableAttendance !== undefined) setParts.push(sql`enable_attendance = ${enableAttendance}`);
-      if (enableRemarks !== undefined) setParts.push(sql`enable_remarks = ${enableRemarks}`);
-      if (enableBroadsheet !== undefined) setParts.push(sql`enable_broadsheet = ${enableBroadsheet}`);
-
-      // Always update the timestamp
-      setParts.push(sql`updated_at = NOW()`);
-
-      // Use sql template for proper parameterization
+      // Build the UPDATE query manually with all fields
       const result = await sql`
         UPDATE settings
-        SET ${sql.join(setParts, sql`, `)}
+        SET
+          school_name = ${schoolName !== undefined ? schoolName : sql`school_name`},
+          school_logo = ${schoolLogo !== undefined ? schoolLogo : sql`school_logo`},
+          background_image = ${backgroundImage !== undefined ? backgroundImage : sql`background_image`},
+          term = ${term !== undefined ? term : sql`term`},
+          academic_year = ${academicYear !== undefined ? academicYear : sql`academic_year`},
+          current_year = ${currentYear !== undefined ? currentYear : sql`current_year`},
+          school_address = ${schoolAddress !== undefined ? schoolAddress : sql`school_address`},
+          school_phone = ${schoolPhone !== undefined ? schoolPhone : sql`school_phone`},
+          school_email = ${schoolEmail !== undefined ? schoolEmail : sql`school_email`},
+          school_motto = ${schoolMotto !== undefined ? schoolMotto : sql`school_motto`},
+          principal_name = ${principalName !== undefined ? principalName : sql`principal_name`},
+          principal_signature = ${principalSignature !== undefined ? principalSignature : sql`principal_signature`},
+          grade_config = ${gradeConfig !== undefined ? JSON.stringify(gradeConfig) : sql`grade_config`},
+          report_card_template = ${reportCardTemplate !== undefined ? reportCardTemplate : sql`report_card_template`},
+          enable_attendance = ${enableAttendance !== undefined ? enableAttendance : sql`enable_attendance`},
+          enable_remarks = ${enableRemarks !== undefined ? enableRemarks : sql`enable_remarks`},
+          enable_broadsheet = ${enableBroadsheet !== undefined ? enableBroadsheet : sql`enable_broadsheet`},
+          updated_at = NOW()
         WHERE id = ${settingsId}
         RETURNING *
       `;
