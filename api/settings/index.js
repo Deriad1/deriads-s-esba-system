@@ -308,31 +308,53 @@ export default async function handler(req, res) {
         });
       }
 
-      // Build the UPDATE query manually with all fields
-      const result = await sql`
+      // Only update fields that are explicitly provided
+      // We need to keep all existing values for undefined fields
+      const updateQuery = `
         UPDATE settings
         SET
-          school_name = ${schoolName !== undefined ? schoolName : sql`school_name`},
-          school_logo = ${schoolLogo !== undefined ? schoolLogo : sql`school_logo`},
-          background_image = ${backgroundImage !== undefined ? backgroundImage : sql`background_image`},
-          term = ${term !== undefined ? term : sql`term`},
-          academic_year = ${academicYear !== undefined ? academicYear : sql`academic_year`},
-          current_year = ${currentYear !== undefined ? currentYear : sql`current_year`},
-          school_address = ${schoolAddress !== undefined ? schoolAddress : sql`school_address`},
-          school_phone = ${schoolPhone !== undefined ? schoolPhone : sql`school_phone`},
-          school_email = ${schoolEmail !== undefined ? schoolEmail : sql`school_email`},
-          school_motto = ${schoolMotto !== undefined ? schoolMotto : sql`school_motto`},
-          principal_name = ${principalName !== undefined ? principalName : sql`principal_name`},
-          principal_signature = ${principalSignature !== undefined ? principalSignature : sql`principal_signature`},
-          grade_config = ${gradeConfig !== undefined ? JSON.stringify(gradeConfig) : sql`grade_config`},
-          report_card_template = ${reportCardTemplate !== undefined ? reportCardTemplate : sql`report_card_template`},
-          enable_attendance = ${enableAttendance !== undefined ? enableAttendance : sql`enable_attendance`},
-          enable_remarks = ${enableRemarks !== undefined ? enableRemarks : sql`enable_remarks`},
-          enable_broadsheet = ${enableBroadsheet !== undefined ? enableBroadsheet : sql`enable_broadsheet`},
+          school_name = COALESCE($1, school_name),
+          school_logo = COALESCE($2, school_logo),
+          background_image = COALESCE($3, background_image),
+          term = COALESCE($4, term),
+          academic_year = COALESCE($5, academic_year),
+          current_year = COALESCE($6, current_year),
+          school_address = COALESCE($7, school_address),
+          school_phone = COALESCE($8, school_phone),
+          school_email = COALESCE($9, school_email),
+          school_motto = COALESCE($10, school_motto),
+          principal_name = COALESCE($11, principal_name),
+          principal_signature = COALESCE($12, principal_signature),
+          grade_config = COALESCE($13::jsonb, grade_config),
+          report_card_template = COALESCE($14, report_card_template),
+          enable_attendance = COALESCE($15, enable_attendance),
+          enable_remarks = COALESCE($16, enable_remarks),
+          enable_broadsheet = COALESCE($17, enable_broadsheet),
           updated_at = NOW()
-        WHERE id = ${settingsId}
+        WHERE id = $18
         RETURNING *
       `;
+
+      const result = await sql(updateQuery, [
+        schoolName,
+        schoolLogo,
+        backgroundImage,
+        term,
+        academicYear,
+        currentYear,
+        schoolAddress,
+        schoolPhone,
+        schoolEmail,
+        schoolMotto,
+        principalName,
+        principalSignature,
+        gradeConfig ? JSON.stringify(gradeConfig) : null,
+        reportCardTemplate,
+        enableAttendance,
+        enableRemarks,
+        enableBroadsheet,
+        settingsId
+      ]);
 
       return res.json({
         status: 'success',
