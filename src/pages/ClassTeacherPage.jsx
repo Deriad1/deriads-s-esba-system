@@ -215,7 +215,8 @@ const ClassTeacherPage = () => {
       // Populate with saved marks from database
       if (response.status === 'success' && response.data) {
         response.data.forEach(mark => {
-          const studentId = mark.studentId || mark.student_id;
+          // API returns id_number field from the students table
+          const studentId = mark.id_number || mark.student_id || mark.studentId;
           if (newMarks[studentId]) {
             // Map database fields to form fields
             newMarks[studentId] = {
@@ -230,6 +231,24 @@ const ClassTeacherPage = () => {
               savedSet.add(studentId);
             }
           }
+        });
+      }
+
+      console.log('Loaded marks for', Object.keys(newMarks).length, 'students');
+      console.log('Students with saved marks:', savedSet.size);
+
+      // Show success notification
+      if (savedSet.size > 0) {
+        showNotification({
+          type: "success",
+          message: `Loaded marks for ${savedSet.size} student${savedSet.size > 1 ? 's' : ''}`,
+          duration: 3000
+        });
+      } else {
+        showNotification({
+          type: "info",
+          message: "No saved marks found for this class/subject",
+          duration: 3000
         });
       }
 
