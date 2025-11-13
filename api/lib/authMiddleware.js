@@ -77,7 +77,17 @@ export function hasSubjectAccess(user, className, subject) {
     return false;
   }
 
-  // Check if teacher teaches this subject
+  // Class teachers and form masters have access to ALL subjects in their assigned class
+  // This allows them to enter marks for any subject in their class
+  if (user.primaryRole === 'class_teacher' ||
+      user.primaryRole === 'form_master' ||
+      user.all_roles?.includes('class_teacher') ||
+      user.all_roles?.includes('form_master')) {
+    // They already passed the hasClassAccess check, so they can access all subjects in this class
+    return true;
+  }
+
+  // Subject teachers can only access subjects they teach
   const subjects = user.subjects || [];
   return subjects.includes(subject);
 }

@@ -153,8 +153,14 @@ async function handleGet(req, res) {
       // Get class filter to determine subject restrictions
       const classFilter = getClassFilterForUser(user);
 
-      if (classFilter.hasRestriction) {
-        // Filter by assigned subjects only
+      // Check if user is class_teacher or form_master for this class
+      const isClassTeacher = user.primaryRole === 'class_teacher' ||
+                             user.primaryRole === 'form_master' ||
+                             user.all_roles?.includes('class_teacher') ||
+                             user.all_roles?.includes('form_master');
+
+      if (classFilter.hasRestriction && !isClassTeacher) {
+        // Subject teachers: Filter by assigned subjects only
         const teacherSubjects = user.subjects || [];
 
         if (teacherSubjects.length === 0) {
@@ -186,7 +192,7 @@ async function handleGet(req, res) {
           `;
         }
       } else {
-        // Admin/Head Teacher - see all subjects
+        // Admin/Head Teacher/Class Teacher/Form Master - see all subjects
         if (term) {
           result = await sql`
             SELECT s.*, st.first_name, st.last_name, st.class_name

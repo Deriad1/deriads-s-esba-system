@@ -35,14 +35,29 @@ export default async function handler(req, res) {
     const classFilter = getClassFilterForUser(user);
     const teacherSubjects = user.subjects || [];
 
+    // Check if user is class_teacher or form_master
+    const isClassTeacher = user.primaryRole === 'class_teacher' ||
+                           user.primaryRole === 'form_master' ||
+                           user.all_roles?.includes('class_teacher') ||
+                           user.all_roles?.includes('form_master');
+
     // Get all marks with student information
     // Build query based on filters AND user access
     let marks;
 
     // SECURITY: Apply user access restrictions
     if (classFilter.hasRestriction) {
-      // Teacher: Filter by assigned classes and subjects
-      if (classFilter.classes.length === 0 || teacherSubjects.length === 0) {
+      // Subject teachers: Filter by assigned classes and subjects
+      // Class teachers/Form masters: Filter by assigned classes only (all subjects)
+      if (classFilter.classes.length === 0) {
+        return res.status(200).json({
+          status: 'success',
+          data: []
+        });
+      }
+
+      // Subject teachers need at least one subject assigned
+      if (!isClassTeacher && teacherSubjects.length === 0) {
         return res.status(200).json({
           status: 'success',
           data: []
@@ -60,8 +75,8 @@ export default async function handler(req, res) {
         }
       }
 
-      if (subject) {
-        // Verify access to specific subject
+      if (subject && !isClassTeacher) {
+        // Verify access to specific subject (only for subject teachers)
         if (!teacherSubjects.includes(subject)) {
           return res.status(403).json({
             status: 'error',
@@ -70,23 +85,42 @@ export default async function handler(req, res) {
         }
       }
 
-      // Get marks filtered by teacher's classes and subjects
+      // Get marks filtered by teacher's classes (and subjects for subject teachers)
       if (term && year) {
-        marks = await sql`
-          SELECT
-            m.*,
-            s.first_name,
-            s.last_name,
-            s.id_number,
-            s.class_name as student_class
-          FROM marks m
-          LEFT JOIN students s ON m.student_id::text = s.id_number
-          WHERE m.class_name = ANY(${classFilter.classes})
-            AND m.subject = ANY(${teacherSubjects})
-            AND m.term = ${term}
-            AND m.academic_year = ${year}
-          ORDER BY s.last_name, s.first_name, m.subject
-        `;
+        if (isClassTeacher) {
+          // Class teachers: All subjects in their classes
+          marks = await sql`
+            SELECT
+              m.*,
+              s.first_name,
+              s.last_name,
+              s.id_number,
+              s.class_name as student_class
+            FROM marks m
+            LEFT JOIN students s ON m.student_id::text = s.id_number
+            WHERE m.class_name = ANY(${classFilter.classes})
+              AND m.term = ${term}
+              AND m.academic_year = ${year}
+            ORDER BY s.last_name, s.first_name, m.subject
+          `;
+        } else {
+          // Subject teachers: Only their assigned subjects
+          marks = await sql`
+            SELECT
+              m.*,
+              s.first_name,
+              s.last_name,
+              s.id_number,
+              s.class_name as student_class
+            FROM marks m
+            LEFT JOIN students s ON m.student_id::text = s.id_number
+            WHERE m.class_name = ANY(${classFilter.classes})
+              AND m.subject = ANY(${teacherSubjects})
+              AND m.term = ${term}
+              AND m.academic_year = ${year}
+            ORDER BY s.last_name, s.first_name, m.subject
+          `;
+        }
       } else if (className && subject) {
         marks = await sql`
           SELECT
@@ -103,19 +137,36 @@ export default async function handler(req, res) {
         `;
       } else {
         // No specific filters - get all marks for teacher's assignments
-        marks = await sql`
-          SELECT
-            m.*,
-            s.first_name,
-            s.last_name,
-            s.id_number,
-            s.class_name as student_class
-          FROM marks m
-          LEFT JOIN students s ON m.student_id::text = s.id_number
-          WHERE m.class_name = ANY(${classFilter.classes})
-            AND m.subject = ANY(${teacherSubjects})
-          ORDER BY s.last_name, s.first_name, m.subject
-        `;
+        if (isClassTeacher) {
+          // Class teachers: All subjects in their classes
+          marks = await sql`
+            SELECT
+              m.*,
+              s.first_name,
+              s.last_name,
+              s.id_number,
+              s.class_name as student_class
+            FROM marks m
+            LEFT JOIN students s ON m.student_id::text = s.id_number
+            WHERE m.class_name = ANY(${classFilter.classes})
+            ORDER BY s.last_name, s.first_name, m.subject
+          `;
+        } else {
+          // Subject teachers: Only their assigned subjects
+          marks = await sql`
+            SELECT
+              m.*,
+              s.first_name,
+              s.last_name,
+              s.id_number,
+              s.class_name as student_class
+            FROM marks m
+            LEFT JOIN students s ON m.student_id::text = s.id_number
+            WHERE m.class_name = ANY(${classFilter.classes})
+              AND m.subject = ANY(${teacherSubjects})
+            ORDER BY s.last_name, s.first_name, m.subject
+          `;
+        }
       }
     } else if (!term && !year && !className && !subject && !teacherId) {
       // Admin/Head Teacher - No filters - get all marks
