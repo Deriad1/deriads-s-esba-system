@@ -1045,97 +1045,104 @@ const ClassTeacherPage = () => {
 
           {/* Tabs for switching between Score Entry and Remarks */}
           {selectedClass && (
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-6 border-b pb-2">
-              <div className="flex gap-2 overflow-x-auto">
+            <div className="mb-6">
+              {/* Tabs Navigation */}
+              <div className="flex gap-2 overflow-x-auto border-b border-white/20 pb-0 mb-4 scrollbar-hide">
                 <button
                   onClick={() => setActiveTab("scores")}
-                  className={`px-4 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
+                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${
                     activeTab === "scores"
-                      ? "text-blue-600 border-b-2 border-blue-600"
-                      : "text-white/70 hover:text-white"
+                      ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
                   }`}
-                  style={{ minHeight: '44px' }}
+                  style={{ minHeight: '40px' }}
                 >
-                  📊 Enter Scores {selectedSubject && `(${selectedSubject})`}
+                  📊 Enter Scores
                 </button>
                 <button
                   onClick={() => setActiveTab("remarks")}
-                  className={`px-4 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
+                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${
                     activeTab === "remarks"
-                      ? "text-blue-600 border-b-2 border-blue-600"
-                      : "text-white/70 hover:text-white"
+                      ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
                   }`}
-                  style={{ minHeight: '44px' }}
+                  style={{ minHeight: '40px' }}
                 >
-                  📝 Remarks & Attendance
+                  📝 Remarks
                 </button>
                 <button
                   onClick={() => setActiveTab("assessments")}
-                  className={`px-4 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
+                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${
                     activeTab === "assessments"
-                      ? "text-blue-600 border-b-2 border-blue-600"
-                      : "text-white/70 hover:text-white"
+                      ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
                   }`}
-                  style={{ minHeight: '44px' }}
+                  style={{ minHeight: '40px' }}
                 >
                   📋 Assessments
                 </button>
                 <button
                   onClick={() => setActiveTab("viewMarks")}
-                  className={`px-4 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
+                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${
                     activeTab === "viewMarks"
-                      ? "text-blue-600 border-b-2 border-blue-600"
-                      : "text-white/70 hover:text-white"
+                      ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
                   }`}
-                  style={{ minHeight: '44px' }}
+                  style={{ minHeight: '40px' }}
                 >
                   👁️ View Marks
                 </button>
               </div>
 
-              {/* Save All Scores Button and Auto-save Indicator - Only show when on scores tab with subject selected */}
+              {/* Action Buttons - Separate Row for Scores Tab */}
               {activeTab === "scores" && selectedSubject && (
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                  {/* Subject indicator */}
+                  <div className="flex-1 text-white/90 text-sm font-medium">
+                    Subject: <span className="text-blue-300">{selectedSubject}</span>
+                  </div>
+
                   {/* Auto-save indicator */}
                   {(autoSaving || lastAutoSaved) && (
-                    <div className="text-xs text-white/80 flex items-center gap-1 justify-center sm:justify-start">
+                    <div className="text-xs text-white/70 flex items-center gap-1">
                       {autoSaving ? (
                         <>
-                          <svg className="animate-spin h-3 w-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <svg className="animate-spin h-3 w-3 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          <span>Saving draft...</span>
+                          <span>Saving...</span>
                         </>
                       ) : (
                         <>
-                          <svg className="h-3 w-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <svg className="h-3 w-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
                           </svg>
-                          <span>Draft saved {lastAutoSaved && `${Math.round((new Date() - lastAutoSaved) / 1000)}s ago`}</span>
+                          <span>Saved {lastAutoSaved && `${Math.round((new Date() - lastAutoSaved) / 1000)}s ago`}</span>
                         </>
                       )}
                     </div>
                   )}
 
-                  <button
-                    onClick={loadMarksFromDatabase}
-                    disabled={loading || !selectedClass || !selectedSubject}
-                    className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
-                    style={{ minHeight: '44px' }}
-                    title="Load saved marks from database"
-                  >
-                    {loading ? "Loading..." : "📥 Load Marks"}
-                  </button>
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={loadMarksFromDatabase}
+                      disabled={loading || !selectedClass || !selectedSubject}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors font-medium text-sm flex items-center gap-1"
+                      title="Load saved marks from database"
+                    >
+                      {loading ? "⏳ Loading..." : "📥 Load"}
+                    </button>
 
-                  <button
-                    onClick={saveAllScores}
-                    disabled={batchSaving || !selectedClass || !selectedSubject}
-                    className="w-full sm:w-auto bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
-                    style={{ minHeight: '44px' }}
-                  >
-                    {batchSaving ? "Saving All..." : "💾 Save All Scores"}
-                  </button>
+                    <button
+                      onClick={saveAllScores}
+                      disabled={batchSaving || !selectedClass || !selectedSubject}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors font-medium text-sm flex items-center gap-1"
+                    >
+                      {batchSaving ? "⏳ Saving..." : "💾 Save All"}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
