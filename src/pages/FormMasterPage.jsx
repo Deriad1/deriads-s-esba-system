@@ -1641,7 +1641,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     setSelectedAssessment,
     handleScoreChange: handleSubjectMarkChange,
     saveScore: saveStudentScores,
-    saveAllScores: saveAllSubjectScores
+    saveAllScores: saveAllSubjectScores,
+    loadMarks: loadSubjectMarks
   };
 
   // Loading states object

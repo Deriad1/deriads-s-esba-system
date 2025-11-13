@@ -855,7 +855,7 @@ const SubjectTeacherPage = () => {
           </div>
 
           {/* Action Buttons Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <button
               className="w-full glass-button-primary px-4 py-3 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
               style={{ minHeight: '44px' }}
@@ -863,6 +863,16 @@ const SubjectTeacherPage = () => {
               disabled={!selectedClass || !selectedSubject || !selectedAssessment}
             >
               📝 Enter Scores
+            </button>
+
+            <button
+              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-cyan-400/50 hover:border-cyan-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
+              style={{ minHeight: '44px' }}
+              onClick={fetchExistingMarks}
+              disabled={loading || !selectedClass || !selectedSubject || !selectedAssessment}
+              title="Load saved marks from database"
+            >
+              {loading ? '⏳ Loading...' : '📥 Load Marks'}
             </button>
 
             <button

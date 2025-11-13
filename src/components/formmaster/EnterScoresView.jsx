@@ -149,9 +149,23 @@ const EnterScoresView = ({
           </div>
         </div>
 
+        {/* Load Marks Button */}
+        {selectedClass && selectedSubject && selectedAssessment && (
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={actions?.loadMarks}
+              disabled={savingScores}
+              className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Load saved marks from database"
+            >
+              📥 Load Saved Marks
+            </button>
+          </div>
+        )}
+
         {/* Info banner when selections made */}
         {selectedClass && selectedSubject && selectedAssessment && (
-          <div className="mt-6 p-4 bg-blue-500/30 backdrop-blur-md border-l-4 border-blue-400 rounded-xl">
+          <div className="mt-4 p-4 bg-blue-500/30 backdrop-blur-md border-l-4 border-blue-400 rounded-xl">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <span className="text-2xl">ℹ️</span>
               <div className="flex-1">

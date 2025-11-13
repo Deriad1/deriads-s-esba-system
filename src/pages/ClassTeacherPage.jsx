@@ -1119,6 +1119,16 @@ const ClassTeacherPage = () => {
                   )}
 
                   <button
+                    onClick={loadMarksFromDatabase}
+                    disabled={loading || !selectedClass || !selectedSubject}
+                    className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
+                    style={{ minHeight: '44px' }}
+                    title="Load saved marks from database"
+                  >
+                    {loading ? "Loading..." : "📥 Load Marks"}
+                  </button>
+
+                  <button
                     onClick={saveAllScores}
                     disabled={batchSaving || !selectedClass || !selectedSubject}
                     className="w-full sm:w-auto bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors font-medium text-sm"
