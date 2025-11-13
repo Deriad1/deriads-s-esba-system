@@ -1,8 +1,11 @@
 import { sql } from '../lib/db.js';
+import { requireAuth, getClassFilterForUser } from '../lib/authMiddleware.js';
 
 /**
  * API Endpoint: /api/classes
  * Handles class-related operations
+ *
+ * SECURITY: Teachers can only see classes they are assigned to
  */
 export default async function handler(req, res) {
   const { method } = req;
@@ -35,20 +38,55 @@ export default async function handler(req, res) {
 }
 
 // GET /api/classes - Get all unique classes
+// SECURITY: Only returns classes the teacher is assigned to
 async function handleGet(req, res) {
   try {
-    // Get classes from both the classes table and students table
-    // This ensures we show both explicitly created classes and classes with students
-    const result = await sql`
-      SELECT DISTINCT class_name as name
-      FROM (
-        SELECT class_name FROM classes
-        UNION
-        SELECT class_name FROM students
-        WHERE class_name IS NOT NULL AND class_name != 'UNASSIGNED'
-      ) AS all_classes
-      ORDER BY class_name
-    `;
+    // SECURITY: Authenticate user
+    const user = requireAuth(req, res);
+    if (!user) return; // Response already sent
+
+    // Get class filter for user
+    const classFilter = getClassFilterForUser(user);
+
+    let result;
+
+    if (classFilter.hasRestriction) {
+      // Teacher: Only show their assigned classes
+      if (classFilter.classes.length === 0) {
+        return res.status(200).json({
+          status: 'success',
+          data: []
+        });
+      }
+
+      // Get classes from both the classes table and students table
+      // Filter by teacher's assigned classes
+      result = await sql`
+        SELECT DISTINCT class_name as name
+        FROM (
+          SELECT class_name FROM classes
+          WHERE class_name = ANY(${classFilter.classes})
+          UNION
+          SELECT class_name FROM students
+          WHERE class_name IS NOT NULL
+            AND class_name != 'UNASSIGNED'
+            AND class_name = ANY(${classFilter.classes})
+        ) AS all_classes
+        ORDER BY class_name
+      `;
+    } else {
+      // Admin/Head Teacher: Show all classes
+      result = await sql`
+        SELECT DISTINCT class_name as name
+        FROM (
+          SELECT class_name FROM classes
+          UNION
+          SELECT class_name FROM students
+          WHERE class_name IS NOT NULL AND class_name != 'UNASSIGNED'
+        ) AS all_classes
+        ORDER BY class_name
+      `;
+    }
 
     return res.status(200).json({
       status: 'success',

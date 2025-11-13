@@ -6,6 +6,7 @@
  * ✅ No database credentials exposed to browser
  * ✅ Supports offline mode with IndexedDB caching
  * ✅ Automatic sync queue for offline changes
+ * ✅ JWT authentication on every request
  *
  * Migration: Gradually replace imports from './api.js' with './api-client.js'
  */
@@ -14,6 +15,7 @@ import { getCurrentTermInfo } from "./utils/termHelpers.js";
 import { sanitizeInput } from "./utils/sanitizeInput.js";
 import offlineStorage, { STORES } from "./services/offlineStorageService.js";
 import { mapObjectToCamelCase } from "./utils/apiFieldMapper.js";
+import { getAuthToken } from "./utils/authHelpers.js";
 
 // API base URL (defaults to same origin for Vercel)
 const API_BASE = '/api';
@@ -39,14 +41,26 @@ const isOfflineMode = () => {
 
 /**
  * Generic API call wrapper with error handling
+ * Automatically includes JWT authentication token
  */
 async function apiCall(endpoint, options = {}) {
   try {
+    // Get JWT token from localStorage
+    const token = getAuthToken();
+
+    // Build headers with authentication
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    // Add Authorization header if token exists
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     });
 

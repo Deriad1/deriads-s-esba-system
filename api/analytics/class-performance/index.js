@@ -2,6 +2,7 @@
 // Get detailed analytics for a class with optional subject filtering
 
 import { sql } from '../../lib/db.js';
+import { requireAuth, requireClassAccess, requireSubjectAccess } from '../../lib/authMiddleware.js';
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -31,6 +32,23 @@ export default async function handler(req, res) {
         status: 'error',
         message: 'className is required'
       });
+    }
+
+    // SECURITY: Authenticate user
+    const user = requireAuth(req, res);
+    if (!user) return; // Response already sent
+
+    // SECURITY: Verify teacher has access to this class
+    if (subject) {
+      // If subject specified, check subject access
+      if (!requireSubjectAccess(user, className, subject, res)) {
+        return; // Response already sent
+      }
+    } else {
+      // If no subject, just check class access
+      if (!requireClassAccess(user, className, res)) {
+        return; // Response already sent
+      }
     }
 
     // Get current term and academic year if not provided

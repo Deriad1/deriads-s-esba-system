@@ -2,6 +2,7 @@
 // Get teacher data for leaderboard
 
 import { sql } from '../../lib/db.js';
+import { requireAuth } from '../../lib/authMiddleware.js';
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -24,23 +25,48 @@ export default async function handler(req, res) {
       });
     }
 
-    // Simplified approach: Just get teacher info and basic counts
-    // Calculate progress based on what data exists
+    // SECURITY: Authenticate user
+    const user = requireAuth(req, res);
+    if (!user) return; // Response already sent
 
-    // Get all teachers with basic info
-    const teachers = await sql`
-      SELECT
-        id,
-        first_name,
-        last_name,
-        email,
-        teacher_primary_role as role,
-        all_roles,
-        classes,
-        subjects
-      FROM teachers
-      ORDER BY last_name, first_name
-    `;
+    // SECURITY: Only admin and head_teacher can view all teachers' progress
+    const isAdminOrHead = user.primaryRole === 'admin' ||
+                          user.all_roles?.includes('admin') ||
+                          user.all_roles?.includes('head_teacher');
+
+    let teachers;
+
+    if (isAdminOrHead) {
+      // Admin/Head Teacher: Get all teachers with basic info
+      teachers = await sql`
+        SELECT
+          id,
+          first_name,
+          last_name,
+          email,
+          teacher_primary_role as role,
+          all_roles,
+          classes,
+          subjects
+        FROM teachers
+        ORDER BY last_name, first_name
+      `;
+    } else {
+      // Regular teachers can only see their own progress
+      teachers = await sql`
+        SELECT
+          id,
+          first_name,
+          last_name,
+          email,
+          teacher_primary_role as role,
+          all_roles,
+          classes,
+          subjects
+        FROM teachers
+        WHERE id = ${user.id}
+      `;
+    }
 
     // Get student_scores count per teacher (simplified)
     // Since student_scores doesn't have teacher_id, we'll calculate based on teacher assignments

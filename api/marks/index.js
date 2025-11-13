@@ -2,10 +2,13 @@ import { sql } from '../lib/db.js';
 import { validateScoreData } from '../../src/utils/validation.js';
 import { isNumericStudentId } from '../../src/utils/studentIdHelpers.js';
 import { calculateRemark } from '../../src/utils/gradeHelpers.js';
+import { extractUser, requireAuth, requireClassAccess, requireSubjectAccess, getClassFilterForUser } from '../lib/authMiddleware.js';
 
 /**
  * API Endpoint: /api/marks
  * Handles all marks/scores operations
+ *
+ * SECURITY: Teachers can only access marks for classes AND subjects they are assigned to
  */
 export default async function handler(req, res) {
   const { method } = req;
@@ -38,31 +41,88 @@ export default async function handler(req, res) {
 }
 
 // GET /api/marks - Get marks by class and subject
+// SECURITY: Only returns marks for classes AND subjects the teacher is assigned to
 async function handleGet(req, res) {
   const { className, subject, term, studentId } = req.query;
 
   try {
+    // Authenticate user
+    const user = requireAuth(req, res);
+    if (!user) return; // Response already sent by requireAuth
+
     let result;
 
     if (studentId) {
-      // Get marks for specific student (studentId can be id_number like "eSBA020")
-      if (term) {
-        result = await sql`
-          SELECT m.* FROM marks m
-          JOIN students s ON m.student_id = s.id
-          WHERE s.id_number = ${studentId}
-            AND m.term = ${term}
-          ORDER BY m.subject
-        `;
+      // Get marks for specific student
+      // First, get the student's class to verify access
+      const studentCheck = await sql`
+        SELECT class_name FROM students WHERE id_number = ${studentId}
+      `;
+
+      if (studentCheck.length === 0) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Student not found'
+        });
+      }
+
+      const studentClass = studentCheck[0].class_name;
+
+      // Verify teacher has access to this student's class
+      if (!requireClassAccess(user, studentClass, res)) {
+        return; // Response already sent
+      }
+
+      // Get marks - filter by subjects if not admin/head_teacher
+      const classFilter = getClassFilterForUser(user);
+
+      if (classFilter.hasRestriction) {
+        // Filter by assigned subjects
+        const teacherSubjects = user.subjects || [];
+
+        if (term) {
+          result = await sql`
+            SELECT m.* FROM marks m
+            JOIN students s ON m.student_id = s.id
+            WHERE s.id_number = ${studentId}
+              AND m.term = ${term}
+              AND m.subject = ANY(${teacherSubjects})
+            ORDER BY m.subject
+          `;
+        } else {
+          result = await sql`
+            SELECT m.* FROM marks m
+            JOIN students s ON m.student_id = s.id
+            WHERE s.id_number = ${studentId}
+              AND m.subject = ANY(${teacherSubjects})
+            ORDER BY m.term, m.subject
+          `;
+        }
       } else {
-        result = await sql`
-          SELECT m.* FROM marks m
-          JOIN students s ON m.student_id = s.id
-          WHERE s.id_number = ${studentId}
-          ORDER BY m.term, m.subject
-        `;
+        // Admin/Head Teacher - see all subjects
+        if (term) {
+          result = await sql`
+            SELECT m.* FROM marks m
+            JOIN students s ON m.student_id = s.id
+            WHERE s.id_number = ${studentId}
+              AND m.term = ${term}
+            ORDER BY m.subject
+          `;
+        } else {
+          result = await sql`
+            SELECT m.* FROM marks m
+            JOIN students s ON m.student_id = s.id
+            WHERE s.id_number = ${studentId}
+            ORDER BY m.term, m.subject
+          `;
+        }
       }
     } else if (className && subject) {
+      // Verify teacher has access to this class AND subject
+      if (!requireSubjectAccess(user, className, subject, res)) {
+        return; // Response already sent
+      }
+
       // Get marks for class and subject
       if (term) {
         result = await sql`
@@ -85,24 +145,66 @@ async function handleGet(req, res) {
         `;
       }
     } else if (className) {
-      // Get all marks for a class
-      if (term) {
-        result = await sql`
-          SELECT s.*, st.first_name, st.last_name, st.class_name
-          FROM marks s
-          JOIN students st ON s.student_id = st.id
-          WHERE st.class_name = ${className}
-            AND s.term = ${term}
-          ORDER BY s.subject, st.last_name, st.first_name
-        `;
+      // Verify teacher has access to this class
+      if (!requireClassAccess(user, className, res)) {
+        return; // Response already sent
+      }
+
+      // Get class filter to determine subject restrictions
+      const classFilter = getClassFilterForUser(user);
+
+      if (classFilter.hasRestriction) {
+        // Filter by assigned subjects only
+        const teacherSubjects = user.subjects || [];
+
+        if (teacherSubjects.length === 0) {
+          return res.status(200).json({
+            status: 'success',
+            data: []
+          });
+        }
+
+        // Get all marks for a class - only for teacher's subjects
+        if (term) {
+          result = await sql`
+            SELECT s.*, st.first_name, st.last_name, st.class_name
+            FROM marks s
+            JOIN students st ON s.student_id = st.id
+            WHERE st.class_name = ${className}
+              AND s.term = ${term}
+              AND s.subject = ANY(${teacherSubjects})
+            ORDER BY s.subject, st.last_name, st.first_name
+          `;
+        } else {
+          result = await sql`
+            SELECT s.*, st.first_name, st.last_name, st.class_name
+            FROM marks s
+            JOIN students st ON s.student_id = st.id
+            WHERE st.class_name = ${className}
+              AND s.subject = ANY(${teacherSubjects})
+            ORDER BY s.subject, st.last_name, st.first_name
+          `;
+        }
       } else {
-        result = await sql`
-          SELECT s.*, st.first_name, st.last_name, st.class_name
-          FROM marks s
-          JOIN students st ON s.student_id = st.id
-          WHERE st.class_name = ${className}
-          ORDER BY s.subject, st.last_name, st.first_name
-        `;
+        // Admin/Head Teacher - see all subjects
+        if (term) {
+          result = await sql`
+            SELECT s.*, st.first_name, st.last_name, st.class_name
+            FROM marks s
+            JOIN students st ON s.student_id = st.id
+            WHERE st.class_name = ${className}
+              AND s.term = ${term}
+            ORDER BY s.subject, st.last_name, st.first_name
+          `;
+        } else {
+          result = await sql`
+            SELECT s.*, st.first_name, st.last_name, st.class_name
+            FROM marks s
+            JOIN students st ON s.student_id = st.id
+            WHERE st.class_name = ${className}
+            ORDER BY s.subject, st.last_name, st.first_name
+          `;
+        }
       }
     } else {
       return res.status(400).json({

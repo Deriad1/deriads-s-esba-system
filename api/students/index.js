@@ -1,10 +1,13 @@
 import { sql } from '../lib/db.js';
 import { validateStudentData } from '../../src/utils/validation.js';
 import { mapStudentFromDb } from '../../src/utils/studentIdHelpers.js';
+import { extractUser, requireAuth, requireClassAccess, getClassFilterForUser } from '../lib/authMiddleware.js';
 
 /**
  * API Endpoint: /api/students
  * Handles all student-related operations
+ *
+ * SECURITY: Teachers can only access students from their assigned classes
  */
 export default async function handler(req, res) {
   const { method, query, body } = req;
@@ -40,13 +43,23 @@ export default async function handler(req, res) {
 }
 
 // GET /api/students - Get all students or filter by class
+// SECURITY: Only returns students from classes the teacher is assigned to
 async function handleGet(req, res) {
   const { className, term, year } = req.query;
 
   try {
+    // Authenticate user
+    const user = requireAuth(req, res);
+    if (!user) return; // Response already sent by requireAuth
+
     let result;
 
     if (className) {
+      // Verify teacher has access to this specific class
+      if (!requireClassAccess(user, className, res)) {
+        return; // Response already sent by requireClassAccess
+      }
+
       // Get students by class
       result = await sql`
         SELECT
@@ -67,24 +80,57 @@ async function handleGet(req, res) {
         ORDER BY last_name, first_name
       `;
     } else {
-      // Get all students
-      result = await sql`
-        SELECT
-          id,
-          id_number,
-          first_name,
-          last_name,
-          class_name,
-          gender,
-          term,
-          academic_year,
-          email,
-          phone_number,
-          created_at,
-          updated_at
-        FROM students
-        ORDER BY class_name, last_name, first_name
-      `;
+      // Get class filter for user
+      const classFilter = getClassFilterForUser(user);
+
+      if (classFilter.hasRestriction) {
+        // Teacher: only show students from their assigned classes
+        if (classFilter.classes.length === 0) {
+          // Teacher has no assigned classes
+          return res.status(200).json({
+            status: 'success',
+            data: []
+          });
+        }
+
+        result = await sql`
+          SELECT
+            id,
+            id_number,
+            first_name,
+            last_name,
+            class_name,
+            gender,
+            term,
+            academic_year,
+            email,
+            phone_number,
+            created_at,
+            updated_at
+          FROM students
+          WHERE class_name = ANY(${classFilter.classes})
+          ORDER BY class_name, last_name, first_name
+        `;
+      } else {
+        // Admin/Head Teacher: show all students
+        result = await sql`
+          SELECT
+            id,
+            id_number,
+            first_name,
+            last_name,
+            class_name,
+            gender,
+            term,
+            academic_year,
+            email,
+            phone_number,
+            created_at,
+            updated_at
+          FROM students
+          ORDER BY class_name, last_name, first_name
+        `;
+      }
     }
 
     // Map snake_case to camelCase for frontend compatibility using helper
