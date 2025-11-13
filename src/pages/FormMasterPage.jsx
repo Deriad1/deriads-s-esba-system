@@ -1358,64 +1358,115 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
   // ========== ENTER SCORES VIEW FUNCTIONS ==========
 
-  // Initialize and load marks when class/subject changes (for Enter Scores view)
+  // Initialize and load marks when class/subject/assessment changes (for Enter Scores view)
   useEffect(() => {
-    if (mainView === 'enterScores' && selectedClass && selectedSubject && filteredLearners.length > 0) {
+    if (mainView === 'enterScores' && selectedClass && selectedSubject && selectedAssessment && filteredLearners.length > 0) {
       loadSubjectMarks();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainView, selectedClass, selectedSubject, filteredLearners.length]);
+  }, [mainView, selectedClass, selectedSubject, selectedAssessment, filteredLearners.length]);
 
   // Load saved marks from database for Enter Scores view
   const loadSubjectMarks = async () => {
+    if (!selectedClass || !selectedSubject || !selectedAssessment) {
+      showNotification({message: "Please select class, subject, and assessment first", type: 'warning'});
+      return;
+    }
+
     setLoading('marks', true, 'Loading saved marks...');
     try {
-      const response = await getMarks(selectedClass, selectedSubject);
-      const newMarks = {};
-      const savedSet = new Set();
+      const isCustomAssessment = selectedAssessment !== 'regular';
 
-      // Initialize all students with empty marks
-      filteredLearners.forEach(learner => {
-        const studentId = learner.idNumber || learner.LearnerID;
-        newMarks[studentId] = {
-          test1: "", test2: "", test3: "", test4: "", exam: ""
-        };
-      });
+      let response;
+      if (isCustomAssessment) {
+        // Fetch custom assessment scores
+        response = await getCustomAssessmentScores(
+          parseInt(selectedAssessment),
+          selectedClass,
+          selectedSubject
+        );
+      } else {
+        // Fetch regular term marks
+        response = await getMarks(selectedClass, selectedSubject);
+      }
 
-      // Populate with saved marks from database
-      if (response.status === 'success' && response.data) {
-        response.data.forEach(mark => {
-          const studentId = mark.studentId || mark.student_id;
-          if (newMarks[studentId]) {
-            // Map database fields to form fields
-            newMarks[studentId] = {
-              test1: mark.test1 || "",
-              test2: mark.test2 || "",
-              test3: mark.test3 || "",
-              test4: mark.test4 || "",
-              exam: mark.exam || ""
-            };
-            // Mark this student as saved if they have any marks
-            if (mark.test1 || mark.test2 || mark.test3 || mark.test4 || mark.exam) {
-              savedSet.add(studentId);
+      if (response.status === 'success') {
+        const existingMarksData = response.data || [];
+        const newMarks = {};
+        const savedSet = new Set();
+
+        // Create marks object with existing data
+        filteredLearners.forEach(learner => {
+          const studentId = learner.idNumber || learner.LearnerID;
+
+          // Find existing marks for this student
+          const existingMark = existingMarksData.find(
+            mark => mark.student_id === studentId || mark.id_number === studentId
+          );
+
+          if (existingMark) {
+            if (isCustomAssessment) {
+              // Custom assessment - single score field
+              newMarks[studentId] = {
+                score: existingMark.score || ""
+              };
+              if (existingMark.score) {
+                savedSet.add(studentId);
+              }
+            } else {
+              // Regular term scores
+              newMarks[studentId] = {
+                test1: existingMark.test1 || "",
+                test2: existingMark.test2 || "",
+                test3: existingMark.test3 || "",
+                test4: existingMark.test4 || "",
+                exam: existingMark.exam || ""
+              };
+
+              // Mark as already saved if any marks exist
+              const hasMarks = existingMark.test1 || existingMark.test2 ||
+                              existingMark.test3 || existingMark.test4 || existingMark.exam;
+              if (hasMarks) {
+                savedSet.add(studentId);
+              }
+            }
+          } else {
+            // Initialize with empty marks
+            if (isCustomAssessment) {
+              newMarks[studentId] = { score: "" };
+            } else {
+              newMarks[studentId] = {
+                test1: "", test2: "", test3: "", test4: "", exam: ""
+              };
             }
           }
         });
-      }
 
-      setSubjectMarks(newMarks);
-      setSavedStudents(savedSet);
+        setSubjectMarks(newMarks);
+        setSavedStudents(savedSet);
+        showNotification({message: "Marks loaded successfully!", type: 'success'});
+      } else {
+        throw new Error(response.message || "Failed to load marks");
+      }
     } catch (error) {
       console.error("Error loading subject marks:", error);
       showNotification({message: "Error loading saved marks: " + error.message, type: 'error'});
+
       // Still initialize with empty marks even if loading fails
+      const isCustomAssessment = selectedAssessment !== 'regular';
       const newMarks = {};
+
       filteredLearners.forEach(learner => {
         const studentId = learner.idNumber || learner.LearnerID;
-        newMarks[studentId] = {
-          test1: "", test2: "", test3: "", test4: "", exam: ""
-        };
+        if (isCustomAssessment) {
+          newMarks[studentId] = { score: "" };
+        } else {
+          newMarks[studentId] = {
+            test1: "", test2: "", test3: "", test4: "", exam: ""
+          };
+        }
       });
+
       setSubjectMarks(newMarks);
       setSavedStudents(new Set());
     } finally {
