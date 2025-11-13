@@ -1010,37 +1010,55 @@ const ClassTeacherPage = () => {
         <div className="glass-medium p-4 sm:p-6 rounded-lg shadow-lg">
           <h2 className="text-base sm:text-lg font-semibold mb-4 text-white">Manage Your Class</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-white/90 mb-2">Select Class</label>
-              <select
-                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all"
-                style={{ minHeight: '44px', fontSize: '16px' }}
-                value={selectedClass}
-                onChange={e => setSelectedClass(e.target.value)}
-              >
-                <option value="" className="bg-white text-gray-900">Choose Class</option>
-                {getUserClasses().map(cls => (
-                  <option key={cls} value={cls} className="bg-white text-gray-900">{cls}</option>
-                ))}
-              </select>
+          {/* Class Selection Cards */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-white/90 mb-3">📚 Select Class</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              {getUserClasses().map(cls => (
+                <button
+                  key={cls}
+                  onClick={() => setSelectedClass(cls)}
+                  className={`px-4 py-3 rounded-lg font-medium transition-all text-sm ${
+                    selectedClass === cls
+                      ? 'bg-blue-500 text-white border-2 border-blue-400 shadow-lg scale-105'
+                      : 'bg-white/10 text-white/90 border-2 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-102'
+                  }`}
+                  style={{ minHeight: '48px', touchAction: 'manipulation' }}
+                >
+                  {cls}
+                </button>
+              ))}
             </div>
+            {getUserClasses().length === 0 && (
+              <p className="text-white/60 text-sm italic">No classes available</p>
+            )}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-white/90 mb-2">Select Subject (for score entry)</label>
-              <select
-                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ minHeight: '44px', fontSize: '16px' }}
-                value={selectedSubject}
-                onChange={e => setSelectedSubject(e.target.value)}
-                disabled={!selectedClass}
-              >
-                <option value="" className="bg-white text-gray-900">Choose Subject</option>
-                {getUserSubjects().map(subj => (
-                  <option key={subj} value={subj} className="bg-white text-gray-900">{subj}</option>
-                ))}
-              </select>
+          {/* Subject Selection Cards */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-white/90 mb-3">
+              📖 Select Subject {!selectedClass && <span className="text-white/50 text-xs">(Select a class first)</span>}
+            </label>
+            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 ${!selectedClass ? 'opacity-50 pointer-events-none' : ''}`}>
+              {getUserSubjects().map(subj => (
+                <button
+                  key={subj}
+                  onClick={() => setSelectedSubject(subj)}
+                  disabled={!selectedClass}
+                  className={`px-3 py-3 rounded-lg font-medium transition-all text-xs sm:text-sm ${
+                    selectedSubject === subj
+                      ? 'bg-purple-500 text-white border-2 border-purple-400 shadow-lg scale-105'
+                      : 'bg-white/10 text-white/90 border-2 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed'
+                  }`}
+                  style={{ minHeight: '48px', touchAction: 'manipulation' }}
+                >
+                  {subj}
+                </button>
+              ))}
             </div>
+            {getUserSubjects().length === 0 && (
+              <p className="text-white/60 text-sm italic">No subjects available</p>
+            )}
           </div>
 
           {/* Tabs for switching between Score Entry and Remarks */}
