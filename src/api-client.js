@@ -790,6 +790,45 @@ export const testConnection = async () => {
 // ============================================================================
 
 /**
+ * Get subjects assigned to a specific class based on teacher assignments
+ *
+ * @param {String} className - Class name (e.g., "BS7", "KG1")
+ * @returns {Promise<Object>} Object with subjects array
+ */
+export const getClassSubjects = async (className) => {
+  try {
+    const params = new URLSearchParams({ className });
+
+    const response = await fetch(`${API_BASE}/classes/subjects?${params}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching class subjects:', error);
+    // Return empty array on error instead of throwing
+    return {
+      status: 'error',
+      data: {
+        className,
+        subjects: [],
+        count: 0
+      },
+      message: error.message
+    };
+  }
+};
+
+/**
  * Get comprehensive broadsheet data for a class
  * Includes all students, subjects, and scores
  * Used for printing class broadsheets and subject broadsheets

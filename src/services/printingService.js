@@ -4,9 +4,8 @@ import {
   generateCompleteClassBroadsheetPDF,
   combinePDFs
 } from "../utils/enhancedPdfGenerator";
-import { getStudentReportData, getTeachers, getFormMasterRemarks, getMarks, getClassBroadsheet } from '../api-client';
+import { getStudentReportData, getTeachers, getFormMasterRemarks, getMarks, getClassBroadsheet, getClassSubjects } from '../api-client';
 import { calculateRemark } from '../utils/gradeHelpers';
-import { getSubjectsForLevel } from '../utils/subjectLevelMapping';
 
 
 
@@ -61,6 +60,7 @@ class PrintingService {
       // ✅ OPTIMIZATION: Batch-fetch all student data to avoid timeout
       console.log(`Fetching data for ${totalStudents} students in batches...`);
       const allStudentData = {};
+      const allSubjectsCache = {}; // Cache subjects per class to avoid repeated API calls
 
       // Process in batches of 5 to avoid overwhelming the API
       const batchSize = 5;
@@ -137,10 +137,17 @@ class PrintingService {
           console.warn(`Could not fetch remarks for student ${studentId}:`, error);
         }
 
-        // Get all subjects for this class level
+        // Get all subjects assigned to this class from teacher assignments
+        // (Fetch once per class, cache if same class)
         const studentClassName = student.className || student.class_name;
-        const classLevel = this._getClassLevel(studentClassName);
-        const allSubjectsForLevel = classLevel ? getSubjectsForLevel(classLevel) : [];
+        if (!allSubjectsCache[studentClassName]) {
+          const classSubjectsResponse = await getClassSubjects(studentClassName);
+          allSubjectsCache[studentClassName] = classSubjectsResponse.status === 'success'
+            ? classSubjectsResponse.data.subjects
+            : [];
+          console.log(`Cached ${allSubjectsCache[studentClassName].length} subjects for class ${studentClassName}`);
+        }
+        const allSubjectsForClass = allSubjectsCache[studentClassName];
 
         // Create a map of entered marks by subject for quick lookup
         const marksMap = {};
@@ -148,8 +155,8 @@ class PrintingService {
           marksMap[score.subject] = score;
         });
 
-        // Format subjects data with position calculations - Include ALL subjects for class level
-        const subjectsData = allSubjectsForLevel.map(subjectName => {
+        // Format subjects data with position calculations - Include ALL subjects assigned to class
+        const subjectsData = allSubjectsForClass.map(subjectName => {
           const score = marksMap[subjectName];
 
           if (score) {
@@ -521,13 +528,14 @@ class PrintingService {
     // Fetch student scores for all subjects
     const reportData = await getStudentReportData(student.idNumber || student.id_number, term);
 
-    // Get all subjects for this class level
+    // Get all subjects assigned to this class from teacher assignments
     const className = student.className || student.class_name;
-    const classLevel = this._getClassLevel(className);
-    const allSubjectsForLevel = classLevel ? getSubjectsForLevel(classLevel) : [];
+    const classSubjectsResponse = await getClassSubjects(className);
+    const allSubjectsForClass = classSubjectsResponse.status === 'success'
+      ? classSubjectsResponse.data.subjects
+      : [];
 
-    // Get subjects that have marks entered
-    const subjectsWithMarks = reportData.data.map(score => score.subject);
+    console.log(`Fetched ${allSubjectsForClass.length} subjects for class ${className}:`, allSubjectsForClass);
 
     // Fetch form master remarks and attendance if not provided
     let remarksInfo = formMasterInfo;
@@ -562,8 +570,8 @@ class PrintingService {
       marksMap[score.subject] = score;
     });
 
-    // Format subjects data for the report - Include ALL subjects for class level
-    const subjectsData = allSubjectsForLevel.map(subjectName => {
+    // Format subjects data for the report - Include ALL subjects assigned to class
+    const subjectsData = allSubjectsForClass.map(subjectName => {
       const score = marksMap[subjectName];
 
       if (score) {

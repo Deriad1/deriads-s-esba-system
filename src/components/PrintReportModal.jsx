@@ -177,7 +177,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
         <div className="p-6 space-y-6">
           {/* Print Mode Selection */}
           <div className="bg-gray-50 p-4 rounded-lg">
-            <label className="block text-sm font-medium text-white/90 mb-3">Print Mode</label>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Print Mode</label>
             <div className="flex gap-4">
               <button
                 onClick={() => setPrintMode('single')}
@@ -190,7 +190,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
                 <div className="text-center">
                   <div className="text-2xl mb-1">📄</div>
                   <div className="font-medium">Single Report</div>
-                  <div className="text-xs text-white/80">Print one student</div>
+                  <div className="text-xs text-gray-600">Print one student</div>
                 </div>
               </button>
 
@@ -205,7 +205,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
                 <div className="text-center">
                   <div className="text-2xl mb-1">📚</div>
                   <div className="font-medium">Bulk Print</div>
-                  <div className="text-xs text-white/80">Print all filtered</div>
+                  <div className="text-xs text-gray-600">Print all filtered</div>
                 </div>
               </button>
 
@@ -221,7 +221,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
                   <div className="text-center">
                     <div className="text-2xl mb-1">✅</div>
                     <div className="font-medium">Selected ({selectedStudents.length})</div>
-                    <div className="text-xs text-white/80">Print selected</div>
+                    <div className="text-xs text-gray-600">Print selected</div>
                   </div>
                 </button>
               )}
@@ -249,10 +249,10 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
                       }`}></div>
                     </div>
                     <div className="ml-3">
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-blue-900">
                         {useServerSidePDF ? 'Server-Side PDF (High Quality)' : 'Client-Side PDF (Standard)'}
                       </span>
-                      <p className="text-xs text-white/80">
+                      <p className="text-xs text-blue-700">
                         {useServerSidePDF
                           ? '✨ Better quality, faster processing. Automatically falls back if unavailable.'
                           : '⚡ Standard quality, processed in browser.'
@@ -270,7 +270,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
             <div className="bg-gray-50 p-4 rounded-lg space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-white/90 mb-2">Search Student</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Student</label>
                   <input
                     type="text"
                     placeholder="Search by name or ID..."
@@ -281,7 +281,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-white/90 mb-2">Filter by Class</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Class</label>
                   <select
                     value={selectedClass}
                     onChange={(e) => setSelectedClass(e.target.value)}
@@ -296,7 +296,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
                 </div>
               </div>
 
-              <div className="text-sm text-white/80">
+              <div className="text-sm text-gray-600">
                 {printMode === 'bulk' && `${filteredStudents.length} student(s) will be printed`}
                 {printMode === 'selected' && `${selectedStudents.length} selected student(s) will be printed`}
               </div>
@@ -306,7 +306,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
           {/* Student Selection (for single mode) */}
           {printMode === 'single' && (
             <div className="bg-gray-50 p-4 rounded-lg">
-              <label className="block text-sm font-medium text-white/90 mb-3">Select Student</label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Select Student</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <input
                   type="text"
@@ -342,10 +342,10 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <div className="font-medium text-white">
+                        <div className="font-medium text-gray-900">
                           {student.firstName} {student.lastName}
                         </div>
-                        <div className="text-sm text-white/80">
+                        <div className="text-sm text-gray-600">
                           ID: {student.idNumber} | Class: {student.className}
                         </div>
                       </div>
@@ -383,7 +383,7 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
           <button
             onClick={onClose}
             disabled={printing}
-            className="px-6 py-2 border border-gray-300 text-white/90 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

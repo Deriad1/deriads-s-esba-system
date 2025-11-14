@@ -72,6 +72,12 @@ app.all('/api/classes', async (req, res) => {
   if (handler) await handler(req, res);
 });
 
+// Class subjects route (must come after /api/classes)
+app.get('/api/classes/subjects', async (req, res) => {
+  const handler = await importRoute('./api/classes/subjects.js');
+  if (handler) await handler(req, res);
+});
+
 // Marks routes
 app.all('/api/marks', async (req, res) => {
   const handler = await importRoute('./api/marks/index.js');
