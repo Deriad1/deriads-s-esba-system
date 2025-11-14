@@ -66,15 +66,15 @@ app.all('/api/teachers', async (req, res) => {
   if (handler) await handler(req, res);
 });
 
-// Classes routes
-app.all('/api/classes', async (req, res) => {
-  const handler = await importRoute('./api/classes/index.js');
+// Class subjects route (MUST come BEFORE /api/classes)
+app.get('/api/classes/subjects', async (req, res) => {
+  const handler = await importRoute('./api/classes/subjects.js');
   if (handler) await handler(req, res);
 });
 
-// Class subjects route (must come after /api/classes)
-app.get('/api/classes/subjects', async (req, res) => {
-  const handler = await importRoute('./api/classes/subjects.js');
+// Classes routes
+app.all('/api/classes', async (req, res) => {
+  const handler = await importRoute('./api/classes/index.js');
   if (handler) await handler(req, res);
 });
 
