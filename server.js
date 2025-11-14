@@ -40,6 +40,7 @@ import studentsPromotionHistory from './api/students/promotion-history.js';
 // Other routes
 import teachers from './api/teachers/index.js';
 import classes from './api/classes/index.js';
+import classesSubjects from './api/classes/subjects.js';
 import marks from './api/marks/index.js';
 import broadsheet from './api/broadsheet/index.js';
 import remarks from './api/remarks/index.js';
@@ -66,6 +67,7 @@ app.use('/api/students/bulk-promote', studentsBulkPromote);
 app.use('/api/students/promotion-history', studentsPromotionHistory);
 
 app.use('/api/teachers', teachers);
+app.use('/api/classes/subjects', classesSubjects); // MUST come before /api/classes
 app.use('/api/classes', classes);
 app.use('/api/marks', marks);
 app.use('/api/broadsheet', broadsheet);
