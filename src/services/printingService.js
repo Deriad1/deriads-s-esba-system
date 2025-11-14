@@ -86,11 +86,24 @@ class PrintingService {
           allStudentData[result.studentId] = result.marksData;
         });
 
-        // Update progress for data fetching (0-20%)
+        // Update progress for data fetching (0-15%)
         if (progressCallback) {
-          const fetchProgress = Math.round(((i + batch.length) / totalStudents) * 20);
+          const fetchProgress = Math.round(((i + batch.length) / totalStudents) * 15);
           progressCallback(fetchProgress);
         }
+      }
+
+      // Fetch broadsheet data ONCE for position calculations (all students in same class)
+      const className = students[0]?.className || students[0]?.class_name;
+      let broadsheetData = null;
+      try {
+        console.log(`Fetching broadsheet data for class ${className}...`);
+        broadsheetData = await getClassBroadsheet(className);
+        if (progressCallback) {
+          progressCallback(18); // 15-20% for broadsheet fetch
+        }
+      } catch (error) {
+        console.warn('Could not fetch broadsheet for position calculation:', error);
       }
 
       // Generate PDF for each student using cached data
@@ -122,7 +135,7 @@ class PrintingService {
           console.warn(`Could not fetch remarks for student ${studentId}:`, error);
         }
 
-        // Format subjects data (skip position calc for performance)
+        // Format subjects data with position calculations
         const subjectsData = (reportData.data || []).map(score => {
           const test1 = parseFloat(score.test1) || 0;
           const test2 = parseFloat(score.test2) || 0;
@@ -135,19 +148,62 @@ class PrintingService {
 
           const total = parseFloat(score.total) || 0;
 
+          // Calculate subject-specific position
+          let position = "-";
+          if (broadsheetData && broadsheetData.status === 'success') {
+            position = this.calculatePosition(
+              score.subject,
+              total,
+              studentId,
+              broadsheetData.data
+            );
+          }
+
           return {
             name: score.subject,
             cscore: classScore.toFixed(1),
             exam: parseFloat(score.exam) || 0,
             total,
-            position: "-", // Skip position for bulk print (performance)
+            position,
             remark: this.getRemarks(total)
           };
         });
 
-        // Add total students count (all students in this batch have same class)
+        // Calculate overall class position
+        let overallPosition = '-';
+        if (broadsheetData && broadsheetData.status === 'success') {
+          const allStudents = broadsheetData.data.students || [];
+
+          // Calculate total marks for each student across all subjects
+          const studentTotals = allStudents.map(s => {
+            const studentScores = broadsheetData.data.scores?.filter(score =>
+              score.student_id === s.id
+            ) || [];
+
+            const totalMarks = studentScores.reduce((sum, score) => {
+              return sum + (parseFloat(score.total) || 0);
+            }, 0);
+
+            return {
+              studentId: s.id,
+              idNumber: s.id_number,
+              totalMarks
+            };
+          });
+
+          // Sort by total marks (descending) to determine positions
+          studentTotals.sort((a, b) => b.totalMarks - a.totalMarks);
+
+          // Find this student's position
+          const studentIndex = studentTotals.findIndex(s => s.idNumber === studentId);
+          if (studentIndex !== -1) {
+            overallPosition = this._formatPosition(studentIndex + 1);
+          }
+        }
+
+        // Add total students count and overall position
         remarksInfo.totalStudents = totalStudents;
-        remarksInfo.overallPosition = '-'; // Skip for bulk print (would require all student data)
+        remarksInfo.overallPosition = overallPosition;
 
         // Generate PDF
         const pdf = generateStudentReportPDF(student, subjectsData, schoolInfo, remarksInfo);
