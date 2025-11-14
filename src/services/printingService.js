@@ -141,11 +141,18 @@ class PrintingService {
         // (Fetch once per class, cache if same class)
         const studentClassName = student.className || student.class_name;
         if (!allSubjectsCache[studentClassName]) {
+          console.log(`[DEBUG] Fetching subjects for class: ${studentClassName}`);
           const classSubjectsResponse = await getClassSubjects(studentClassName);
+          console.log(`[DEBUG] API Response for ${studentClassName}:`, classSubjectsResponse);
+
           allSubjectsCache[studentClassName] = classSubjectsResponse.status === 'success'
-            ? classSubjectsResponse.data.subjects
+            ? (classSubjectsResponse.data?.subjects || [])
             : [];
-          console.log(`Cached ${allSubjectsCache[studentClassName].length} subjects for class ${studentClassName}`);
+          console.log(`✅ Cached ${allSubjectsCache[studentClassName].length} subjects for class ${studentClassName}:`, allSubjectsCache[studentClassName]);
+
+          if (allSubjectsCache[studentClassName].length === 0) {
+            console.warn(`⚠️ No subjects found for class ${studentClassName}. Check teacher assignments.`);
+          }
         }
         const allSubjectsForClass = allSubjectsCache[studentClassName];
 
@@ -530,12 +537,19 @@ class PrintingService {
 
     // Get all subjects assigned to this class from teacher assignments
     const className = student.className || student.class_name;
+    console.log(`[DEBUG] Fetching subjects for class: ${className}`);
     const classSubjectsResponse = await getClassSubjects(className);
+    console.log(`[DEBUG] API Response:`, classSubjectsResponse);
+
     const allSubjectsForClass = classSubjectsResponse.status === 'success'
-      ? classSubjectsResponse.data.subjects
+      ? (classSubjectsResponse.data?.subjects || [])
       : [];
 
-    console.log(`Fetched ${allSubjectsForClass.length} subjects for class ${className}:`, allSubjectsForClass);
+    console.log(`✅ Fetched ${allSubjectsForClass.length} subjects for class ${className}:`, allSubjectsForClass);
+
+    if (allSubjectsForClass.length === 0) {
+      console.warn(`⚠️ No subjects found for class ${className}. Check teacher assignments.`);
+    }
 
     // Fetch form master remarks and attendance if not provided
     let remarksInfo = formMasterInfo;
