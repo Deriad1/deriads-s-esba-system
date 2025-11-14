@@ -6,6 +6,7 @@ import {
 } from "../utils/enhancedPdfGenerator";
 import { getStudentReportData, getTeachers, getFormMasterRemarks, getMarks, getClassBroadsheet } from '../api-client';
 import { calculateRemark } from '../utils/gradeHelpers';
+import { getSubjectsForLevel } from '../utils/subjectLevelMapping';
 
 
 
@@ -136,38 +137,64 @@ class PrintingService {
           console.warn(`Could not fetch remarks for student ${studentId}:`, error);
         }
 
-        // Format subjects data with position calculations
-        const subjectsData = (reportData.data || []).map(score => {
-          const test1 = parseFloat(score.test1) || 0;
-          const test2 = parseFloat(score.test2) || 0;
-          const test3 = parseFloat(score.test3) || 0;
-          const test4 = parseFloat(score.test4) || 0;
-          const testsTotal = test1 + test2 + test3 + test4;
-          const classScore = testsTotal > 0
-            ? (testsTotal / 60) * 50
-            : ((parseFloat(score.ca1) || 0) + (parseFloat(score.ca2) || 0));
+        // Get all subjects for this class level
+        const studentClassName = student.className || student.class_name;
+        const classLevel = this._getClassLevel(studentClassName);
+        const allSubjectsForLevel = classLevel ? getSubjectsForLevel(classLevel) : [];
 
-          const total = parseFloat(score.total) || 0;
+        // Create a map of entered marks by subject for quick lookup
+        const marksMap = {};
+        (reportData.data || []).forEach(score => {
+          marksMap[score.subject] = score;
+        });
 
-          // Calculate subject-specific position
-          let position = "-";
-          if (broadsheetData && broadsheetData.status === 'success') {
-            position = this.calculatePosition(
-              score.subject,
+        // Format subjects data with position calculations - Include ALL subjects for class level
+        const subjectsData = allSubjectsForLevel.map(subjectName => {
+          const score = marksMap[subjectName];
+
+          if (score) {
+            // Subject has marks entered
+            const test1 = parseFloat(score.test1) || 0;
+            const test2 = parseFloat(score.test2) || 0;
+            const test3 = parseFloat(score.test3) || 0;
+            const test4 = parseFloat(score.test4) || 0;
+            const testsTotal = test1 + test2 + test3 + test4;
+            const classScore = testsTotal > 0
+              ? (testsTotal / 60) * 50
+              : ((parseFloat(score.ca1) || 0) + (parseFloat(score.ca2) || 0));
+
+            const total = parseFloat(score.total) || 0;
+
+            // Calculate subject-specific position
+            let position = "-";
+            if (broadsheetData && broadsheetData.status === 'success') {
+              position = this.calculatePosition(
+                subjectName,
+                total,
+                studentDbId,
+                broadsheetData.data
+              );
+            }
+
+            return {
+              name: subjectName,
+              cscore: classScore.toFixed(1),
+              exam: parseFloat(score.exam) || 0,
               total,
-              studentDbId,
-              broadsheetData.data
-            );
+              position,
+              remark: this.getRemarks(total)
+            };
+          } else {
+            // Subject has no marks - return placeholder
+            return {
+              name: subjectName,
+              cscore: '-',
+              exam: '-',
+              total: '-',
+              position: '-',
+              remark: '-'
+            };
           }
-
-          return {
-            name: score.subject,
-            cscore: classScore.toFixed(1),
-            exam: parseFloat(score.exam) || 0,
-            total,
-            position,
-            remark: this.getRemarks(total)
-          };
         });
 
         // Calculate overall class position
@@ -467,6 +494,22 @@ class PrintingService {
   }
 
   /**
+   * PRIVATE: Determine teaching level from class name
+   * @param {String} className - Class name (e.g., "BS5", "KG1", "BS7")
+   * @returns {String} Teaching level (e.g., "Upper Primary", "JHS", "KG")
+   */
+  _getClassLevel(className) {
+    if (!className) return null;
+
+    if (className.startsWith('KG')) return 'KG';
+    if (['BS1', 'BS2', 'BS3'].includes(className)) return 'Lower Primary';
+    if (['BS4', 'BS5', 'BS6'].includes(className)) return 'Upper Primary';
+    if (['BS7', 'BS8', 'BS9'].includes(className)) return 'JHS';
+
+    return null;
+  }
+
+  /**
    * PRIVATE: Get formatted student data with positions calculated
    * This method extracts duplicated logic from printStudentReport and printBulkStudentReports
    * @param {Object} student - Student data
@@ -477,6 +520,14 @@ class PrintingService {
   async _getFormattedStudentData(student, term, formMasterInfo = {}) {
     // Fetch student scores for all subjects
     const reportData = await getStudentReportData(student.idNumber || student.id_number, term);
+
+    // Get all subjects for this class level
+    const className = student.className || student.class_name;
+    const classLevel = this._getClassLevel(className);
+    const allSubjectsForLevel = classLevel ? getSubjectsForLevel(classLevel) : [];
+
+    // Get subjects that have marks entered
+    const subjectsWithMarks = reportData.data.map(score => score.subject);
 
     // Fetch form master remarks and attendance if not provided
     let remarksInfo = formMasterInfo;
@@ -498,7 +549,6 @@ class PrintingService {
     }
 
     // Fetch class broadsheet to calculate positions
-    const className = student.className || student.class_name;
     let broadsheetData = null;
     try {
       broadsheetData = await getClassBroadsheet(className);
@@ -506,39 +556,59 @@ class PrintingService {
       console.warn('Could not fetch broadsheet for position calculation:', error);
     }
 
-    // Format subjects data for the report
-    const subjectsData = reportData.data.map(score => {
-      // Calculate class score from individual tests or use ca1+ca2
-      const test1 = parseFloat(score.test1) || 0;
-      const test2 = parseFloat(score.test2) || 0;
-      const test3 = parseFloat(score.test3) || 0;
-      const test4 = parseFloat(score.test4) || 0;
-      const testsTotal = test1 + test2 + test3 + test4;
-      const classScore = testsTotal > 0
-        ? (testsTotal / 60) * 50
-        : ((parseFloat(score.ca1) || 0) + (parseFloat(score.ca2) || 0));
+    // Create a map of entered marks by subject for quick lookup
+    const marksMap = {};
+    reportData.data.forEach(score => {
+      marksMap[score.subject] = score;
+    });
 
-      const total = parseFloat(score.total) || 0;
+    // Format subjects data for the report - Include ALL subjects for class level
+    const subjectsData = allSubjectsForLevel.map(subjectName => {
+      const score = marksMap[subjectName];
 
-      // Calculate position if we have broadsheet data
-      let position = "-";
-      if (broadsheetData && broadsheetData.status === 'success') {
-        position = this.calculatePosition(
-          score.subject,
+      if (score) {
+        // Subject has marks entered
+        const test1 = parseFloat(score.test1) || 0;
+        const test2 = parseFloat(score.test2) || 0;
+        const test3 = parseFloat(score.test3) || 0;
+        const test4 = parseFloat(score.test4) || 0;
+        const testsTotal = test1 + test2 + test3 + test4;
+        const classScore = testsTotal > 0
+          ? (testsTotal / 60) * 50
+          : ((parseFloat(score.ca1) || 0) + (parseFloat(score.ca2) || 0));
+
+        const total = parseFloat(score.total) || 0;
+
+        // Calculate position if we have broadsheet data
+        let position = "-";
+        if (broadsheetData && broadsheetData.status === 'success') {
+          position = this.calculatePosition(
+            subjectName,
+            total,
+            student.id,
+            broadsheetData.data
+          );
+        }
+
+        return {
+          name: subjectName,
+          cscore: classScore.toFixed(1),
+          exam: parseFloat(score.exam) || 0,
           total,
-          student.id,
-          broadsheetData.data
-        );
+          position,
+          remark: this.getRemarks(total)
+        };
+      } else {
+        // Subject has no marks - return placeholder
+        return {
+          name: subjectName,
+          cscore: '-',
+          exam: '-',
+          total: '-',
+          position: '-',
+          remark: '-'
+        };
       }
-
-      return {
-        name: score.subject,
-        cscore: classScore.toFixed(1),
-        exam: parseFloat(score.exam) || 0,
-        total,
-        position,
-        remark: this.getRemarks(total)
-      };
     });
 
     // Calculate overall class position and total students count
