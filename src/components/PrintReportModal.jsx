@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useGlobalSettings } from '../context/GlobalSettingsContext';
 import printingService from '../services/printingService';
 import LoadingSpinner from './LoadingSpinner';
@@ -149,8 +150,8 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
   // Get unique classes
   const classes = ['all', ...new Set(students.map(s => s.className).filter(Boolean))];
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+  const modalContent = (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-lg">
@@ -410,6 +411,8 @@ const PrintReportModal = ({ isOpen, onClose, students = [], selectedStudents = [
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default PrintReportModal;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { changePassword } from '../api-client';
 import { useNotification } from '../context/NotificationContext';
 
@@ -80,8 +81,11 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  const modalContent = (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+    >
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
         <div className="p-6">
           {/* Header */}
@@ -214,6 +218,8 @@ const ChangePasswordModal = ({ isOpen, onClose, userEmail }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default ChangePasswordModal;

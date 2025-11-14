@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNotification } from '../context/NotificationContext';
 
 const CLASS_PROGRESSION = {
@@ -198,10 +199,11 @@ const PromoteStudentsModal = ({
   // Check if form master can promote (only in Third Term)
   const canPromote = !isFormMaster || currentTerm === 'Third Term';
 
-  return (
+  const modalContent = (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
       onClick={onClose}
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
     >
       <div
         className="glass-card-golden rounded-xl shadow-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto"
@@ -439,6 +441,8 @@ const PromoteStudentsModal = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default PromoteStudentsModal;

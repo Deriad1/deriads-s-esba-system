@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNotification } from '../context/NotificationContext';
 import { useGlobalSettings } from '../context/GlobalSettingsContext';
 import { DEFAULT_TERM, AVAILABLE_TERMS } from '../constants/terms';
@@ -251,8 +252,11 @@ const AssessmentsManagementModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  const modalContent = (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+    >
       <div className="glass-card-golden rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="glass-card-golden px-6 py-4 flex justify-between items-center border-b-4 border-yellow-500/50">
@@ -651,6 +655,8 @@ const AssessmentsManagementModal = ({ isOpen, onClose }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default AssessmentsManagementModal;
