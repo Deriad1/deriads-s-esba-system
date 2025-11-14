@@ -798,20 +798,7 @@ export const testConnection = async () => {
 export const getClassSubjects = async (className) => {
   try {
     const params = new URLSearchParams({ className });
-
-    const response = await fetch(`${API_BASE}/classes/subjects?${params}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
-    }
-
+    const data = await apiCall(`/classes/subjects?${params}`);
     return data;
   } catch (error) {
     console.error('Error fetching class subjects:', error);
