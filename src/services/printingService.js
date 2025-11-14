@@ -110,6 +110,7 @@ class PrintingService {
       for (let i = 0; i < students.length; i++) {
         const student = students[i];
         const studentId = student.idNumber || student.id_number;
+        const studentDbId = student.id; // Database ID for position calculations
 
         // Get marks data from cache
         const reportData = allStudentData[studentId] || { status: 'success', data: [] };
@@ -154,7 +155,7 @@ class PrintingService {
             position = this.calculatePosition(
               score.subject,
               total,
-              studentId,
+              studentDbId,
               broadsheetData.data
             );
           }
@@ -194,8 +195,8 @@ class PrintingService {
           // Sort by total marks (descending) to determine positions
           studentTotals.sort((a, b) => b.totalMarks - a.totalMarks);
 
-          // Find this student's position
-          const studentIndex = studentTotals.findIndex(s => s.idNumber === studentId);
+          // Find this student's position by database ID
+          const studentIndex = studentTotals.findIndex(s => s.studentId === studentDbId);
           if (studentIndex !== -1) {
             overallPosition = this._formatPosition(studentIndex + 1);
           }
@@ -525,7 +526,7 @@ class PrintingService {
         position = this.calculatePosition(
           score.subject,
           total,
-          student.idNumber || student.id_number,
+          student.id,
           broadsheetData.data
         );
       }
@@ -568,11 +569,10 @@ class PrintingService {
       // Sort by total marks (descending) to determine positions
       studentTotals.sort((a, b) => b.totalMarks - a.totalMarks);
 
-      // Find this student's position
-      const studentIdNumber = student.idNumber || student.id_number;
-      const studentIndex = studentTotals.findIndex(s => s.idNumber === studentIdNumber);
+      // Find this student's position by database ID
+      const studentIndex = studentTotals.findIndex(s => s.studentId === student.id);
       if (studentIndex !== -1) {
-        overallPosition = studentIndex + 1;
+        overallPosition = this._formatPosition(studentIndex + 1);
       }
     }
 
