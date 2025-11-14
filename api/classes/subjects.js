@@ -1,4 +1,5 @@
 import { sql } from '../lib/db.js';
+import { requireAuth } from '../lib/authMiddleware.js';
 
 /**
  * API Endpoint: /api/classes/subjects
@@ -8,6 +9,12 @@ export default async function handler(req, res) {
   const { method } = req;
 
   try {
+    // Require authentication
+    const authResult = await requireAuth(req, res);
+    if (!authResult.success) {
+      return; // requireAuth already sent the response
+    }
+
     if (method !== 'GET') {
       return res.status(405).json({
         status: 'error',
