@@ -143,7 +143,9 @@ class PrintingService {
         if (!allSubjectsCache[studentClassName]) {
           console.log(`[DEBUG] Fetching subjects for class: ${studentClassName}`);
           const classSubjectsResponse = await getClassSubjects(studentClassName);
-          console.log(`[DEBUG] API Response for ${studentClassName}:`, classSubjectsResponse);
+          console.log(`[DEBUG] API Response for ${studentClassName}:`, JSON.stringify(classSubjectsResponse, null, 2));
+          console.log(`[DEBUG] Response status:`, classSubjectsResponse.status);
+          console.log(`[DEBUG] Response data:`, classSubjectsResponse.data);
 
           allSubjectsCache[studentClassName] = classSubjectsResponse.status === 'success'
             ? (classSubjectsResponse.data?.subjects || [])
@@ -151,7 +153,8 @@ class PrintingService {
           console.log(`✅ Cached ${allSubjectsCache[studentClassName].length} subjects for class ${studentClassName}:`, allSubjectsCache[studentClassName]);
 
           if (allSubjectsCache[studentClassName].length === 0) {
-            console.warn(`⚠️ No subjects found for class ${studentClassName}. Check teacher assignments.`);
+            console.warn(`⚠️ No subjects found for class ${studentClassName}. Check teacher assignments in production database.`);
+            console.warn(`⚠️ Verify that teachers are assigned to teach "${studentClassName}" with subjects in the Teachers page.`);
           }
         }
         const allSubjectsForClass = allSubjectsCache[studentClassName];
@@ -539,7 +542,9 @@ class PrintingService {
     const className = student.className || student.class_name;
     console.log(`[DEBUG] Fetching subjects for class: ${className}`);
     const classSubjectsResponse = await getClassSubjects(className);
-    console.log(`[DEBUG] API Response:`, classSubjectsResponse);
+    console.log(`[DEBUG] API Response:`, JSON.stringify(classSubjectsResponse, null, 2));
+    console.log(`[DEBUG] Response status:`, classSubjectsResponse.status);
+    console.log(`[DEBUG] Response data:`, classSubjectsResponse.data);
 
     const allSubjectsForClass = classSubjectsResponse.status === 'success'
       ? (classSubjectsResponse.data?.subjects || [])
@@ -548,7 +553,8 @@ class PrintingService {
     console.log(`✅ Fetched ${allSubjectsForClass.length} subjects for class ${className}:`, allSubjectsForClass);
 
     if (allSubjectsForClass.length === 0) {
-      console.warn(`⚠️ No subjects found for class ${className}. Check teacher assignments.`);
+      console.warn(`⚠️ No subjects found for class ${className}. Check teacher assignments in production database.`);
+      console.warn(`⚠️ Verify that teachers are assigned to teach "${className}" with subjects in the Teachers page.`);
     }
 
     // Fetch form master remarks and attendance if not provided
