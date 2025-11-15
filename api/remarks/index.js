@@ -190,12 +190,13 @@ export default async function handler(req, res) {
         attitude,
         interest,
         remarks,
-        comments,      // Added: Teacher comments
-        attendance,    // Added: Attendance days present
+        comments,         // Added: Teacher comments
+        attendance,       // Added: Attendance days present
+        attendanceTotal,  // Added: Total school days
         teacherId
       } = req.body;
 
-      console.log('[remarks POST] Received data:', { studentId, className, term, academicYear, conduct, attitude, interest, remarks, comments, attendance });
+      console.log('[remarks POST] Received data:', { studentId, className, term, academicYear, conduct, attitude, interest, remarks, comments, attendance, attendanceTotal });
 
       // Validation
       if (!studentId || !className || !term || !academicYear) {
@@ -226,6 +227,7 @@ export default async function handler(req, res) {
             remarks = ${remarks || null},
             comments = ${comments || conduct || null},
             attendance = ${attendance || null},
+            attendance_total = ${attendanceTotal || null},
             teacher_id = ${teacherId || null},
             class_name = ${className},
             updated_at = NOW()
@@ -237,11 +239,12 @@ export default async function handler(req, res) {
         result = await sql`
           INSERT INTO remarks (
             student_id, class_name, term, academic_year,
-            conduct, attitude, interest, remarks, comments, attendance, teacher_id
+            conduct, attitude, interest, remarks, comments, attendance, attendance_total, teacher_id
           ) VALUES (
             ${studentId}, ${className}, ${term}, ${academicYear},
             ${conduct || comments || null}, ${attitude || null}, ${interest || null},
-            ${remarks || null}, ${comments || conduct || null}, ${attendance || null}, ${teacherId || null}
+            ${remarks || null}, ${comments || conduct || null}, ${attendance || null},
+            ${attendanceTotal || null}, ${teacherId || null}
           )
           RETURNING *
         `;
@@ -260,6 +263,7 @@ export default async function handler(req, res) {
         remarks: result[0].remarks,
         comments: result[0].comments || result[0].conduct || '',
         attendance: result[0].attendance || '',
+        attendanceTotal: result[0].attendance_total || 0,
         teacherId: result[0].teacher_id,
         createdAt: result[0].created_at,
         updatedAt: result[0].updated_at

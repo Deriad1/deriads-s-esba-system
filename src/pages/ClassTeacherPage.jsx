@@ -398,6 +398,19 @@ const ClassTeacherPage = () => {
     }));
   };
 
+  const handleAttendanceTotalChange = (studentId, value) => {
+    // Allow only numbers
+    if (value && !/^\d*$/.test(value)) return;
+
+    setFormMasterData(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        attendanceTotal: value
+      }
+    }));
+  };
+
   // Auto-save marks to localStorage
   const autoSaveMarks = (marksData, className, subject) => {
     if (!className || !subject) return;
@@ -731,6 +744,7 @@ const ClassTeacherPage = () => {
               academicYear: settings.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
               remarks: studentData.remarks || "",
               attendance: studentData.attendance || "",
+              attendanceTotal: studentData.attendanceTotal || "", // Total school days
               attitude: studentData.attitude || "",
               interest: studentData.interest || "",
               comments: studentData.comments || ""
@@ -1592,7 +1606,8 @@ const ClassTeacherPage = () => {
                   <thead>
                     <tr className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-b-2 border-yellow-500/30">
                       <th className="p-4 text-left font-bold text-white">Student Name</th>
-                      <th className="p-4 text-center font-bold text-white">Attendance</th>
+                      <th className="p-4 text-center font-bold text-white">Days Present</th>
+                      <th className="p-4 text-center font-bold text-white">Total Days</th>
                       <th className="p-4 text-left font-bold text-white">Remarks</th>
                       <th className="p-4 text-left font-bold text-white">Attitude</th>
                       <th className="p-4 text-left font-bold text-white">Interest</th>
@@ -1616,7 +1631,18 @@ const ClassTeacherPage = () => {
                               value={studentData.attendance || ''}
                               onChange={(e) => handleAttendanceChange(studentId, e.target.value)}
                               className="w-20 p-2 border-2 border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all"
-                              placeholder="Days"
+                              placeholder="45"
+                              maxLength="3"
+                            />
+                          </td>
+
+                          <td className="p-2 text-center">
+                            <input
+                              type="text"
+                              value={studentData.attendanceTotal || ''}
+                              onChange={(e) => handleAttendanceTotalChange(studentId, e.target.value)}
+                              className="w-20 p-2 border-2 border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all"
+                              placeholder="50"
                               maxLength="3"
                             />
                           </td>
