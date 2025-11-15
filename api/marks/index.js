@@ -76,8 +76,12 @@ async function handleGet(req, res) {
       // Get marks - filter by subjects if not admin/head_teacher
       const classFilter = getClassFilterForUser(user);
 
-      if (classFilter.hasRestriction) {
-        // Filter by assigned subjects
+      // Check if teacher is the class teacher for this student's class
+      const isClassTeacher = user.form_class === studentClass ||
+                            (user.classes && user.classes.includes(studentClass));
+
+      if (classFilter.hasRestriction && !isClassTeacher) {
+        // Regular teacher - filter by assigned subjects only
         const teacherSubjects = user.subjects || [];
 
         if (term) {
@@ -99,7 +103,7 @@ async function handleGet(req, res) {
           `;
         }
       } else {
-        // Admin/Head Teacher - see all subjects
+        // Admin/Head Teacher OR Class Teacher - see all subjects
         if (term) {
           result = await sql`
             SELECT m.* FROM marks m

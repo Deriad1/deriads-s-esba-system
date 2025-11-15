@@ -168,6 +168,16 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   yPosition += 5;
   const remarksBoxStartY = yPosition;
 
+  // DEBUG: Log the remarks data being used
+  console.log('[PDF Generator] formMasterInfo:', formMasterInfo);
+  console.log('[PDF Generator] student data:', {
+    interests: student.interests,
+    attitude: student.attitude,
+    remarks: student.remarks,
+    comments: student.comments,
+    attendance: student.attendance
+  });
+
   // Draw a box around the entire remarks section for visibility
   doc.setLineWidth(0.5);
   doc.rect(15, remarksBoxStartY, 180, 42);
@@ -178,31 +188,40 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   doc.setFont('helvetica', 'bold');
   const present = formMasterInfo.attendance?.present || student.attendance?.present || 0;
   const totalDays = formMasterInfo.attendance?.total || student.attendance?.total || 0;
+  console.log('[PDF Generator] Attendance:', { present, totalDays });
   doc.text(`ATTENDANCE: ${present}`, 20, yPosition);
   doc.text(`OUT OF: ${totalDays}`, 70, yPosition);
 
   yPosition += 7;
   doc.text('INTEREST:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
-  doc.text(student.interests || formMasterInfo.interest || '__________________', 50, yPosition);
+  const interestValue = formMasterInfo.interest || student.interests || '__________________';
+  console.log('[PDF Generator] INTEREST value:', interestValue, '(from formMasterInfo.interest:', formMasterInfo.interest, 'or student.interests:', student.interests, ')');
+  doc.text(interestValue, 50, yPosition);
 
   yPosition += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('ATTITUDE:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
-  doc.text(student.attitude || formMasterInfo.attitude || '__________________', 50, yPosition);
+  const attitudeValue = formMasterInfo.attitude || student.attitude || '__________________';
+  console.log('[PDF Generator] ATTITUDE value:', attitudeValue, '(from formMasterInfo.attitude:', formMasterInfo.attitude, 'or student.attitude:', student.attitude, ')');
+  doc.text(attitudeValue, 50, yPosition);
 
   yPosition += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('REMARKS:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
-  doc.text(student.remarks || formMasterInfo.remarks || '__________________', 50, yPosition);
+  const remarksValue = formMasterInfo.remarks || student.remarks || '__________________';
+  console.log('[PDF Generator] REMARKS value:', remarksValue, '(from formMasterInfo.remarks:', formMasterInfo.remarks, 'or student.remarks:', student.remarks, ')');
+  doc.text(remarksValue, 50, yPosition);
 
   yPosition += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('COMMENTS:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
-  doc.text(student.comments || formMasterInfo.comments || '__________________', 50, yPosition);
+  const commentsValue = formMasterInfo.comments || student.comments || '__________________';
+  console.log('[PDF Generator] COMMENTS value:', commentsValue, '(from formMasterInfo.comments:', formMasterInfo.comments, 'or student.comments:', student.comments, ')');
+  doc.text(commentsValue, 50, yPosition);
 
   yPosition = remarksBoxStartY + 45; // Move past the box
 
