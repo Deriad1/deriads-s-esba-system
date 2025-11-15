@@ -9,11 +9,18 @@ export default async function handler(req, res) {
   const { method } = req;
 
   try {
+    console.log('[subjects.js] Handler called, method:', method);
+
     // Require authentication
-    const authResult = await requireAuth(req, res);
-    if (!authResult.success) {
+    console.log('[subjects.js] Calling requireAuth...');
+    const user = requireAuth(req, res);
+    console.log('[subjects.js] Auth result:', user);
+
+    if (!user) {
+      console.log('[subjects.js] Auth failed, returning');
       return; // requireAuth already sent the response
     }
+    console.log('[subjects.js] Auth succeeded for user:', user.email);
 
     if (method !== 'GET') {
       return res.status(405).json({
@@ -23,6 +30,7 @@ export default async function handler(req, res) {
     }
 
     const { className } = req.query;
+    console.log('[subjects.js] className:', className);
 
     if (!className) {
       return res.status(400).json({
@@ -32,6 +40,7 @@ export default async function handler(req, res) {
     }
 
     // Get all teachers who teach this class
+    console.log('[subjects.js] Querying database...');
     const teachers = await sql`
       SELECT DISTINCT subjects
       FROM teachers
@@ -39,6 +48,7 @@ export default async function handler(req, res) {
       OR class_assigned = ${className}
       OR form_class = ${className}
     `;
+    console.log('[subjects.js] Found', teachers.length, 'teachers');
 
     // Collect all unique subjects from all teachers
     const subjectsSet = new Set();
@@ -50,6 +60,7 @@ export default async function handler(req, res) {
     });
 
     const subjects = Array.from(subjectsSet).sort();
+    console.log('[subjects.js] Returning', subjects.length, 'subjects');
 
     return res.status(200).json({
       status: 'success',
