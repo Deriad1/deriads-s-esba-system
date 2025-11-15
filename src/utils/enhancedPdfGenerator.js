@@ -143,8 +143,36 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
     }
   });
 
-  // Attendance, Interest, Attitude
+  // Check if we have enough space for the remarks section
+  // Remarks section needs approximately 90mm of space
+  const remarksSpaceNeeded = 90;
+  const pageHeight = doc.internal.pageSize.height;
+  const bottomMargin = 15;
+
+  if (yPosition + remarksSpaceNeeded > pageHeight - bottomMargin) {
+    // Not enough space, add a new page
+    doc.addPage();
+    yPosition = 20; // Start from top of new page with margin
+
+    // Add a header on the new page for context
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('STUDENT REPORT (CONTINUED)', 105, yPosition, { align: 'center' });
+    yPosition += 10;
+    doc.setFontSize(10);
+    doc.text(`${(student.firstName || student.first_name || '').toUpperCase()} ${(student.lastName || student.last_name || '').toUpperCase()}`, 105, yPosition, { align: 'center' });
+    yPosition += 10;
+  }
+
+  // Attendance, Interest, Attitude Section - Now in a prominent box
   yPosition += 5;
+  const remarksBoxStartY = yPosition;
+
+  // Draw a box around the entire remarks section for visibility
+  doc.setLineWidth(0.5);
+  doc.rect(15, remarksBoxStartY, 180, 42);
+
+  yPosition += 7; // Padding inside the box
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -153,28 +181,30 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   doc.text(`ATTENDANCE: ${present}`, 20, yPosition);
   doc.text(`OUT OF: ${totalDays}`, 70, yPosition);
 
-  yPosition += 8;
+  yPosition += 7;
   doc.text('INTEREST:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
   doc.text(student.interests || formMasterInfo.interest || '__________________', 50, yPosition);
 
-  yPosition += 8;
+  yPosition += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('ATTITUDE:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
   doc.text(student.attitude || formMasterInfo.attitude || '__________________', 50, yPosition);
 
-  yPosition += 8;
+  yPosition += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('REMARKS:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
   doc.text(student.remarks || formMasterInfo.remarks || '__________________', 50, yPosition);
 
-  yPosition += 8;
+  yPosition += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('COMMENTS:', 20, yPosition);
   doc.setFont('helvetica', 'normal');
   doc.text(student.comments || formMasterInfo.comments || '__________________', 50, yPosition);
+
+  yPosition = remarksBoxStartY + 45; // Move past the box
 
   // Class Teacher's Remarks Box
   yPosition += 10;
