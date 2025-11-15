@@ -590,14 +590,17 @@ class PrintingService {
 
       console.log(`[_getFormattedStudentData] Remarks response:`, remarksResponse);
 
-      remarksInfo = remarksResponse.data ? {
-        remarks: remarksResponse.data.remarks || '',
-        attitude: remarksResponse.data.attitude || '',
-        interest: remarksResponse.data.interest || '',
-        comments: remarksResponse.data.comments || '',
+      // remarksResponse.data is an array, get the first element
+      const remarksData = remarksResponse.data && remarksResponse.data.length > 0 ? remarksResponse.data[0] : null;
+
+      remarksInfo = remarksData ? {
+        remarks: remarksData.remarks || '',
+        attitude: remarksData.attitude || '',
+        interest: remarksData.interest || '',
+        comments: remarksData.comments || '',
         attendance: {
-          present: remarksResponse.data.attendance || 0,
-          total: remarksResponse.data.attendance_total || remarksResponse.data.attendanceTotal || 0
+          present: remarksData.attendance || 0,
+          total: remarksData.attendance_total || remarksData.attendanceTotal || 0
         }
       } : {};
 
