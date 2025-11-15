@@ -314,7 +314,9 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
 
             {/* Assignment Section */}
             {selectedTeacher ? (
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 flex flex-col" style={{ height: 'calc(90vh - 120px)' }}>
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto space-y-6 pr-2">
                 {/* Teacher Info */}
                 <div className="bg-white/10 border-2 border-white/30 text-white rounded-xl p-4 backdrop-blur-md">
                   <h3 className="text-xl font-bold">
@@ -486,24 +488,37 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
                     </div>
                   </div>
                 )}
+                </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t-2 border-white/30">
-                  <button
-                    onClick={() => setSelectedTeacher(null)}
-                    className="px-6 py-3 bg-white/20 border-2 border-white/30 hover:bg-white/30 text-white rounded-xl font-semibold transition-all backdrop-blur-md"
-                    style={{ minHeight: '44px', minWidth: '100px' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="px-6 py-3 bg-green-500/90 border-2 border-white/50 hover:bg-green-600 text-white rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    style={{ minHeight: '44px', minWidth: '120px' }}
-                  >
-                    {saving ? 'Saving...' : 'Save Assignments'}
-                  </button>
+                {/* Sticky Action Buttons - Always visible at bottom */}
+                <div className="sticky bottom-0 bg-gradient-to-t from-gray-900/95 to-gray-900/80 backdrop-blur-md mt-4 pt-4 border-t-2 border-yellow-500/50 rounded-b-xl">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3">
+                    <button
+                      onClick={() => setSelectedTeacher(null)}
+                      className="px-6 py-3 bg-white/20 border-2 border-white/30 hover:bg-white/30 text-white rounded-xl font-semibold transition-all backdrop-blur-md"
+                      style={{ minHeight: '44px', minWidth: '100px' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="px-6 py-3 bg-green-500 border-2 border-white/50 hover:bg-green-600 text-white rounded-xl font-bold shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all animate-pulse-slow"
+                      style={{ minHeight: '44px', minWidth: '120px' }}
+                    >
+                      {saving ? (
+                        <>
+                          <span className="inline-block animate-spin mr-2">⏳</span>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <span className="mr-2">💾</span>
+                          Save Assignments
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
