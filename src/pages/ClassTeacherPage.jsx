@@ -43,6 +43,8 @@ const ClassTeacherPage = () => {
   const [marks, setMarks] = useState({}); // For score entry
   const [savedStudents, setSavedStudents] = useState(new Set()); // Track saved scores
   const [formMasterData, setFormMasterData] = useState({}); // Consolidated: remarks, attitude, interest, comments, attendance
+  const [vacationDate, setVacationDate] = useState(''); // Vacation date for reports
+  const [reopeningDate, setReopeningDate] = useState(''); // Next term reopening date
   const [batchSaving, setBatchSaving] = useState(false); // Track batch save operation
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showTrendAnalysis, setShowTrendAnalysis] = useState(false); // New state for trend analysis
@@ -747,7 +749,9 @@ const ClassTeacherPage = () => {
               attendanceTotal: studentData.attendanceTotal || "", // Total school days
               attitude: studentData.attitude || "",
               interest: studentData.interest || "",
-              comments: studentData.comments || ""
+              comments: studentData.comments || "",
+              vacationDate: vacationDate || "",
+              reopeningDate: reopeningDate || ""
             });
 
             if (response.status === 'success') {
@@ -1601,6 +1605,44 @@ const ClassTeacherPage = () => {
               <h3 className="text-lg sm:text-xl font-bold mb-6 text-white">
                 📝 Class Remarks & Attendance
               </h3>
+
+              {/* Term Dates Section */}
+              <div className="mb-6 p-4 bg-white/10 rounded-lg border border-yellow-500/30">
+                <h4 className="text-md font-bold mb-4 text-white">📅 Term Dates</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="vacationDate" className="block text-sm font-medium text-white mb-2">
+                      Vacation Date
+                    </label>
+                    <input
+                      type="date"
+                      id="vacationDate"
+                      value={vacationDate}
+                      onChange={(e) => setVacationDate(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 bg-white text-gray-900"
+                    />
+                    <p className="text-xs text-white/70 mt-1">
+                      Will appear on student reports
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="reopeningDate" className="block text-sm font-medium text-white mb-2">
+                      Next Term Begins
+                    </label>
+                    <input
+                      type="date"
+                      id="reopeningDate"
+                      value={reopeningDate}
+                      onChange={(e) => setReopeningDate(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 bg-white text-gray-900"
+                    />
+                    <p className="text-xs text-white/70 mt-1">
+                      Will appear on student reports
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="overflow-x-auto rounded-lg border-2 border-yellow-500/30">
                 <table className="w-full text-sm">
                   <thead>
