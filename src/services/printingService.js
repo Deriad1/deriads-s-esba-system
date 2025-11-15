@@ -593,6 +593,10 @@ class PrintingService {
       // remarksResponse.data is an array, get the first element
       const remarksData = remarksResponse.data && remarksResponse.data.length > 0 ? remarksResponse.data[0] : null;
 
+      console.log(`[_getFormattedStudentData] remarksData:`, remarksData);
+      console.log(`[_getFormattedStudentData] vacationDate from API:`, remarksData?.vacationDate);
+      console.log(`[_getFormattedStudentData] reopeningDate from API:`, remarksData?.reopeningDate);
+
       remarksInfo = remarksData ? {
         remarks: remarksData.remarks || '',
         attitude: remarksData.attitude || '',
