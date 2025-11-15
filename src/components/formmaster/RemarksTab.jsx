@@ -12,6 +12,7 @@ import LoadingSpinner from '../LoadingSpinner';
  * - Attitude input
  * - Interest input
  * - Comments input
+ * - Vacation and reopening dates
  * - Footnote information
  * - Bulk save functionality
  */
@@ -20,12 +21,16 @@ const RemarksTab = ({
   formData,
   errors,
   footnoteInfo,
+  vacationDate,
+  reopeningDate,
   syncStatus,
   onAttendanceChange,
   onRemarkChange,
   onAttitudeChange,
   onInterestChange,
   onCommentChange,
+  onVacationDateChange,
+  onReopeningDateChange,
   onFootnoteChange,
   onSaveAll,
   onSaveFootnote,
@@ -206,6 +211,51 @@ const RemarksTab = ({
         </div>
       </div>
 
+      {/* Term Dates Section */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Term Dates</h2>
+          {syncStatus.termDates === 'draft' && (
+            <span className="text-yellow-600 text-sm">● Draft (local only)</span>
+          )}
+          {syncStatus.termDates === 'saved' && (
+            <span className="text-green-600 text-sm">✓ Saved to server</span>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="vacationDate" className="block text-sm font-medium text-gray-700 mb-2">
+              Vacation Date
+            </label>
+            <input
+              type="date"
+              id="vacationDate"
+              value={vacationDate || ''}
+              onChange={(e) => onVacationDateChange(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This date will appear on student reports
+            </p>
+          </div>
+          <div>
+            <label htmlFor="reopeningDate" className="block text-sm font-medium text-gray-700 mb-2">
+              Next Term Begins
+            </label>
+            <input
+              type="date"
+              id="reopeningDate"
+              value={reopeningDate || ''}
+              onChange={(e) => onReopeningDateChange(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This date will appear on student reports
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Footnote Section */}
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
@@ -251,12 +301,16 @@ RemarksTab.propTypes = {
   }).isRequired,
   errors: PropTypes.object,
   footnoteInfo: PropTypes.string,
+  vacationDate: PropTypes.string,
+  reopeningDate: PropTypes.string,
   syncStatus: PropTypes.object,
   onAttendanceChange: PropTypes.func.isRequired,
   onRemarkChange: PropTypes.func.isRequired,
   onAttitudeChange: PropTypes.func.isRequired,
   onInterestChange: PropTypes.func.isRequired,
   onCommentChange: PropTypes.func.isRequired,
+  onVacationDateChange: PropTypes.func.isRequired,
+  onReopeningDateChange: PropTypes.func.isRequired,
   onFootnoteChange: PropTypes.func.isRequired,
   onSaveAll: PropTypes.func.isRequired,
   onSaveFootnote: PropTypes.func.isRequired,
@@ -266,6 +320,8 @@ RemarksTab.propTypes = {
 RemarksTab.defaultProps = {
   errors: {},
   footnoteInfo: '',
+  vacationDate: '',
+  reopeningDate: '',
   syncStatus: {},
   saving: false
 };

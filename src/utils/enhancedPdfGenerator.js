@@ -75,14 +75,19 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   doc.text(student.className || student.class_name || '', 80, boxY + 17);
 
   doc.setFont('helvetica', 'bold');
-  doc.text('NEXT TERM BEGINS:', 110, boxY + 17);
+  doc.text('VACATION DATE:', 110, boxY + 17);
   doc.setFont('helvetica', 'normal');
-  doc.text(schoolInfo.nextTermBegins || '__________', 155, boxY + 17);
+  doc.text(formMasterInfo.vacationDate || '__________', 155, boxY + 17);
 
   doc.setFont('helvetica', 'bold');
   doc.text('ACADEMIC YEAR:', 20, boxY + 27);
   doc.setFont('helvetica', 'normal');
   doc.text(schoolInfo.academicYear || '', 60, boxY + 27);
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('NEXT TERM BEGINS:', 110, boxY + 27);
+  doc.setFont('helvetica', 'normal');
+  doc.text(formMasterInfo.reopeningDate || schoolInfo.nextTermBegins || '__________', 165, boxY + 27);
 
   // Subjects Table
   yPosition = boxY + 35;
@@ -99,9 +104,9 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
     subject.remark || '-'
   ]);
 
-  // Add C.TOTAL row
+  // Add GRAND TOTAL row
   tableData.push([
-    'C.TOTAL',
+    'GRAND TOTAL',
     '',
     '',
     totalScore.toString(),

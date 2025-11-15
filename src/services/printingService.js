@@ -598,6 +598,8 @@ class PrintingService {
         attitude: remarksData.attitude || '',
         interest: remarksData.interest || '',
         comments: remarksData.comments || '',
+        vacationDate: remarksData.vacationDate || '',
+        reopeningDate: remarksData.reopeningDate || '',
         attendance: {
           present: remarksData.attendance || 0,
           total: remarksData.attendance_total || remarksData.attendanceTotal || 0

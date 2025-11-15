@@ -162,6 +162,8 @@ export default async function handler(req, res) {
         comments: remark.comments || remark.conduct || '', // Include comments field
         attendance: remark.attendance || '', // Include attendance field
         attendance_total: remark.attendance_total || remark.attendanceTotal || 0,
+        vacationDate: remark.vacation_date || '',
+        reopeningDate: remark.reopening_date || '',
         teacherId: remark.teacher_id,
         createdAt: remark.created_at,
         updatedAt: remark.updated_at,
@@ -193,10 +195,12 @@ export default async function handler(req, res) {
         comments,         // Added: Teacher comments
         attendance,       // Added: Attendance days present
         attendanceTotal,  // Added: Total school days
+        vacationDate,     // Added: Vacation date
+        reopeningDate,    // Added: Reopening date
         teacherId
       } = req.body;
 
-      console.log('[remarks POST] Received data:', { studentId, className, term, academicYear, conduct, attitude, interest, remarks, comments, attendance, attendanceTotal });
+      console.log('[remarks POST] Received data:', { studentId, className, term, academicYear, conduct, attitude, interest, remarks, comments, attendance, attendanceTotal, vacationDate, reopeningDate });
 
       // Validation
       if (!studentId || !className || !term || !academicYear) {
@@ -228,6 +232,8 @@ export default async function handler(req, res) {
             comments = ${comments || conduct || null},
             attendance = ${attendance || null},
             attendance_total = ${attendanceTotal || null},
+            vacation_date = ${vacationDate || null},
+            reopening_date = ${reopeningDate || null},
             teacher_id = ${teacherId || null},
             class_name = ${className},
             updated_at = NOW()
@@ -239,12 +245,13 @@ export default async function handler(req, res) {
         result = await sql`
           INSERT INTO remarks (
             student_id, class_name, term, academic_year,
-            conduct, attitude, interest, remarks, comments, attendance, attendance_total, teacher_id
+            conduct, attitude, interest, remarks, comments, attendance, attendance_total,
+            vacation_date, reopening_date, teacher_id
           ) VALUES (
             ${studentId}, ${className}, ${term}, ${academicYear},
             ${conduct || comments || null}, ${attitude || null}, ${interest || null},
             ${remarks || null}, ${comments || conduct || null}, ${attendance || null},
-            ${attendanceTotal || null}, ${teacherId || null}
+            ${attendanceTotal || null}, ${vacationDate || null}, ${reopeningDate || null}, ${teacherId || null}
           )
           RETURNING *
         `;
@@ -264,6 +271,8 @@ export default async function handler(req, res) {
         comments: result[0].comments || result[0].conduct || '',
         attendance: result[0].attendance || '',
         attendanceTotal: result[0].attendance_total || 0,
+        vacationDate: result[0].vacation_date || '',
+        reopeningDate: result[0].reopening_date || '',
         teacherId: result[0].teacher_id,
         createdAt: result[0].created_at,
         updatedAt: result[0].updated_at
