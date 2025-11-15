@@ -143,6 +143,17 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
       5: { cellWidth: 25 }
     },
     margin: { left: 15, right: 15 },
+    didDrawCell: function (data) {
+      // Remove hyphens from empty cells in GRAND TOTAL row
+      const isGrandTotalRow = data.row.index === tableData.length - 1;
+      if (isGrandTotalRow && data.column.index > 0 && data.column.index !== 3) {
+        // Clear the cell content for empty GRAND TOTAL cells (except the TOTAL column)
+        const cellText = data.cell.text[0];
+        if (cellText === '' || cellText === '-') {
+          data.cell.text = [''];
+        }
+      }
+    },
     didDrawPage: function (data) {
       yPosition = data.cursor.y;
     }
