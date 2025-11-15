@@ -737,19 +737,23 @@ const ClassTeacherPage = () => {
         const databaseId = learner.id; // For database operations (integer)
         const studentData = formMasterData[displayId];
 
-        if (studentData && (studentData.remarks || studentData.attendance || studentData.attitude || studentData.interest || studentData.comments)) {
+        // Save if student has any data OR if vacation dates are set (need to save them for at least one student)
+        const hasStudentData = studentData && (studentData.remarks || studentData.attendance || studentData.attitude || studentData.interest || studentData.comments);
+        const hasTermDates = (vacationDate || reopeningDate);
+
+        if (hasStudentData || hasTermDates) {
           try {
             const response = await updateFormMasterRemarks({
               studentId: databaseId, // Use database ID for API
               className: selectedClass,
               term: settings.term || DEFAULT_TERM,
               academicYear: settings.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
-              remarks: studentData.remarks || "",
-              attendance: studentData.attendance || "",
-              attendanceTotal: studentData.attendanceTotal || "", // Total school days
-              attitude: studentData.attitude || "",
-              interest: studentData.interest || "",
-              comments: studentData.comments || "",
+              remarks: studentData?.remarks || "",
+              attendance: studentData?.attendance || "",
+              attendanceTotal: studentData?.attendanceTotal || "", // Total school days
+              attitude: studentData?.attitude || "",
+              interest: studentData?.interest || "",
+              comments: studentData?.comments || "",
               vacationDate: vacationDate || "",
               reopeningDate: reopeningDate || ""
             });
