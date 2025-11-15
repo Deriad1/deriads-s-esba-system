@@ -572,11 +572,27 @@ export const updateStudentScores = async (scoreData) => {
 
 /**
  * Get form master remarks for a student
+ * @param {string|number} studentId - Student ID (can be database ID or id_number)
+ * @param {string} className - Class name
+ * @param {string} term - Optional term filter
+ * @param {string} academicYear - Optional academic year filter
  */
-export const getFormMasterRemarks = async (studentId, className) => {
+export const getFormMasterRemarks = async (studentId, className, term = null, academicYear = null) => {
   try {
+    let url = `/remarks?studentId=${studentId}&className=${encodeURIComponent(className)}`;
+
+    // Add term and academicYear to query if provided
+    if (term) {
+      url += `&term=${encodeURIComponent(term)}`;
+    }
+    if (academicYear) {
+      url += `&year=${encodeURIComponent(academicYear)}`;
+    }
+
+    console.log(`[getFormMasterRemarks] Fetching remarks: ${url}`);
+
     const result = await apiCallWithOfflineSupport(
-      `/remarks?studentId=${studentId}&className=${encodeURIComponent(className)}`,
+      url,
       {},
       {
         storeName: STORES.REMARKS,
@@ -584,6 +600,8 @@ export const getFormMasterRemarks = async (studentId, className) => {
         mutation: false
       }
     );
+
+    console.log(`[getFormMasterRemarks] Result:`, result);
     return result;
   } catch (error) {
     console.error('Get form master remarks error:', error);

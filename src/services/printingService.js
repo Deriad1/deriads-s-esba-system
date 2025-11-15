@@ -119,10 +119,17 @@ class PrintingService {
         // Fetch form master remarks (can't easily batch this)
         let remarksInfo = {};
         try {
+          console.log(`[Bulk Print] Fetching remarks for ${studentId}, term: ${term}`);
+
           const remarksResponse = await getFormMasterRemarks(
             studentId,
-            student.className || student.class_name
+            student.className || student.class_name,
+            term, // Pass the term parameter
+            null  // Academic year will be handled by API if needed
           );
+
+          console.log(`[Bulk Print] Remarks response for ${studentId}:`, remarksResponse);
+
           remarksInfo = remarksResponse.data ? {
             remarks: remarksResponse.data.remarks || '',
             attitude: remarksResponse.data.attitude || '',
@@ -133,6 +140,8 @@ class PrintingService {
               total: remarksResponse.data.attendance_total || remarksResponse.data.attendanceTotal || 0
             }
           } : {};
+
+          console.log(`[Bulk Print] Formatted remarks for ${studentId}:`, remarksInfo);
         } catch (error) {
           console.warn(`Could not fetch remarks for student ${studentId}:`, error);
         }
@@ -570,10 +579,17 @@ class PrintingService {
     // Fetch form master remarks and attendance if not provided
     let remarksInfo = formMasterInfo;
     if (!formMasterInfo || Object.keys(formMasterInfo).length === 0) {
+      console.log(`[_getFormattedStudentData] Fetching remarks for student: ${student.idNumber || student.id_number}, term: ${term}`);
+
       const remarksResponse = await getFormMasterRemarks(
         student.idNumber || student.id_number,
-        student.className || student.class_name
+        student.className || student.class_name,
+        term, // Pass the term parameter
+        null  // Academic year will be handled by API if needed
       );
+
+      console.log(`[_getFormattedStudentData] Remarks response:`, remarksResponse);
+
       remarksInfo = remarksResponse.data ? {
         remarks: remarksResponse.data.remarks || '',
         attitude: remarksResponse.data.attitude || '',
@@ -584,6 +600,8 @@ class PrintingService {
           total: remarksResponse.data.attendance_total || remarksResponse.data.attendanceTotal || 0
         }
       } : {};
+
+      console.log(`[_getFormattedStudentData] Formatted remarks info:`, remarksInfo);
     }
 
     // Fetch class broadsheet to calculate positions
