@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { updateTeacher } from '../api-client';
 import { getSubjectsForLevel, getSubjectCategory, getClassesForLevel, TEACHING_LEVELS } from '../utils/subjectLevelMapping';
-import { isJuniorClass, isSeniorClass } from '../utils/roleHelpers';
+import { isJuniorClass, isSeniorClass, getClassLeaderRoleCode } from '../utils/roleHelpers';
 
 /**
  * Teacher Subject & Class Assignment Component
@@ -70,43 +70,65 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
 
     setSaving(true);
     try {
-      // Determine primary role based on assignments
-      // Priority: form_master > existing role > subject_teacher (default)
+      // ✅ CORRECT LOGIC: Determine primary role based on class assignments
+      // Rules:
+      // 1. Primary classes (KG-BS6) → class_teacher
+      // 2. JHS classes (BS7-BS9) → form_master
+      // 3. Multiple classes → use the highest level class to determine role
+      // 4. No classes → subject_teacher
+
       let primaryRole;
+      let updatedRoles = new Set();
 
-      if (formClass && formClass.trim()) {
-        // If they have a form class, they are a form master
-        primaryRole = 'form_master';
+      // Analyze assigned classes to determine appropriate role
+      const hasPrimaryClasses = teacherClasses.some(c => isJuniorClass(c));
+      const hasJHSClasses = teacherClasses.some(c => isSeniorClass(c));
+
+      if (teacherClasses.length > 0) {
+        if (hasJHSClasses) {
+          // Teacher has JHS classes (BS7-BS9) → Form Master
+          primaryRole = 'form_master';
+          updatedRoles.add('form_master');
+
+          // Only set form class if they selected one and it's a senior class
+          if (formClass && isSeniorClass(formClass)) {
+            // Form class is valid
+          } else if (hasJHSClasses && !formClass) {
+            // They have JHS classes but no form class selected - that's ok, they're just a subject teacher for those classes
+          }
+        } else if (hasPrimaryClasses) {
+          // Teacher ONLY has primary classes (KG-BS6) → Class Teacher
+          primaryRole = 'class_teacher';
+          updatedRoles.add('class_teacher');
+
+          // ⚠️ Primary teachers should NOT have a form class (that's for JHS only)
+          // Clear form class if they only have primary classes
+          if (formClass && !hasJHSClasses) {
+            console.warn('⚠️ Clearing form class - Primary teachers (KG-BS6) use Class Teacher page, not Form Master page');
+          }
+        }
       } else {
-        // Otherwise, preserve their existing primary role
-        primaryRole = selectedTeacher.teacher_primary_role || selectedTeacher.primaryRole || 'subject_teacher';
-      }
-
-      let updatedRoles = [...(selectedTeacher.all_roles || [primaryRole])];
-
-      // Ensure primary role is always in the roles list
-      if (!updatedRoles.includes(primaryRole)) {
-        updatedRoles.push(primaryRole);
-      }
-
-      // Add form_master role if they have a form class
-      if (formClass && formClass.trim() && !updatedRoles.includes('form_master')) {
-        updatedRoles.push('form_master');
-      }
-
-      // Remove form_master role if they no longer have a form class (unless it's their primary role)
-      if ((!formClass || !formClass.trim()) && primaryRole !== 'form_master') {
-        updatedRoles = updatedRoles.filter(r => r !== 'form_master');
+        // No classes assigned → subject_teacher
+        primaryRole = 'subject_teacher';
       }
 
       // Add subject_teacher role if they have subjects
-      if (teacherSubjects.length > 0 && !updatedRoles.includes('subject_teacher')) {
-        updatedRoles.push('subject_teacher');
+      if (teacherSubjects.length > 0) {
+        updatedRoles.add('subject_teacher');
       }
 
-      // Remove subject_teacher role if they have no subjects (unless it's their primary role)
-      if (teacherSubjects.length === 0 && primaryRole !== 'subject_teacher') {
-        updatedRoles = updatedRoles.filter(r => r !== 'subject_teacher');
+      // Ensure primary role is in the roles set
+      if (primaryRole) {
+        updatedRoles.add(primaryRole);
+      }
+
+      // Convert Set to Array
+      let updatedRolesArray = Array.from(updatedRoles);
+
+      // If no roles determined, default to subject_teacher
+      if (updatedRolesArray.length === 0) {
+        updatedRolesArray = ['subject_teacher'];
+        primaryRole = 'subject_teacher';
       }
 
       // Ensure required fields have valid values
@@ -129,6 +151,10 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
         return;
       }
 
+      // ✅ Form class should ONLY be set for JHS teachers (BS7-BS9)
+      // Primary teachers (KG-BS6) don't use form classes
+      const finalFormClass = (hasJHSClasses && formClass && isSeniorClass(formClass)) ? formClass : null;
+
       const updateData = {
         id: selectedTeacher.id,
         firstName: firstName,
@@ -138,10 +164,10 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
         teachingLevel: selectedTeacher.teaching_level || selectedTeacher.teachingLevel || 'PRIMARY', // Preserve teaching level
         subjects: teacherSubjects,
         classes: teacherClasses,
-        formClass: formClass || null, // Form Master's administrative class
-        primaryRole: primaryRole, // Use the determined primary role
-        all_roles: updatedRoles,
-        allRoles: updatedRoles
+        formClass: finalFormClass, // Only for JHS teachers
+        primaryRole: primaryRole, // class_teacher for KG-BS6, form_master for BS7-BS9
+        all_roles: updatedRolesArray,
+        allRoles: updatedRolesArray
       };
 
       console.log('Sending teacher update:', updateData);
@@ -411,13 +437,40 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
                     </p>
                   )}
 
-                  {/* Class Teacher Rule Info */}
-                  <div className="mb-3 p-3 bg-yellow-500/20 border-2 border-yellow-500/50 rounded-xl">
-                    <p className="text-xs text-white font-semibold mb-2">📝 Assignment Rules:</p>
-                    <ul className="text-xs text-white/90 space-y-1 list-disc list-inside">
-                      <li><strong>Class Teachers (KG-BS6):</strong> Can only handle ONE class with multiple subjects</li>
-                      <li><strong>Form Masters (BS7-BS9):</strong> Can teach multiple classes but admin for ONE specific form class</li>
-                      <li><strong>Subject Teachers:</strong> Can teach multiple classes, specific subjects only</li>
+                  {/* Class Teacher Rule Info with Routing Information */}
+                  <div className="mb-3 p-4 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-2 border-yellow-500/50 rounded-xl">
+                    <p className="text-sm text-white font-bold mb-2 flex items-center gap-2">
+                      <span className="text-lg">📝</span>
+                      Assignment Rules & Page Routing:
+                    </p>
+                    <ul className="text-xs text-white/95 space-y-2 list-none">
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-0.5">✓</span>
+                        <div>
+                          <strong>Primary Teachers (KG-BS6):</strong> Can only handle ONE class with multiple subjects
+                          <div className="mt-1 bg-blue-500/20 px-2 py-1 rounded border border-blue-400/30 text-blue-200">
+                            → Routes to <strong>Class Teacher Page</strong>
+                          </div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-0.5">✓</span>
+                        <div>
+                          <strong>JHS Teachers (BS7-BS9):</strong> Can teach multiple classes but admin for ONE specific form class
+                          <div className="mt-1 bg-purple-500/20 px-2 py-1 rounded border border-purple-400/30 text-purple-200">
+                            → Routes to <strong>Form Master Page</strong>
+                          </div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400 mt-0.5">✓</span>
+                        <div>
+                          <strong>Subject Teachers:</strong> Can teach multiple classes, specific subjects only
+                          <div className="mt-1 bg-gray-500/20 px-2 py-1 rounded border border-gray-400/30 text-gray-200">
+                            → Routes to <strong>Subject Teacher Page</strong>
+                          </div>
+                        </div>
+                      </li>
                     </ul>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
