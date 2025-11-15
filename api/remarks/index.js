@@ -159,6 +159,9 @@ export default async function handler(req, res) {
         attitude: remark.attitude,
         interest: remark.interest,
         remarks: remark.remarks,
+        comments: remark.comments || remark.conduct || '', // Include comments field
+        attendance: remark.attendance || '', // Include attendance field
+        attendance_total: remark.attendance_total || remark.attendanceTotal || 0,
         teacherId: remark.teacher_id,
         createdAt: remark.created_at,
         updatedAt: remark.updated_at,
@@ -187,8 +190,12 @@ export default async function handler(req, res) {
         attitude,
         interest,
         remarks,
+        comments,      // Added: Teacher comments
+        attendance,    // Added: Attendance days present
         teacherId
       } = req.body;
+
+      console.log('[remarks POST] Received data:', { studentId, className, term, academicYear, conduct, attitude, interest, remarks, comments, attendance });
 
       // Validation
       if (!studentId || !className || !term || !academicYear) {
@@ -213,10 +220,12 @@ export default async function handler(req, res) {
         result = await sql`
           UPDATE remarks
           SET
-            conduct = ${conduct || null},
+            conduct = ${conduct || comments || null},
             attitude = ${attitude || null},
             interest = ${interest || null},
             remarks = ${remarks || null},
+            comments = ${comments || conduct || null},
+            attendance = ${attendance || null},
             teacher_id = ${teacherId || null},
             class_name = ${className},
             updated_at = NOW()
@@ -228,11 +237,11 @@ export default async function handler(req, res) {
         result = await sql`
           INSERT INTO remarks (
             student_id, class_name, term, academic_year,
-            conduct, attitude, interest, remarks, teacher_id
+            conduct, attitude, interest, remarks, comments, attendance, teacher_id
           ) VALUES (
             ${studentId}, ${className}, ${term}, ${academicYear},
-            ${conduct || null}, ${attitude || null}, ${interest || null},
-            ${remarks || null}, ${teacherId || null}
+            ${conduct || comments || null}, ${attitude || null}, ${interest || null},
+            ${remarks || null}, ${comments || conduct || null}, ${attendance || null}, ${teacherId || null}
           )
           RETURNING *
         `;
@@ -249,10 +258,14 @@ export default async function handler(req, res) {
         attitude: result[0].attitude,
         interest: result[0].interest,
         remarks: result[0].remarks,
+        comments: result[0].comments || result[0].conduct || '',
+        attendance: result[0].attendance || '',
         teacherId: result[0].teacher_id,
         createdAt: result[0].created_at,
         updatedAt: result[0].updated_at
       };
+
+      console.log('[remarks POST] Returning mapped result:', mappedResult);
 
       return res.json({
         status: 'success',
