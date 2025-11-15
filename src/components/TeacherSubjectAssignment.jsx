@@ -224,10 +224,12 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
 
   if (!isOpen) return null;
 
-  const filteredTeachers = teachers.filter(t =>
-    `${t.first_name} ${t.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTeachers = teachers.filter(t => {
+    const fullName = `${t.first_name || t.firstName || ''} ${t.last_name || t.lastName || ''}`.toLowerCase();
+    const email = (t.email || '').toLowerCase();
+    const search = searchTerm.toLowerCase();
+    return fullName.includes(search) || email.includes(search);
+  });
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
@@ -266,7 +268,16 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
 
               {/* Teachers List */}
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {filteredTeachers.map(teacher => (
+                {filteredTeachers.length === 0 ? (
+                  <div className="text-center py-8 text-white/70">
+                    <p className="text-sm">
+                      {teachers.length === 0
+                        ? '⚠️ No teachers found. Please add teachers first.'
+                        : '🔍 No teachers match your search.'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredTeachers.map(teacher => (
                   <button
                     key={teacher.id}
                     onClick={() => handleTeacherSelect(teacher)}
@@ -277,7 +288,10 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
                     }`}
                     style={{ minHeight: '44px' }}
                   >
-                    <div className="font-bold text-base">{teacher.first_name} {teacher.last_name}</div>
+                    <div className="font-bold text-base">
+                      {teacher.first_name || teacher.firstName || 'No Name'} {teacher.last_name || teacher.lastName || ''}
+                    </div>
+                    <div className="text-xs text-white/70">{teacher.email || 'No email'}</div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {teacher.all_roles?.map(role => (
                         <span
@@ -293,7 +307,8 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
                       ))}
                     </div>
                   </button>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -302,8 +317,10 @@ const TeacherSubjectAssignment = ({ isOpen, onClose, teachers, allSubjects, allC
               <div className="lg:col-span-2 space-y-6">
                 {/* Teacher Info */}
                 <div className="bg-white/10 border-2 border-white/30 text-white rounded-xl p-4 backdrop-blur-md">
-                  <h3 className="text-xl font-bold">{selectedTeacher.first_name} {selectedTeacher.last_name}</h3>
-                  <p className="text-sm opacity-70 mt-1">📧 {selectedTeacher.email}</p>
+                  <h3 className="text-xl font-bold">
+                    {selectedTeacher.first_name || selectedTeacher.firstName || 'No Name'} {selectedTeacher.last_name || selectedTeacher.lastName || ''}
+                  </h3>
+                  <p className="text-sm opacity-70 mt-1">📧 {selectedTeacher.email || 'No email'}</p>
                   <div className="flex flex-wrap gap-2 mt-3 items-center">
                     {selectedTeacher.teaching_level && (
                       <span className="bg-yellow-500/90 border-2 border-white/50 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
