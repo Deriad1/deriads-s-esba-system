@@ -1606,7 +1606,7 @@ const ClassTeacherPage = () => {
 
                       return (
                         <tr key={studentId} className="border-b border-gray-200/50 hover:bg-yellow-50/50 transition-colors">
-                          <td className="p-4 font-semibold text-white">
+                          <td className="p-4 font-semibold text-gray-900">
                             {learner.firstName} {learner.lastName}
                           </td>
 
