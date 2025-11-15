@@ -145,12 +145,14 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
     },
     margin: { left: 15, right: 15 },
     didParseCell: function (data) {
-      // Remove content from empty cells in GRAND TOTAL row to prevent hyphens
+      // Handle GRAND TOTAL row - make hyphens invisible by setting text color to white
       const isGrandTotalRow = data.row.index === tableData.length - 1;
       if (isGrandTotalRow && data.column.index > 0 && data.column.index !== 3) {
-        // Set cell content to empty array to prevent hyphens
+        // Set cell content to empty and make text white (invisible)
         data.cell.text = [];
         data.cell.raw = '';
+        data.cell.styles = data.cell.styles || {};
+        data.cell.styles.textColor = [255, 255, 255]; // White text = invisible
       }
     },
     didDrawPage: function (data) {
