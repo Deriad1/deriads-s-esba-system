@@ -104,14 +104,14 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
     subject.remark || '-'
   ]);
 
-  // Add GRAND TOTAL row
+  // Add GRAND TOTAL row (use space instead of empty string to avoid hyphens)
   tableData.push([
     'GRAND TOTAL',
-    '',
-    '',
+    ' ',
+    ' ',
     totalScore.toString(),
-    '',
-    ''
+    ' ',
+    ' '
   ]);
 
   doc.autoTable({
