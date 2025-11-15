@@ -536,15 +536,25 @@ class PrintingService {
    */
   async _getFormattedStudentData(student, term, formMasterInfo = {}) {
     // Fetch student scores for all subjects
-    const reportData = await getStudentReportData(student.idNumber || student.id_number, term);
+    const studentId = student.idNumber || student.id_number;
+    const studentName = `${student.firstName || student.first_name} ${student.lastName || student.last_name}`;
+    console.log(`\n📊 [REPORT DEBUG] Generating report for: ${studentName} (${studentId})`);
+    console.log(`   Term: ${term}`);
+
+    const reportData = await getStudentReportData(studentId, term);
+    console.log(`   ✅ Fetched marks data:`, reportData);
+    console.log(`   📝 Number of subjects with marks: ${reportData.data?.length || 0}`);
+    if (reportData.data && reportData.data.length > 0) {
+      console.log(`   📚 Subjects with entered marks:`, reportData.data.map(m => m.subject).join(', '));
+    }
 
     // Get all subjects assigned to this class from teacher assignments
     const className = student.className || student.class_name;
-    console.log(`[DEBUG] Fetching subjects for class: ${className}`);
+    console.log(`\n🎓 [CLASS SUBJECTS] Fetching subjects for class: ${className}`);
     const classSubjectsResponse = await getClassSubjects(className);
-    console.log(`[DEBUG] API Response:`, JSON.stringify(classSubjectsResponse, null, 2));
-    console.log(`[DEBUG] Response status:`, classSubjectsResponse.status);
-    console.log(`[DEBUG] Response data:`, classSubjectsResponse.data);
+    console.log(`   API Response:`, JSON.stringify(classSubjectsResponse, null, 2));
+    console.log(`   Response status:`, classSubjectsResponse.status);
+    console.log(`   Response data:`, classSubjectsResponse.data);
 
     const allSubjectsForClass = classSubjectsResponse.status === 'success'
       ? (classSubjectsResponse.data?.subjects || [])
@@ -589,10 +599,19 @@ class PrintingService {
     reportData.data.forEach(score => {
       marksMap[score.subject] = score;
     });
+    console.log(`\n🗂️ [MARKS MAPPING] Created marks map with ${Object.keys(marksMap).length} subjects`);
+    console.log(`   Marks map keys:`, Object.keys(marksMap));
 
     // Format subjects data for the report - Include ALL subjects assigned to class
+    console.log(`\n📋 [FORMATTING] Formatting ${allSubjectsForClass.length} subjects for report...`);
     const subjectsData = allSubjectsForClass.map(subjectName => {
       const score = marksMap[subjectName];
+
+      if (!score) {
+        console.log(`   ⚠️ Subject "${subjectName}" - NO MARKS FOUND (will show dashes)`);
+      } else {
+        console.log(`   ✅ Subject "${subjectName}" - Found marks (Total: ${score.total})`);
+      }
 
       if (score) {
         // Subject has marks entered
