@@ -77,11 +77,14 @@ async function handleGet(req, res) {
       const classFilter = getClassFilterForUser(user);
 
       // Check if teacher is the class teacher for this student's class
-      const isClassTeacher = user.form_class === studentClass ||
-                            (user.classes && user.classes.includes(studentClass));
+      // Note: form_masters should still be filtered by their assigned subjects
+      const isClassTeacher = (user.primaryRole === 'class_teacher' ||
+                             user.all_roles?.includes('class_teacher')) &&
+                            (user.form_class === studentClass ||
+                            (user.classes && user.classes.includes(studentClass)));
 
       if (classFilter.hasRestriction && !isClassTeacher) {
-        // Regular teacher - filter by assigned subjects only
+        // Regular teacher and Form Masters - filter by assigned subjects only
         const teacherSubjects = user.subjects || [];
 
         if (term) {
@@ -157,14 +160,12 @@ async function handleGet(req, res) {
       // Get class filter to determine subject restrictions
       const classFilter = getClassFilterForUser(user);
 
-      // Check if user is class_teacher or form_master for this class
+      // Check if user is class_teacher for this class (form_masters should be filtered by subjects)
       const isClassTeacher = user.primaryRole === 'class_teacher' ||
-                             user.primaryRole === 'form_master' ||
-                             user.all_roles?.includes('class_teacher') ||
-                             user.all_roles?.includes('form_master');
+                             user.all_roles?.includes('class_teacher');
 
       if (classFilter.hasRestriction && !isClassTeacher) {
-        // Subject teachers: Filter by assigned subjects only
+        // Subject teachers and Form Masters: Filter by assigned subjects only
         const teacherSubjects = user.subjects || [];
 
         if (teacherSubjects.length === 0) {
@@ -196,7 +197,7 @@ async function handleGet(req, res) {
           `;
         }
       } else {
-        // Admin/Head Teacher/Class Teacher/Form Master - see all subjects
+        // Admin/Head Teacher/Class Teacher - see all subjects (form masters are filtered above)
         if (term) {
           result = await sql`
             SELECT s.*, st.first_name, st.last_name, st.class_name
