@@ -161,6 +161,39 @@ const ClassTeacherPage = () => {
   };
 
   useEffect(() => {
+    // Clean up old localStorage cache on page load to prevent quota exceeded
+    try {
+      const now = Date.now();
+      const ONE_HOUR = 60 * 60 * 1000;
+      let cleanedCount = 0;
+
+      Object.keys(localStorage).forEach(key => {
+        // Clean up old marks cache from all pages
+        if (key.startsWith('marks_') || key.startsWith('classTeacher_marks_') || key.startsWith('subjectTeacher_')) {
+          try {
+            const cached = JSON.parse(localStorage.getItem(key));
+            const age = now - (cached?.timestamp || 0);
+
+            // Remove cache older than 1 hour
+            if (!cached?.timestamp || age > ONE_HOUR) {
+              localStorage.removeItem(key);
+              cleanedCount++;
+            }
+          } catch (e) {
+            // Invalid cache entry, remove it
+            localStorage.removeItem(key);
+            cleanedCount++;
+          }
+        }
+      });
+
+      if (cleanedCount > 0) {
+        console.log(`🧹 Cleaned up ${cleanedCount} old cache entries`);
+      }
+    } catch (e) {
+      console.error('Error cleaning cache:', e);
+    }
+
     loadLearners();
   }, []);
 

@@ -74,7 +74,23 @@ const useOfflineSync = (options = {}) => {
     try {
       localStorage.setItem('pendingSync', JSON.stringify(pendingSync));
     } catch (error) {
-      console.error('Error saving pending sync data:', error);
+      if (error.name === 'QuotaExceededError') {
+        console.warn('📦 localStorage quota exceeded in offline sync - clearing old cache');
+        // Try to free up space by clearing old marks cache
+        try {
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('marks_') || key.startsWith('classTeacher_marks_') || key.startsWith('subjectTeacher_')) {
+              localStorage.removeItem(key);
+            }
+          });
+          // Try again after clearing
+          localStorage.setItem('pendingSync', JSON.stringify(pendingSync));
+        } catch (retryError) {
+          console.error('Still failed after clearing cache:', retryError);
+        }
+      } else {
+        console.error('Error saving pending sync data:', error);
+      }
     }
   }, [pendingSync]);
 
