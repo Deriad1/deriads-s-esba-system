@@ -102,14 +102,47 @@ const SubjectTeacherPage = () => {
   // Save marks to localStorage whenever they change (with timestamp for cache invalidation)
   useEffect(() => {
     if (Object.keys(marks).length > 0 && selectedClass && selectedSubject && selectedAssessment) {
-      const cacheKey = `marks_${selectedClass}_${selectedSubject}_${selectedAssessment}`;
-      const cacheData = {
-        marks: marks,
-        savedStudents: Array.from(savedStudents),
-        timestamp: Date.now(),
-        term: settings.term || DEFAULT_TERM
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      try {
+        // Only cache marks that have actual values to reduce storage size
+        const marksWithValues = {};
+        Object.entries(marks).forEach(([studentId, studentMarks]) => {
+          const hasValues = Object.values(studentMarks).some(val => val !== "" && val !== undefined && val !== null);
+          if (hasValues) {
+            marksWithValues[studentId] = studentMarks;
+          }
+        });
+
+        // Only save if there are marks with values
+        if (Object.keys(marksWithValues).length > 0) {
+          const cacheKey = `marks_${selectedClass}_${selectedSubject}_${selectedAssessment}`;
+          const cacheData = {
+            marks: marksWithValues,
+            savedStudents: Array.from(savedStudents),
+            timestamp: Date.now(),
+            term: settings.term || DEFAULT_TERM
+          };
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        }
+      } catch (e) {
+        // Handle quota exceeded or other localStorage errors
+        if (e.name === 'QuotaExceededError') {
+          console.warn('📦 localStorage quota exceeded - clearing old cache');
+          // Clear old cached marks to free up space
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('marks_') || key.startsWith('classTeacher_marks_')) {
+              try {
+                const cached = JSON.parse(localStorage.getItem(key));
+                const age = Date.now() - (cached?.timestamp || 0);
+                // Remove cache older than 1 hour
+                if (age > 60 * 60 * 1000) {
+                  localStorage.removeItem(key);
+                }
+              } catch {}
+            }
+          });
+        }
+        console.error('Error saving marks to localStorage:', e);
+      }
     }
   }, [marks, savedStudents, selectedClass, selectedSubject, selectedAssessment, settings.term]);
 
@@ -304,7 +337,12 @@ const SubjectTeacherPage = () => {
         });
 
         setMarks(newMarks);
-        setSavedStudents(alreadySaved);
+
+        // Merge with cached savedStudents to preserve the saved state
+        setSavedStudents(prev => {
+          const merged = new Set([...prev, ...alreadySaved]);
+          return merged;
+        });
       }
     } catch (error) {
       console.error("Error fetching existing marks:", error);
