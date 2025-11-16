@@ -33,10 +33,17 @@ const ClassTeacherPage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [printing, setPrinting] = useState(false);
-  const [selectedClass, setSelectedClass] = useState("");
+  // Load initial values from localStorage for persistence
+  const [selectedClass, setSelectedClass] = useState(() => {
+    return localStorage.getItem('classTeacher_selectedClass') || "";
+  });
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState(""); // For score entry
-  const [activeTab, setActiveTab] = useState("scores"); // "scores", "remarks", or "assessments"
+  const [selectedSubject, setSelectedSubject] = useState(() => {
+    return localStorage.getItem('classTeacher_selectedSubject') || "";
+  });
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('classTeacher_activeTab') || "scores";
+  });
   const [assessments, setAssessments] = useState([]); // Available assessments
   const [loadingAssessments, setLoadingAssessments] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState(null); // Selected assessment for score entry
@@ -157,6 +164,39 @@ const ClassTeacherPage = () => {
     loadLearners();
   }, []);
 
+  // Save selections to localStorage whenever they change
+  useEffect(() => {
+    if (selectedClass) {
+      localStorage.setItem('classTeacher_selectedClass', selectedClass);
+    }
+  }, [selectedClass]);
+
+  useEffect(() => {
+    if (selectedSubject) {
+      localStorage.setItem('classTeacher_selectedSubject', selectedSubject);
+    }
+  }, [selectedSubject]);
+
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('classTeacher_activeTab', activeTab);
+    }
+  }, [activeTab]);
+
+  // Save marks to localStorage whenever they change (with timestamp for cache invalidation)
+  useEffect(() => {
+    if (Object.keys(marks).length > 0 && selectedClass && selectedSubject) {
+      const cacheKey = `classTeacher_marks_${selectedClass}_${selectedSubject}`;
+      const cacheData = {
+        marks: marks,
+        savedStudents: Array.from(savedStudents),
+        timestamp: Date.now(),
+        term: settings.term || DEFAULT_TERM
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+    }
+  }, [marks, savedStudents, selectedClass, selectedSubject, settings.term]);
+
   const loadLearners = async () => {
     setLoading(true);
     try {
@@ -190,6 +230,33 @@ const ClassTeacherPage = () => {
     return learners.filter(l => l.className === selectedClass);
   }, [learners, selectedClass]);
 
+  // Auto-switch to scores tab when there's cached data on page load
+  useEffect(() => {
+    // Check if we have saved selections and cached marks
+    if (selectedClass && selectedSubject) {
+      const cacheKey = `classTeacher_marks_${selectedClass}_${selectedSubject}`;
+      const cachedData = localStorage.getItem(cacheKey);
+
+      if (cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          const cacheAge = Date.now() - parsed.timestamp;
+          const CACHE_DURATION = 60 * 60 * 1000; // 1 hour for auto-switch
+
+          // Auto-switch to scores tab if cache exists and is relatively recent
+          if (cacheAge < CACHE_DURATION && Object.keys(parsed.marks || {}).length > 0) {
+            console.log('📂 Auto-switching to scores tab with cached data');
+            setActiveTab('scores');
+          }
+        } catch (e) {
+          console.error('Error checking cached marks:', e);
+        }
+      }
+    }
+    // Only run on initial mount, not when selections change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array = run once on mount
+
   // Load marks from database when class/subject changes
   useEffect(() => {
     if (selectedClass && selectedSubject && filteredLearners.length > 0) {
@@ -202,6 +269,28 @@ const ClassTeacherPage = () => {
   const loadMarksFromDatabase = async () => {
     setLoading(true);
     try {
+      // Check localStorage cache first for instant loading
+      const cacheKey = `classTeacher_marks_${selectedClass}_${selectedSubject}`;
+      const cachedData = localStorage.getItem(cacheKey);
+
+      if (cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          const cacheAge = Date.now() - parsed.timestamp;
+          const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+          // If cache is fresh and matches current term, use it immediately
+          if (cacheAge < CACHE_DURATION && parsed.term === (settings.term || DEFAULT_TERM)) {
+            console.log('📦 Loading marks from cache (instant load)');
+            setMarks(parsed.marks);
+            setSavedStudents(new Set(parsed.savedStudents || []));
+            // Still fetch from database in background to ensure data is up-to-date
+          }
+        } catch (e) {
+          console.error('Error parsing cached marks:', e);
+        }
+      }
+
       const response = await getMarks(selectedClass, selectedSubject);
       const newMarks = {};
       const savedSet = new Set();
