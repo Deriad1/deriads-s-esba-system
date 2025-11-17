@@ -149,16 +149,16 @@ const EnterScoresView = ({
           </div>
         </div>
 
-        {/* Load Marks Button */}
+        {/* Refresh Marks Button */}
         {selectedClass && selectedSubject && selectedAssessment && (
           <div className="mt-4 flex justify-end">
             <button
               onClick={actions?.loadMarks}
               disabled={savingScores}
               className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              title="Load saved marks from database"
+              title="Refresh marks from database (marks auto-load when selections change)"
             >
-              📥 Load Saved Marks
+              🔄 Refresh Marks
             </button>
           </div>
         )}

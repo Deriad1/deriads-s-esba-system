@@ -1474,6 +1474,15 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     }
   };
 
+  // Auto-load marks when class, subject, and assessment are selected
+  useEffect(() => {
+    if (selectedClass && selectedSubject && selectedAssessment && filteredLearners.length > 0) {
+      console.log('🔄 Auto-loading marks for:', selectedClass, selectedSubject, selectedAssessment);
+      loadSubjectMarks();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClass, selectedSubject, selectedAssessment, filteredLearners.length]);
+
   // Handle mark change for Enter Scores view
   const handleSubjectMarkChange = (studentId, field, value) => {
     // Allow only numbers and decimal points
