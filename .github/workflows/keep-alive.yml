@@ -1,0 +1,24 @@
+name: Keep Render Service Alive
+
+on:
+  schedule:
+    # Ping every 14 minutes to prevent the service from spinning down
+    # (Render free tier spins down after 15 minutes of inactivity)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allows manual triggering from GitHub Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Render Service
+        run: |
+          echo "Pinging https://deriads-s-esba-system.onrender.com..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://deriads-s-esba-system.onrender.com)
+          echo "Response code: $response"
+          if [ $response -eq 200 ] || [ $response -eq 301 ] || [ $response -eq 302 ]; then
+            echo "Service is alive!"
+          else
+            echo "Warning: Service returned code $response"
+          fi
