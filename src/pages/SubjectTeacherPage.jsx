@@ -77,7 +77,7 @@ const SubjectTeacherPage = () => {
     // Clean up old localStorage cache on page load to prevent quota exceeded
     try {
       const now = Date.now();
-      const ONE_HOUR = 60 * 60 * 1000;
+      const TWO_MINUTES = 2 * 60 * 1000; // Reduced from 1 hour to 2 minutes
       let cleanedCount = 0;
 
       Object.keys(localStorage).forEach(key => {
@@ -87,8 +87,8 @@ const SubjectTeacherPage = () => {
             const cached = JSON.parse(localStorage.getItem(key));
             const age = now - (cached?.timestamp || 0);
 
-            // Remove cache older than 1 hour
-            if (!cached?.timestamp || age > ONE_HOUR) {
+            // Remove cache older than 2 minutes (more aggressive cleanup)
+            if (!cached?.timestamp || age > TWO_MINUTES) {
               localStorage.removeItem(key);
               cleanedCount++;
             }
@@ -105,6 +105,17 @@ const SubjectTeacherPage = () => {
       }
     } catch (e) {
       console.error('Error cleaning cache:', e);
+      // Emergency fallback: clear all cache if there's an error
+      if (e.name === 'QuotaExceededError') {
+        console.warn('🚨 Emergency: Clearing all cache due to quota exceeded');
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('marks_') || key.startsWith('classTeacher_marks_') || key.startsWith('subjectTeacher_')) {
+            try {
+              localStorage.removeItem(key);
+            } catch { }
+          }
+        });
+      }
     }
 
     loadLearners();
@@ -154,22 +165,27 @@ const SubjectTeacherPage = () => {
             timestamp: Date.now(),
             term: settings.term || DEFAULT_TERM
           };
-          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+
+          // Check cache size before saving (max 100KB)
+          const cacheString = JSON.stringify(cacheData);
+          const cacheSizeKB = new Blob([cacheString]).size / 1024;
+
+          if (cacheSizeKB > 100) {
+            console.warn(`⚠️ Cache too large (${cacheSizeKB.toFixed(1)}KB), skipping save`);
+            return;
+          }
+
+          localStorage.setItem(cacheKey, cacheString);
         }
       } catch (e) {
         // Handle quota exceeded or other localStorage errors
         if (e.name === 'QuotaExceededError') {
-          console.warn('📦 localStorage quota exceeded - clearing old cache');
-          // Clear old cached marks to free up space
+          console.warn('🚨 localStorage quota exceeded - emergency cleanup');
+          // Emergency: Clear ALL cache immediately
           Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('marks_') || key.startsWith('classTeacher_marks_')) {
+            if (key.startsWith('marks_') || key.startsWith('classTeacher_marks_') || key.startsWith('subjectTeacher_')) {
               try {
-                const cached = JSON.parse(localStorage.getItem(key));
-                const age = Date.now() - (cached?.timestamp || 0);
-                // Remove cache older than 1 hour
-                if (age > 60 * 60 * 1000) {
-                  localStorage.removeItem(key);
-                }
+                localStorage.removeItem(key);
               } catch { }
             }
           });
@@ -292,7 +308,7 @@ const SubjectTeacherPage = () => {
         try {
           const parsed = JSON.parse(cachedData);
           const cacheAge = Date.now() - parsed.timestamp;
-          const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+          const CACHE_DURATION = 2 * 60 * 1000; // Reduced from 5 minutes to 2 minutes
 
           // If cache is fresh and matches current term, use it immediately
           if (cacheAge < CACHE_DURATION && parsed.term === (settings.term || DEFAULT_TERM)) {
@@ -300,9 +316,16 @@ const SubjectTeacherPage = () => {
             setMarks(parsed.marks);
             setSavedStudents(new Set(parsed.savedStudents || []));
             // Still fetch from database in background to ensure data is up-to-date
+          } else {
+            // Cache expired, remove it
+            localStorage.removeItem(cacheKey);
           }
         } catch (e) {
           console.error('Error parsing cached marks:', e);
+          // Remove corrupted cache
+          try {
+            localStorage.removeItem(cacheKey);
+          } catch { }
         }
       }
 
