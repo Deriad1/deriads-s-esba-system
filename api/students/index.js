@@ -44,8 +44,10 @@ export default async function handler(req, res) {
 
 // GET /api/students - Get all students or filter by class
 // SECURITY: Only returns students from classes the teacher is assigned to
+// GET /api/students - Get all students or filter by class
+// SECURITY: Only returns students from classes the teacher is assigned to
 async function handleGet(req, res) {
-  const { className, term, year } = req.query;
+  const { className, term, year, id, idNumber } = req.query;
 
   try {
     // Authenticate user
@@ -54,7 +56,43 @@ async function handleGet(req, res) {
 
     let result;
 
-    if (className) {
+    if (id || idNumber) {
+      // Get specific student
+      // First verify access - teacher must have access to student's class
+      let studentQuery;
+
+      if (id) {
+        studentQuery = await sql`
+          SELECT * FROM students WHERE id = ${id}
+        `;
+      } else {
+        studentQuery = await sql`
+          SELECT * FROM students WHERE id_number = ${idNumber}
+        `;
+      }
+
+      if (studentQuery.length === 0) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Student not found'
+        });
+      }
+
+      const student = studentQuery[0];
+
+      // Verify teacher has access to this student's class
+      if (!requireClassAccess(user, student.class_name, res)) {
+        return; // Response already sent by requireClassAccess
+      }
+
+      // Map snake_case to camelCase
+      const mappedStudent = mapStudentFromDb(student);
+
+      return res.status(200).json({
+        status: 'success',
+        data: mappedStudent
+      });
+    } else if (className) {
       // Verify teacher has access to this specific class
       if (!requireClassAccess(user, className, res)) {
         return; // Response already sent by requireClassAccess

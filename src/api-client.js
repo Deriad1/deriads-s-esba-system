@@ -292,6 +292,31 @@ export const getLearners = async () => {
 };
 
 /**
+ * Get single student by ID (database ID or ID number)
+ */
+export const getStudent = async (studentId) => {
+  try {
+    // Check if it's a numeric ID or ID number string
+    const isNumeric = !isNaN(studentId) && !isNaN(parseFloat(studentId));
+    const paramName = isNumeric ? 'id' : 'idNumber';
+
+    const result = await apiCallWithOfflineSupport(
+      `/students?${paramName}=${encodeURIComponent(studentId)}`,
+      {},
+      {
+        storeName: STORES.STUDENTS,
+        cacheable: true,
+        mutation: false
+      }
+    );
+    return result;
+  } catch (error) {
+    console.error('Get student error:', error);
+    throw error;
+  }
+};
+
+/**
  * Get students by class
  */
 export const getStudentsByClass = async (className) => {
