@@ -287,9 +287,8 @@ const SubjectTeacherPage = () => {
   // Fetch and initialize marks when class/subject/assessment changes
   useEffect(() => {
     if (selectedClass && selectedSubject && selectedAssessment && filteredLearners.length > 0) {
-      // Clear marks state before fetching to prevent stale data from previous subject
-      setMarks({});
-      setSavedStudents(new Set());
+      // Don't clear state immediately - let fetchExistingMarks handle it
+      // This prevents showing empty state while data is loading
       fetchExistingMarks();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

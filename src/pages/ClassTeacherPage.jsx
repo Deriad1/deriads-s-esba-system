@@ -342,9 +342,8 @@ const ClassTeacherPage = () => {
   // Load marks from database when class/subject changes
   useEffect(() => {
     if (selectedClass && selectedSubject && filteredLearners.length > 0) {
-      // Clear marks state before fetching to prevent stale data from previous subject
-      setMarks({});
-      setSavedStudents(new Set());
+      // Don't clear state immediately - let loadMarksFromDatabase handle it
+      // This prevents showing empty state while data is loading
       loadMarksFromDatabase();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
