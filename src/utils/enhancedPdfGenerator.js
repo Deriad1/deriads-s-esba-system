@@ -94,7 +94,10 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   yPosition = boxY + 35;
 
   // Calculate total
-  const totalScore = subjectsData.reduce((sum, subject) => sum + (subject.total || 0), 0);
+  const totalScore = subjectsData.reduce((sum, subject) => {
+    const subjectTotal = parseFloat(subject.total);
+    return sum + (isNaN(subjectTotal) ? 0 : subjectTotal);
+  }, 0);
 
   const tableData = subjectsData.map((subject) => [
     subject.name?.toUpperCase() || '',
@@ -333,69 +336,69 @@ export const generateSubjectBroadsheetPDF = (students, subject, schoolInfo, clas
   yPosition += 5;
 
   // Process students and calculate scores
- const tableData = students.map((student, index) => {
-  const scores = student.scores || {};
+  const tableData = students.map((student, index) => {
+    const scores = student.scores || {};
 
-  // Get individual test scores (out of 15 each = 60 total)
-  const test1 = parseFloat(scores.test1) || 0;
-  const test2 = parseFloat(scores.test2) || 0;
-  const test3 = parseFloat(scores.test3) || 0;
-  const test4 = parseFloat(scores.test4) || 0;
+    // Get individual test scores (out of 15 each = 60 total)
+    const test1 = parseFloat(scores.test1) || 0;
+    const test2 = parseFloat(scores.test2) || 0;
+    const test3 = parseFloat(scores.test3) || 0;
+    const test4 = parseFloat(scores.test4) || 0;
 
-  // Calculate total of tests (out of 60)
-  const testsTotal = test1 + test2 + test3 + test4;
+    // Calculate total of tests (out of 60)
+    const testsTotal = test1 + test2 + test3 + test4;
 
-  // Convert 60 to 50 (class work scaled to 50%)
-  const scaledClassWorkNum = (testsTotal / 60) * 50;
-  const scaledClassWork = testsTotal > 0 ? scaledClassWorkNum.toFixed(1) : '-';
+    // Convert 60 to 50 (class work scaled to 50%)
+    const scaledClassWorkNum = (testsTotal / 60) * 50;
+    const scaledClassWork = testsTotal > 0 ? scaledClassWorkNum.toFixed(1) : '-';
 
-  // Get exam score (out of 100)
-  const examRaw = parseFloat(scores.exam) || 0;
+    // Get exam score (out of 100)
+    const examRaw = parseFloat(scores.exam) || 0;
 
-  // Convert exam to 50%
-  const scaledExamNum = (examRaw / 100) * 50;
-  const scaledExam = examRaw > 0 ? scaledExamNum.toFixed(1) : '-';
+    // Convert exam to 50%
+    const scaledExamNum = (examRaw / 100) * 50;
+    const scaledExam = examRaw > 0 ? scaledExamNum.toFixed(1) : '-';
 
-  // Final total (out of 100) - use database total if available, otherwise calculate
-  let finalTotal = '-';
-  if (scores.finalTotal) {
-    // Use pre-calculated total from formatScores
-    finalTotal = parseFloat(scores.finalTotal).toFixed(1);
-  } else if (testsTotal > 0 || examRaw > 0) {
-    // Calculate if not provided
-    finalTotal = (scaledClassWorkNum + scaledExamNum).toFixed(1);
-  }
+    // Final total (out of 100) - use database total if available, otherwise calculate
+    let finalTotal = '-';
+    if (scores.finalTotal) {
+      // Use pre-calculated total from formatScores
+      finalTotal = parseFloat(scores.finalTotal).toFixed(1);
+    } else if (testsTotal > 0 || examRaw > 0) {
+      // Calculate if not provided
+      finalTotal = (scaledClassWorkNum + scaledExamNum).toFixed(1);
+    }
 
-  // Get remark - use from scores if available (from formatScores), otherwise calculate
-  let remark = scores.remark || '-';
-  if (remark === '-' && finalTotal !== '-') {
-    const total = parseFloat(finalTotal);
-    if (total >= 80) remark = 'Excellent';
-    else if (total >= 70) remark = 'VERY GOOD';
-    else if (total >= 60) remark = 'GOOD';
-    else if (total >= 50) remark = 'Credit';
-    else if (total >= 40) remark = 'PASS';
-    else if (total > 0) remark = 'Fail';
-  }
+    // Get remark - use from scores if available (from formatScores), otherwise calculate
+    let remark = scores.remark || '-';
+    if (remark === '-' && finalTotal !== '-') {
+      const total = parseFloat(finalTotal);
+      if (total >= 80) remark = 'Excellent';
+      else if (total >= 70) remark = 'VERY GOOD';
+      else if (total >= 60) remark = 'GOOD';
+      else if (total >= 50) remark = 'Credit';
+      else if (total >= 40) remark = 'PASS';
+      else if (total > 0) remark = 'Fail';
+    }
 
-  // Get position - use from scores if available (from formatScores)
-  const position = scores.position?.toString() || '-';
+    // Get position - use from scores if available (from formatScores)
+    const position = scores.position?.toString() || '-';
 
-  return [
-    `${(student.firstName || student.first_name || '')} ${(student.lastName || student.last_name || '')}`.toUpperCase(),
-    test1 > 0 ? test1.toFixed(1) : '-',
-    test2 > 0 ? test2.toFixed(1) : '-',
-    test3 > 0 ? test3.toFixed(1) : '-',
-    test4 > 0 ? test4.toFixed(1) : '-',
-    testsTotal > 0 ? testsTotal.toFixed(1) : '-',
-    scaledClassWork,
-    examRaw > 0 ? examRaw.toFixed(1) : '-',
-    scaledExam,
-    finalTotal,
-    position,
-    remark
-  ];
-});
+    return [
+      `${(student.firstName || student.first_name || '')} ${(student.lastName || student.last_name || '')}`.toUpperCase(),
+      test1 > 0 ? test1.toFixed(1) : '-',
+      test2 > 0 ? test2.toFixed(1) : '-',
+      test3 > 0 ? test3.toFixed(1) : '-',
+      test4 > 0 ? test4.toFixed(1) : '-',
+      testsTotal > 0 ? testsTotal.toFixed(1) : '-',
+      scaledClassWork,
+      examRaw > 0 ? examRaw.toFixed(1) : '-',
+      scaledExam,
+      finalTotal,
+      position,
+      remark
+    ];
+  });
 
   // Create table
   doc.autoTable({
@@ -461,7 +464,7 @@ export const generateCompleteClassBroadsheetPDF = (students, subjects, allScores
   // Determine if this is a Primary or KG class
   // Primary: BS1-BS6, KG: KG1-KG2, JHS: BS7-BS9
   const isPrimaryOrKG = className.startsWith('KG') ||
-                        (className.startsWith('BS') && !['BS7', 'BS8', 'BS9'].includes(className));
+    (className.startsWith('BS') && !['BS7', 'BS8', 'BS9'].includes(className));
 
   let isFirstPage = true;
 
@@ -529,59 +532,59 @@ export const generateCompleteClassBroadsheetPDF = (students, subjects, allScores
 
     // Process students and calculate scores
     const tableData = students.map((student, studentIndex) => {
-  // Match by database ID (student_id in scores matches id in students)
-  const scores = allScores[subject]?.find(s => s.student_id === student.id) || {};
+      // Match by database ID (student_id in scores matches id in students)
+      const scores = allScores[subject]?.find(s => s.student_id === student.id) || {};
 
-  // Get individual test scores (out of 15 each = 60 total)
-  const test1 = parseFloat(scores.test1) || 0;
-  const test2 = parseFloat(scores.test2) || 0;
-  const test3 = parseFloat(scores.test3) || 0;
-  const test4 = parseFloat(scores.test4) || 0;
+      // Get individual test scores (out of 15 each = 60 total)
+      const test1 = parseFloat(scores.test1) || 0;
+      const test2 = parseFloat(scores.test2) || 0;
+      const test3 = parseFloat(scores.test3) || 0;
+      const test4 = parseFloat(scores.test4) || 0;
 
-  // Calculate total of tests (out of 60)
-  const testsTotal = test1 + test2 + test3 + test4;
+      // Calculate total of tests (out of 60)
+      const testsTotal = test1 + test2 + test3 + test4;
 
-  // Convert 60 to 50 (class work scaled to 50%) - show "-" if empty
-  const scaledClassWork = testsTotal > 0 ? (testsTotal / 60 * 50).toFixed(1) : '-';
+      // Convert 60 to 50 (class work scaled to 50%) - show "-" if empty
+      const scaledClassWork = testsTotal > 0 ? (testsTotal / 60 * 50).toFixed(1) : '-';
 
-  // Get exam score (out of 100)
-  const examRaw = parseFloat(scores.exam) || 0;
+      // Get exam score (out of 100)
+      const examRaw = parseFloat(scores.exam) || 0;
 
-  // Convert exam to 50% - show "-" if empty
-  const scaledExam = examRaw > 0 ? (examRaw / 100 * 50).toFixed(1) : '-';
+      // Convert exam to 50% - show "-" if empty
+      const scaledExam = examRaw > 0 ? (examRaw / 100 * 50).toFixed(1) : '-';
 
-  // Final total (out of 100) - show "-" if no marks entered
-  const finalTotal = (testsTotal > 0 || examRaw > 0)
-    ? (parseFloat(scaledClassWork || 0) + parseFloat(scaledExam || 0)).toFixed(1)
-    : '-';
+      // Final total (out of 100) - show "-" if no marks entered
+      const finalTotal = (testsTotal > 0 || examRaw > 0)
+        ? (parseFloat(scaledClassWork || 0) + parseFloat(scaledExam || 0)).toFixed(1)
+        : '-';
 
-  // Determine remark - show "-" if no marks
-  let remark = '-';
-  if (finalTotal !== '-') {
-    const total = parseFloat(finalTotal);
-    if (total >= 80) remark = 'Excellent';
-    else if (total >= 70) remark = 'Very Good';
-    else if (total >= 60) remark = 'Good';
-    else if (total >= 50) remark = 'Average';
-    else if (total >= 40) remark = 'Below Average';
-    else if (total > 0) remark = 'Poor';
-  }
+      // Determine remark - show "-" if no marks
+      let remark = '-';
+      if (finalTotal !== '-') {
+        const total = parseFloat(finalTotal);
+        if (total >= 80) remark = 'Excellent';
+        else if (total >= 70) remark = 'Very Good';
+        else if (total >= 60) remark = 'Good';
+        else if (total >= 50) remark = 'Average';
+        else if (total >= 40) remark = 'Below Average';
+        else if (total > 0) remark = 'Poor';
+      }
 
-  return [
-    `${(student.firstName || student.first_name || '')} ${(student.lastName || student.last_name || '')}`.toUpperCase(),
-    test1 > 0 ? test1.toFixed(1) : '-',
-    test2 > 0 ? test2.toFixed(1) : '-',
-    test3 > 0 ? test3.toFixed(1) : '-',
-    test4 > 0 ? test4.toFixed(1) : '-',
-    testsTotal > 0 ? testsTotal.toFixed(1) : '-',
-    scaledClassWork,
-    examRaw > 0 ? examRaw.toFixed(1) : '-',
-    scaledExam,
-    finalTotal,
-    scores.position?.toString() || '-',
-    remark
-  ];
-});
+      return [
+        `${(student.firstName || student.first_name || '')} ${(student.lastName || student.last_name || '')}`.toUpperCase(),
+        test1 > 0 ? test1.toFixed(1) : '-',
+        test2 > 0 ? test2.toFixed(1) : '-',
+        test3 > 0 ? test3.toFixed(1) : '-',
+        test4 > 0 ? test4.toFixed(1) : '-',
+        testsTotal > 0 ? testsTotal.toFixed(1) : '-',
+        scaledClassWork,
+        examRaw > 0 ? examRaw.toFixed(1) : '-',
+        scaledExam,
+        finalTotal,
+        scores.position?.toString() || '-',
+        remark
+      ];
+    });
 
     // Create table
     doc.autoTable({
@@ -633,7 +636,7 @@ export const generateCompleteClassBroadsheetPDF = (students, subjects, allScores
 export const combinePDFs = (pdfs) => {
   if (pdfs.length === 0) return null;
   if (pdfs.length === 1) return pdfs[0];
-  
+
   // For now, we'll return the first PDF as a placeholder
   // In a real implementation with jspdf-autotable, you would combine all PDFs
   return pdfs[0];
