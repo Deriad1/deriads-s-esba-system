@@ -254,7 +254,7 @@ const ClassTeacherPage = () => {
                 if (age > 60 * 60 * 1000) {
                   localStorage.removeItem(key);
                 }
-              } catch {}
+              } catch { }
             }
           });
         }
@@ -326,6 +326,9 @@ const ClassTeacherPage = () => {
   // Load marks from database when class/subject changes
   useEffect(() => {
     if (selectedClass && selectedSubject && filteredLearners.length > 0) {
+      // Clear marks state before fetching to prevent stale data from previous subject
+      setMarks({});
+      setSavedStudents(new Set());
       loadMarksFromDatabase();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -971,11 +974,11 @@ const ClassTeacherPage = () => {
       const studentId = learner.idNumber;
       const studentData = formMasterData[studentId];
       return studentData &&
-             ((studentData.remarks && studentData.remarks.trim() !== "") ||
-              (studentData.attendance && studentData.attendance.trim() !== "") ||
-              (studentData.attitude && studentData.attitude.trim() !== "") ||
-              (studentData.interest && studentData.interest.trim() !== "") ||
-              (studentData.comments && studentData.comments.trim() !== ""));
+        ((studentData.remarks && studentData.remarks.trim() !== "") ||
+          (studentData.attendance && studentData.attendance.trim() !== "") ||
+          (studentData.attitude && studentData.attitude.trim() !== "") ||
+          (studentData.interest && studentData.interest.trim() !== "") ||
+          (studentData.comments && studentData.comments.trim() !== ""));
     });
 
     if (studentsWithData.length === 0) return null;
@@ -1223,11 +1226,10 @@ const ClassTeacherPage = () => {
                 <button
                   key={cls}
                   onClick={() => setSelectedClass(cls)}
-                  className={`px-4 py-3 rounded-lg font-medium transition-all text-sm ${
-                    selectedClass === cls
-                      ? 'bg-blue-500 text-white border-2 border-blue-400 shadow-lg scale-105'
-                      : 'bg-white/10 text-white/90 border-2 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-102'
-                  }`}
+                  className={`px-4 py-3 rounded-lg font-medium transition-all text-sm ${selectedClass === cls
+                    ? 'bg-blue-500 text-white border-2 border-blue-400 shadow-lg scale-105'
+                    : 'bg-white/10 text-white/90 border-2 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-102'
+                    }`}
                   style={{ minHeight: '48px', touchAction: 'manipulation' }}
                 >
                   {cls}
@@ -1250,11 +1252,10 @@ const ClassTeacherPage = () => {
                   key={subj}
                   onClick={() => setSelectedSubject(subj)}
                   disabled={!selectedClass}
-                  className={`px-3 py-3 rounded-lg font-medium transition-all text-xs sm:text-sm ${
-                    selectedSubject === subj
-                      ? 'bg-purple-500 text-white border-2 border-purple-400 shadow-lg scale-105'
-                      : 'bg-white/10 text-white/90 border-2 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed'
-                  }`}
+                  className={`px-3 py-3 rounded-lg font-medium transition-all text-xs sm:text-sm ${selectedSubject === subj
+                    ? 'bg-purple-500 text-white border-2 border-purple-400 shadow-lg scale-105'
+                    : 'bg-white/10 text-white/90 border-2 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed'
+                    }`}
                   style={{ minHeight: '48px', touchAction: 'manipulation' }}
                 >
                   {subj}
@@ -1273,33 +1274,30 @@ const ClassTeacherPage = () => {
               <div className="flex gap-2 overflow-x-auto border-b border-white/20 pb-0 mb-4 scrollbar-hide">
                 <button
                   onClick={() => setActiveTab("scores")}
-                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${
-                    activeTab === "scores"
-                      ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
-                      : "text-white/70 hover:text-white hover:bg-white/5"
-                  }`}
+                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${activeTab === "scores"
+                    ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
+                    : "text-white/70 hover:text-white hover:bg-white/5"
+                    }`}
                   style={{ minHeight: '40px' }}
                 >
                   📊 Enter Scores
                 </button>
                 <button
                   onClick={() => setActiveTab("remarks")}
-                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${
-                    activeTab === "remarks"
-                      ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
-                      : "text-white/70 hover:text-white hover:bg-white/5"
-                  }`}
+                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${activeTab === "remarks"
+                    ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
+                    : "text-white/70 hover:text-white hover:bg-white/5"
+                    }`}
                   style={{ minHeight: '40px' }}
                 >
                   📝 Remarks
                 </button>
                 <button
                   onClick={() => setActiveTab("assessments")}
-                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${
-                    activeTab === "assessments"
-                      ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
-                      : "text-white/70 hover:text-white hover:bg-white/5"
-                  }`}
+                  className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-xs sm:text-sm ${activeTab === "assessments"
+                    ? "text-blue-400 border-b-2 border-blue-400 bg-white/10"
+                    : "text-white/70 hover:text-white hover:bg-white/5"
+                    }`}
                   style={{ minHeight: '40px' }}
                 >
                   📋 Assessments
@@ -1328,7 +1326,7 @@ const ClassTeacherPage = () => {
                       ) : (
                         <>
                           <svg className="h-3 w-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                           <span>Saved {lastAutoSaved && `${Math.round((new Date() - lastAutoSaved) / 1000)}s ago`}</span>
                         </>
@@ -1397,87 +1395,85 @@ const ClassTeacherPage = () => {
           {selectedClass && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
 
-            {/* Save Button */}
-            <button
-              className="w-full glass-button-primary px-4 py-3 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
-              style={{ minHeight: '44px', fontSize: '16px' }}
-              onClick={saveAllData}
-              disabled={saving || !selectedClass}
-            >
-              {saving ? "Saving..." : "💾 Save All Data"}
-            </button>
+              {/* Save Button */}
+              <button
+                className="w-full glass-button-primary px-4 py-3 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
+                style={{ minHeight: '44px', fontSize: '16px' }}
+                onClick={saveAllData}
+                disabled={saving || !selectedClass}
+              >
+                {saving ? "Saving..." : "💾 Save All Data"}
+              </button>
 
-            {/* Print Student Reports */}
-            <button
-              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-purple-400/50 hover:border-purple-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
-              style={{ minHeight: '44px', fontSize: '16px' }}
-              onClick={printStudentReports}
-              disabled={printing || !selectedClass}
-              title="Print individual terminal reports for all students"
-            >
-              {printing ? "⏳ Printing..." : "📄 Student Reports"}
-            </button>
+              {/* Print Student Reports */}
+              <button
+                className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-purple-400/50 hover:border-purple-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
+                style={{ minHeight: '44px', fontSize: '16px' }}
+                onClick={printStudentReports}
+                disabled={printing || !selectedClass}
+                title="Print individual terminal reports for all students"
+              >
+                {printing ? "⏳ Printing..." : "📄 Student Reports"}
+              </button>
 
-            {/* Print Subject Broadsheet */}
-            <button
-              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-orange-400/50 hover:border-orange-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
-              style={{ minHeight: '44px', fontSize: '16px' }}
-              onClick={printSubjectBroadsheet}
-              disabled={printing || !selectedClass || !selectedSubject}
-              title="Print broadsheet for selected subject only"
-            >
-              {printing ? "⏳ Printing..." : "📊 Subject Sheet"}
-            </button>
+              {/* Print Subject Broadsheet */}
+              <button
+                className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-orange-400/50 hover:border-orange-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
+                style={{ minHeight: '44px', fontSize: '16px' }}
+                onClick={printSubjectBroadsheet}
+                disabled={printing || !selectedClass || !selectedSubject}
+                title="Print broadsheet for selected subject only"
+              >
+                {printing ? "⏳ Printing..." : "📊 Subject Sheet"}
+              </button>
 
-            {/* Print Class Broadsheet */}
-            <button
-              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-green-400/50 hover:border-green-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
-              style={{ minHeight: '44px', fontSize: '16px' }}
-              onClick={printClassBroadsheet}
-              disabled={printing || !selectedClass}
-              title="Print complete broadsheet with all subjects"
-            >
-              {printing ? "⏳ Printing..." : "📋 Class Sheet"}
-            </button>
+              {/* Print Class Broadsheet */}
+              <button
+                className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-green-400/50 hover:border-green-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
+                style={{ minHeight: '44px', fontSize: '16px' }}
+                onClick={printClassBroadsheet}
+                disabled={printing || !selectedClass}
+                title="Print complete broadsheet with all subjects"
+              >
+                {printing ? "⏳ Printing..." : "📋 Class Sheet"}
+              </button>
 
-            <button
-              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${
-                showAnalytics
+              <button
+                className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${showAnalytics
                   ? "text-white border-2 border-purple-400 bg-white/30"
                   : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              style={{ minHeight: '44px', fontSize: '16px' }}
-              onClick={() => setShowAnalytics(!showAnalytics)}
-              disabled={!selectedClass}
-            >
-              {showAnalytics ? "📉 Hide Analytics" : "📈 Show Analytics"}
-            </button>
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                style={{ minHeight: '44px', fontSize: '16px' }}
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                disabled={!selectedClass}
+              >
+                {showAnalytics ? "📉 Hide Analytics" : "📈 Show Analytics"}
+              </button>
 
-            {/* Promote Students Button */}
-            <button
-              className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-emerald-400/50 hover:border-emerald-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg"
-              style={{ minHeight: '44px', fontSize: '16px' }}
-              onClick={() => setIsPromoteModalOpen(true)}
-              disabled={!selectedClass}
-              title="Promote students to next class"
-            >
-              📈 Promote Students
-            </button>
+              {/* Promote Students Button */}
+              <button
+                className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-emerald-400/50 hover:border-emerald-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg"
+                style={{ minHeight: '44px', fontSize: '16px' }}
+                onClick={() => setIsPromoteModalOpen(true)}
+                disabled={!selectedClass}
+                title="Promote students to next class"
+              >
+                📈 Promote Students
+              </button>
 
-            {/* Trend Analysis Button */}
-            <button
-              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${
-                showTrendAnalysis
+              {/* Trend Analysis Button */}
+              <button
+                className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${showTrendAnalysis
                   ? "text-white border-2 border-indigo-400 bg-white/30"
                   : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              style={{ minHeight: '44px', fontSize: '16px' }}
-              onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
-              disabled={!selectedClass}
-            >
-              {showTrendAnalysis ? "📉 Hide Trends" : "📊 Show Trends"}
-            </button>
-          </div>
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                style={{ minHeight: '44px', fontSize: '16px' }}
+                onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
+                disabled={!selectedClass}
+              >
+                {showTrendAnalysis ? "📉 Hide Trends" : "📊 Show Trends"}
+              </button>
+            </div>
           )}
 
           {/* Current Selection Info */}
@@ -1496,7 +1492,7 @@ const ClassTeacherPage = () => {
           {showAnalytics && selectedClass && (
             <div className="space-y-6 mt-6">
               <h2 className="text-lg sm:text-xl font-bold text-white text-shadow">Class Analytics</h2>
-              
+
               {analyticsData ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Summary Stats */}
@@ -1517,15 +1513,15 @@ const ClassTeacherPage = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Attendance Visualization */}
-                  <PerformanceChart 
+                  <PerformanceChart
                     data={[
                       { label: 'Students with Data', value: analyticsData.totalStudents },
                       { label: 'Attendance Records', value: analyticsData.attendanceRecords }
-                    ]} 
-                    title="Data Completion" 
-                    type="pie" 
+                    ]}
+                    title="Data Completion"
+                    type="pie"
                   />
                 </div>
               ) : (
@@ -1542,11 +1538,11 @@ const ClassTeacherPage = () => {
           {showTrendAnalysis && selectedClass && (
             <div className="space-y-6 mt-6">
               <h2 className="text-lg sm:text-xl font-bold text-white">Class Performance Trends</h2>
-              
+
               {classTrendData ? (
                 <div className="grid grid-cols-1 gap-6">
-                  <TrendAnalysisChart 
-                    data={classTrendData} 
+                  <TrendAnalysisChart
+                    data={classTrendData}
                     title={`Class Performance Trend: ${selectedClass}`}
                   />
                 </div>
@@ -1585,7 +1581,7 @@ const ClassTeacherPage = () => {
                             // Custom Assessment - Single Score Field
                             <>
                               <th className="p-4 text-center font-bold text-white">
-                                Score<br/>
+                                Score<br />
                                 <span className="text-xs font-normal text-white/80">
                                   /{selectedAssessment.max_score}
                                 </span>
@@ -1597,12 +1593,12 @@ const ClassTeacherPage = () => {
                           ) : (
                             // Standard Assessment - Full Score Entry
                             <>
-                              <th className="p-4 text-center font-bold text-white">Test 1<br/><span className="text-xs font-normal text-white/80">/15</span></th>
-                              <th className="p-4 text-center font-bold text-white">Test 2<br/><span className="text-xs font-normal text-white/80">/15</span></th>
-                              <th className="p-4 text-center font-bold text-white">Test 3<br/><span className="text-xs font-normal text-white/80">/15</span></th>
-                              <th className="p-4 text-center font-bold text-white">Test 4<br/><span className="text-xs font-normal text-white/80">/15</span></th>
-                              <th className="p-4 text-center font-bold text-white">Exam<br/><span className="text-xs font-normal text-white/80">/100</span></th>
-                              <th className="p-4 text-center font-bold text-white">Total<br/><span className="text-xs font-normal text-white/80">/100</span></th>
+                              <th className="p-4 text-center font-bold text-white">Test 1<br /><span className="text-xs font-normal text-white/80">/15</span></th>
+                              <th className="p-4 text-center font-bold text-white">Test 2<br /><span className="text-xs font-normal text-white/80">/15</span></th>
+                              <th className="p-4 text-center font-bold text-white">Test 3<br /><span className="text-xs font-normal text-white/80">/15</span></th>
+                              <th className="p-4 text-center font-bold text-white">Test 4<br /><span className="text-xs font-normal text-white/80">/15</span></th>
+                              <th className="p-4 text-center font-bold text-white">Exam<br /><span className="text-xs font-normal text-white/80">/100</span></th>
+                              <th className="p-4 text-center font-bold text-white">Total<br /><span className="text-xs font-normal text-white/80">/100</span></th>
                               <th className="p-4 text-center font-bold text-white">POS</th>
                               <th className="p-4 text-center font-bold text-white">REMARKS</th>
                               <th className="p-4 text-center font-bold text-white">Action</th>
@@ -1702,64 +1698,64 @@ const ClassTeacherPage = () => {
 
                     {/* Student Cards */}
                     <div className="space-y-4">
-                    {(() => {
-                      // Calculate scores and positions for all students (same logic as table)
-                      const isCustomAssessment = selectedAssessment && selectedAssessment.assessment_type !== 'standard';
+                      {(() => {
+                        // Calculate scores and positions for all students (same logic as table)
+                        const isCustomAssessment = selectedAssessment && selectedAssessment.assessment_type !== 'standard';
 
-                      const studentsWithScores = filteredLearners.map(learner => {
-                        const studentId = learner.idNumber;
-                        const studentMarks = marks[studentId] || {};
+                        const studentsWithScores = filteredLearners.map(learner => {
+                          const studentId = learner.idNumber;
+                          const studentMarks = marks[studentId] || {};
 
-                        let totalScore, remarks;
+                          let totalScore, remarks;
 
-                        if (isCustomAssessment) {
-                          totalScore = parseFloat(studentMarks.total) || 0;
-                          const percentage = (totalScore / parseFloat(selectedAssessment.max_score)) * 100;
-                          if (percentage >= 80) remarks = 'EXCELLENT';
-                          else if (percentage >= 70) remarks = 'VERY GOOD';
-                          else if (percentage >= 60) remarks = 'GOOD';
-                          else if (percentage >= 45) remarks = 'Credit';
-                          else if (percentage >= 35) remarks = 'PASS';
-                          else remarks = 'WEAK';
-                        } else {
-                          const scoreDetails = calculateScoreDetails(studentMarks);
-                          totalScore = scoreDetails.total;
-                          remarks = scoreDetails.remark;
-                        }
+                          if (isCustomAssessment) {
+                            totalScore = parseFloat(studentMarks.total) || 0;
+                            const percentage = (totalScore / parseFloat(selectedAssessment.max_score)) * 100;
+                            if (percentage >= 80) remarks = 'EXCELLENT';
+                            else if (percentage >= 70) remarks = 'VERY GOOD';
+                            else if (percentage >= 60) remarks = 'GOOD';
+                            else if (percentage >= 45) remarks = 'Credit';
+                            else if (percentage >= 35) remarks = 'PASS';
+                            else remarks = 'WEAK';
+                          } else {
+                            const scoreDetails = calculateScoreDetails(studentMarks);
+                            totalScore = scoreDetails.total;
+                            remarks = scoreDetails.remark;
+                          }
 
-                        return {
-                          ...learner,
-                          studentId,
-                          marks: studentMarks,
-                          total: totalScore,
-                          remarks: remarks
-                        };
-                      });
+                          return {
+                            ...learner,
+                            studentId,
+                            marks: studentMarks,
+                            total: totalScore,
+                            remarks: remarks
+                          };
+                        });
 
-                      const studentsWithPositions = calculatePositions(studentsWithScores, 'total');
+                        const studentsWithPositions = calculatePositions(studentsWithScores, 'total');
 
-                      // Render cards
-                      return studentsWithPositions.map(student => {
-                        const isSaved = savedStudents.has(student.studentId);
-                        const studentName = `${student.firstName} ${student.lastName}`;
+                        // Render cards
+                        return studentsWithPositions.map(student => {
+                          const isSaved = savedStudents.has(student.studentId);
+                          const studentName = `${student.firstName} ${student.lastName}`;
 
-                        return (
-                          <ScoreEntryCard
-                            key={student.studentId}
-                            studentId={student.studentId}
-                            studentName={studentName}
-                            marks={student.marks}
-                            isSaved={isSaved}
-                            position={student.position}
-                            remarks={student.remarks}
-                            onMarkChange={handleMarkChange}
-                            onSave={saveStudentScores}
-                            saving={saving}
-                            selectedAssessment={selectedAssessment}
-                          />
-                        );
-                      });
-                    })()}
+                          return (
+                            <ScoreEntryCard
+                              key={student.studentId}
+                              studentId={student.studentId}
+                              studentName={studentName}
+                              marks={student.marks}
+                              isSaved={isSaved}
+                              position={student.position}
+                              remarks={student.remarks}
+                              onMarkChange={handleMarkChange}
+                              onSave={saveStudentScores}
+                              saving={saving}
+                              selectedAssessment={selectedAssessment}
+                            />
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
                 </div>

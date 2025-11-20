@@ -170,7 +170,7 @@ const SubjectTeacherPage = () => {
                 if (age > 60 * 60 * 1000) {
                   localStorage.removeItem(key);
                 }
-              } catch {}
+              } catch { }
             }
           });
         }
@@ -271,6 +271,9 @@ const SubjectTeacherPage = () => {
   // Fetch and initialize marks when class/subject/assessment changes
   useEffect(() => {
     if (selectedClass && selectedSubject && selectedAssessment && filteredLearners.length > 0) {
+      // Clear marks state before fetching to prevent stale data from previous subject
+      setMarks({});
+      setSavedStudents(new Set());
       fetchExistingMarks();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,7 +355,7 @@ const SubjectTeacherPage = () => {
 
               // Mark as already saved if any marks exist
               const hasMarks = existingMark.test1 || existingMark.test2 ||
-                              existingMark.test3 || existingMark.test4 || existingMark.exam;
+                existingMark.test3 || existingMark.test4 || existingMark.exam;
               if (hasMarks) {
                 alreadySaved.add(studentId);
               }
@@ -456,12 +459,12 @@ const SubjectTeacherPage = () => {
     const test3 = Math.min(parseFloat(studentMarks.test3) || 0, 15);
     const test4 = Math.min(parseFloat(studentMarks.test4) || 0, 15);
     const exam = Math.min(parseFloat(studentMarks.exam) || 0, 100);
-    
+
     const testsTotal = test1 + test2 + test3 + test4;
     const testsScaled = (testsTotal / 60) * 50;
     const examScaled = (exam / 100) * 50;
     const finalTotal = testsScaled + examScaled;
-    
+
     return { testsTotal, testsScaled, examScaled, finalTotal };
   };
 
@@ -496,7 +499,7 @@ const SubjectTeacherPage = () => {
 
   const getRemarks = (finalTotal) => {
     if (finalTotal >= 80) return "Excellent";
-    if (finalTotal >= 70) return "Very Good"; 
+    if (finalTotal >= 70) return "Very Good";
     if (finalTotal >= 60) return "Good";
     if (finalTotal >= 50) return "Satisfactory";
     if (finalTotal >= 40) return "Fair";
@@ -532,21 +535,21 @@ const SubjectTeacherPage = () => {
     if (!isOnline) {
       const scoreData = isCustomAssessment
         ? {
-            assessmentId: parseInt(selectedAssessment),
-            studentId,
-            subject: selectedSubject,
-            score: parseFloat(studentMarks.score) || 0
-          }
+          assessmentId: parseInt(selectedAssessment),
+          studentId,
+          subject: selectedSubject,
+          score: parseFloat(studentMarks.score) || 0
+        }
         : {
-            studentId,
-            subject: selectedSubject,
-            term: settings.term || DEFAULT_TERM,
-            test1: parseFloat(studentMarks.test1) || 0,
-            test2: parseFloat(studentMarks.test2) || 0,
-            test3: parseFloat(studentMarks.test3) || 0,
-            test4: parseFloat(studentMarks.test4) || 0,
-            exam: parseFloat(studentMarks.exam) || 0
-          };
+          studentId,
+          subject: selectedSubject,
+          term: settings.term || DEFAULT_TERM,
+          test1: parseFloat(studentMarks.test1) || 0,
+          test2: parseFloat(studentMarks.test2) || 0,
+          test3: parseFloat(studentMarks.test3) || 0,
+          test4: parseFloat(studentMarks.test4) || 0,
+          exam: parseFloat(studentMarks.exam) || 0
+        };
 
       queueAction('scores', scoreData);
       setSavedStudents(prev => new Set(prev).add(studentId));
@@ -651,7 +654,7 @@ const SubjectTeacherPage = () => {
       const promises = filteredLearners.map(async (learner) => {
         const studentId = learner.idNumber || learner.LearnerID;
         const studentMarks = marks[studentId];
-        
+
         if (studentMarks) {
           try {
             const response = await updateStudentScores({
@@ -664,7 +667,7 @@ const SubjectTeacherPage = () => {
               test4: parseFloat(studentMarks.test4) || 0,
               exam: parseFloat(studentMarks.exam) || 0
             });
-            
+
             if (response.status === 'success') {
               successCount++;
               // Update saved students set
@@ -728,7 +731,7 @@ const SubjectTeacherPage = () => {
       const promises = learnersWithMarks.map(async (learner) => {
         const studentId = learner.idNumber || learner.LearnerID;
         const studentMarks = marks[studentId];
-        
+
         if (studentMarks) {
           try {
             const response = await updateStudentScores({
@@ -741,7 +744,7 @@ const SubjectTeacherPage = () => {
               test4: parseFloat(studentMarks.test4) || 0,
               exam: parseFloat(studentMarks.exam) || 0
             });
-            
+
             if (response.status === 'success') {
               successCount++;
               // Update saved students set
@@ -1046,11 +1049,10 @@ const SubjectTeacherPage = () => {
             </button>
 
             <button
-              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${
-                showAnalytics
-                  ? "text-white border-2 border-purple-400 bg-white/30"
-                  : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${showAnalytics
+                ? "text-white border-2 border-purple-400 bg-white/30"
+                : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               style={{ minHeight: '44px' }}
               onClick={() => setShowAnalytics(!showAnalytics)}
               disabled={!selectedClass || !selectedSubject}
@@ -1059,11 +1061,10 @@ const SubjectTeacherPage = () => {
             </button>
 
             <button
-              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${
-                showTrendAnalysis
-                  ? "text-white border-2 border-indigo-400 bg-white/30"
-                  : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${showTrendAnalysis
+                ? "text-white border-2 border-indigo-400 bg-white/30"
+                : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               style={{ minHeight: '44px' }}
               onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
               disabled={!selectedClass || !selectedSubject}
@@ -1088,10 +1089,10 @@ const SubjectTeacherPage = () => {
         {/* Analytics Dashboard */}
         {showAnalytics && (
           <div className="mt-6">
-            <AnalyticsDashboard 
-              analyticsData={getAnalyticsData()} 
-              className={selectedClass} 
-              subject={selectedSubject} 
+            <AnalyticsDashboard
+              analyticsData={getAnalyticsData()}
+              className={selectedClass}
+              subject={selectedSubject}
             />
           </div>
         )}
@@ -1100,10 +1101,10 @@ const SubjectTeacherPage = () => {
         {showTrendAnalysis && selectedClass && selectedSubject && (
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-white">Performance Trends</h2>
-            
+
             {classTrendData ? (
-              <TrendAnalysisChart 
-                data={classTrendData} 
+              <TrendAnalysisChart
+                data={classTrendData}
                 title={`Class Performance Trend: ${selectedClass} - ${selectedSubject}`}
               />
             ) : (
