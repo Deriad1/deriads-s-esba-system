@@ -228,55 +228,73 @@ const ClassTeacherPage = () => {
   }, [activeTab]);
 
   // Save marks to localStorage whenever they change (with timestamp for cache invalidation)
+  // Use a ref to debounce cache saves
+  const cacheSaveTimeoutRef = useRef(null);
+
   useEffect(() => {
-    if (Object.keys(marks).length > 0 && selectedClass && selectedSubject) {
-      try {
-        // Only cache marks that have actual values to reduce storage size
-        const marksWithValues = {};
-        Object.entries(marks).forEach(([studentId, studentMarks]) => {
-          const hasValues = Object.values(studentMarks).some(val => val !== "" && val !== undefined && val !== null);
-          if (hasValues) {
-            marksWithValues[studentId] = studentMarks;
-          }
-        });
+    // Clear any pending cache save
+    if (cacheSaveTimeoutRef.current) {
+      clearTimeout(cacheSaveTimeoutRef.current);
+    }
 
-        // Only save if there are marks with values
-        if (Object.keys(marksWithValues).length > 0) {
-          const cacheKey = `classTeacher_marks_${selectedClass}_${selectedSubject}`;
-          const cacheData = {
-            marks: marksWithValues,
-            savedStudents: Array.from(savedStudents),
-            timestamp: Date.now(),
-            term: settings.term || DEFAULT_TERM
-          };
-
-          // Check cache size before saving (max 100KB)
-          const cacheString = JSON.stringify(cacheData);
-          const cacheSizeKB = new Blob([cacheString]).size / 1024;
-
-          if (cacheSizeKB > 100) {
-            console.warn(`⚠️ Cache too large (${cacheSizeKB.toFixed(1)}KB), skipping save`);
-            return;
-          }
-
-          localStorage.setItem(cacheKey, cacheString);
-        }
-      } catch (e) {
-        // Handle quota exceeded or other localStorage errors
-        if (e.name === 'QuotaExceededError') {
-          console.warn('🚨 localStorage quota exceeded - emergency cleanup');
-          // Emergency: Clear ALL cache immediately
-          Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('classTeacher_marks_') || key.startsWith('subjectTeacher_marks_') || key.startsWith('marks_')) {
-              try {
-                localStorage.removeItem(key);
-              } catch { }
+    // Debounce cache saving to prevent excessive writes
+    cacheSaveTimeoutRef.current = setTimeout(() => {
+      if (Object.keys(marks).length > 0 && selectedClass && selectedSubject) {
+        try {
+          // Only cache marks that have actual values to reduce storage size
+          const marksWithValues = {};
+          Object.entries(marks).forEach(([studentId, studentMarks]) => {
+            const hasValues = Object.values(studentMarks).some(val => val !== "" && val !== undefined && val !== null);
+            if (hasValues) {
+              marksWithValues[studentId] = studentMarks;
             }
           });
+
+          // Only save if there are marks with values
+          if (Object.keys(marksWithValues).length > 0) {
+            const cacheKey = `classTeacher_marks_${selectedClass}_${selectedSubject}`;
+            const cacheData = {
+              marks: marksWithValues,
+              savedStudents: Array.from(savedStudents),
+              timestamp: Date.now(),
+              term: settings.term || DEFAULT_TERM
+            };
+
+            // Check cache size before saving (max 100KB)
+            const cacheString = JSON.stringify(cacheData);
+            const cacheSizeKB = new Blob([cacheString]).size / 1024;
+
+            if (cacheSizeKB > 100) {
+              console.warn(`⚠️ Cache too large (${cacheSizeKB.toFixed(1)}KB), skipping save`);
+              return;
+            }
+
+            localStorage.setItem(cacheKey, cacheString);
+          }
+        } catch (e) {
+          // Handle quota exceeded or other localStorage errors
+          if (e.name === 'QuotaExceededError') {
+            console.warn('🚨 localStorage quota exceeded - emergency cleanup');
+            // Emergency: Clear ALL cache immediately
+            Object.keys(localStorage).forEach(key => {
+              if (key.startsWith('classTeacher_marks_') || key.startsWith('subjectTeacher_marks_') || key.startsWith('marks_')) {
+                try {
+                  localStorage.removeItem(key);
+                } catch { }
+              }
+            });
+          }
+          console.error('Error saving marks to localStorage:', e);
         }
-        console.error('Error saving marks to localStorage:', e);
       }
-    }
+    }, 1000); // Wait 1 second after last change before saving
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (cacheSaveTimeoutRef.current) {
+        clearTimeout(cacheSaveTimeoutRef.current);
+      }
+    };
   }, [marks, savedStudents, selectedClass, selectedSubject, settings.term]);
 
   const loadLearners = async () => {
