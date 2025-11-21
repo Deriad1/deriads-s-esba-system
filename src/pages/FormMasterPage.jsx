@@ -304,7 +304,7 @@ const FormMasterPage = () => {
       setAvailableSubjects(subjectsToLoad);
 
       const marksPromises = subjectsToLoad.map(subject =>
-        getMarks(className, subject, selectedTerm)
+        getMarks(className, subject)
       );
 
       const marksResponses = await Promise.all(marksPromises);
@@ -777,7 +777,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         subject,
         schoolInfo,
         teacherName, // Pass the subject teacher's name
-        selectedTerm || DEFAULT_TERM // Use selected term
+        settings.term || DEFAULT_TERM // term from global settings
       );
 
       if (result.success) {
@@ -854,7 +854,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
           result = await printingService.printBulkStudentReportsServerSide(
             classStudents,
-            selectedTerm || DEFAULT_TERM,
+            schoolInfo.term,
             schoolInfo
           );
 
@@ -874,7 +874,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           // Fallback to client-side generation
           result = await printingService.printBulkStudentReports(
             classStudents,
-            selectedTerm || DEFAULT_TERM,
+            schoolInfo.term,
             schoolInfo
           );
 
@@ -891,7 +891,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         // Use client-side generation directly
         result = await printingService.printBulkStudentReports(
           classStudents,
-          selectedTerm || DEFAULT_TERM,
+          schoolInfo.term,
           schoolInfo
         );
 
@@ -924,8 +924,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       const schoolInfo = printingService.getSchoolInfo();
       const result = await printingService.printCompleteClassBroadsheet(
         selectedClass,
-        schoolInfo,
-        selectedTerm || DEFAULT_TERM
+        schoolInfo
       );
 
       if (result.success) {
@@ -1628,7 +1627,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           studentId,
           className: selectedClass,
           subject: selectedSubject,
-          term: selectedTerm || DEFAULT_TERM,
+          term: settings.term || DEFAULT_TERM,
           test1: studentMarks.test1 ?? "",
           test2: studentMarks.test2 ?? "",
           test3: studentMarks.test3 ?? "",
@@ -1693,7 +1692,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
               studentId,
               className: selectedClass,
               subject: selectedSubject,
-              term: selectedTerm || DEFAULT_TERM,
+              term: settings.term || DEFAULT_TERM,
               test1: studentMarks.test1 ?? "",
               test2: studentMarks.test2 ?? "",
               test3: studentMarks.test3 ?? "",
@@ -1921,125 +1920,140 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                   value={printClass}
                   onChange={(e) => handlePrintClassChange(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  {printing ? "Printing..." : `📄 Print All Reports (${printClassStudents.length})`}
+                >
+                  <option value="">Choose Class</option>
+                  {getUserClasses().map(cls => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
+              </div>
+
+              {printClass && (
+                <>
+                  {/* Print Actions - Glass Morphism */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <button
+                      onClick={printAllClassReports}
+                      disabled={printing || printClassStudents.length === 0}
+                      className={`bg-blue-600/80 backdrop-blur-md hover:bg-blue-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                    >
+                      {printing ? "Printing..." : `📄 Print All Reports (${printClassStudents.length})`}
                     </button>
 
-              <button
-                onClick={printCompleteBroadsheet}
-                disabled={printing}
-                className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-              >
-                📊 Print Complete Broadsheet
-              </button>
+                    <button
+                      onClick={printCompleteBroadsheet}
+                      disabled={printing}
+                      className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                    >
+                      📊 Print Complete Broadsheet
+                    </button>
 
-              <button
-                onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
-                disabled={printing}
-                className={`bg-purple-600/80 backdrop-blur-md hover:bg-purple-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-              >
-                📋 Print Subject Broadsheet
-              </button>
-            </div>
-
-            {/* Subject Dropdown - Glass Morphism */}
-            {showSubjectDropdown && (
-              <div className="bg-white/10 backdrop-blur-lg rounded-xl p-5 mb-6 border border-white/20">
-                <h4 className="text-lg font-bold mb-4 text-white drop-shadow-md">Select Subject</h4>
-                <div className="max-h-48 overflow-y-auto bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20">
-                  {printClassSubjects.length > 0 ? (
-                    printClassSubjects.map((subject) => (
-                      <button
-                        key={subject}
-                        onClick={() => {
-                          printSubjectBroadsheetFromPrintSection(subject);
-                          setShowSubjectDropdown(false);
-                        }}
-                        disabled={printing}
-                        className="w-full text-left px-4 py-3 mb-2 hover:bg-purple-500/30 rounded-lg transition-all duration-200 disabled:opacity-50 text-white font-medium backdrop-blur-sm border border-white/10 hover:border-white/30"
-                      >
-                        {subject}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="text-white/80 text-sm p-3">No subjects with marks found</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Student Selection - Glass Morphism */}
-            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-5 border border-white/20">
-              <h3 className="text-lg font-bold mb-4 text-white drop-shadow-md">Select Individual Students</h3>
-              <div className="flex items-center mb-4 bg-white/10 backdrop-blur-md p-3 rounded-lg border border-white/20">
-                <input
-                  type="checkbox"
-                  checked={selectedPrintStudents.length === printClassStudents.length && printClassStudents.length > 0}
-                  onChange={handleSelectAllPrintStudents}
-                  className="mr-3 w-5 h-5 text-purple-600 focus:ring-purple-500 rounded"
-                />
-                <label className="font-semibold text-white">Select All ({printClassStudents.length} students)</label>
-              </div>
-
-              <div className="max-h-60 overflow-y-auto bg-white/10 backdrop-blur-md rounded-lg p-3 mb-4 border border-white/20">
-                {printClassStudents.map((student) => (
-                  <div key={student.id} className="flex items-center mb-2 hover:bg-white/10 p-2 rounded-lg transition-all duration-200">
-                    <input
-                      type="checkbox"
-                      checked={selectedPrintStudents.includes(student.id)}
-                      onChange={() => handlePrintStudentSelection(student.id)}
-                      className="mr-3 w-4 h-4 text-purple-600 focus:ring-purple-500 rounded"
-                    />
-                    <label className="text-white font-medium">
-                      {student.firstName || student.first_name} {student.lastName || student.last_name} ({student.idNumber || student.id_number})
-                    </label>
+                    <button
+                      onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
+                      disabled={printing}
+                      className={`bg-purple-600/80 backdrop-blur-md hover:bg-purple-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                    >
+                      📋 Print Subject Broadsheet
+                    </button>
                   </div>
-                ))}
-              </div>
 
-              <button
-                onClick={printSelectedReports}
-                disabled={printing || selectedPrintStudents.length === 0}
-                className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 w-full text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 border border-white/30 shadow-lg ${printing || selectedPrintStudents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-              >
-                {printing ? "Printing..." : `Print Selected (${selectedPrintStudents.length})`}
-              </button>
+                  {/* Subject Dropdown - Glass Morphism */}
+                  {showSubjectDropdown && (
+                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-5 mb-6 border border-white/20">
+                      <h4 className="text-lg font-bold mb-4 text-white drop-shadow-md">Select Subject</h4>
+                      <div className="max-h-48 overflow-y-auto bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20">
+                        {printClassSubjects.length > 0 ? (
+                          printClassSubjects.map((subject) => (
+                            <button
+                              key={subject}
+                              onClick={() => {
+                                printSubjectBroadsheetFromPrintSection(subject);
+                                setShowSubjectDropdown(false);
+                              }}
+                              disabled={printing}
+                              className="w-full text-left px-4 py-3 mb-2 hover:bg-purple-500/30 rounded-lg transition-all duration-200 disabled:opacity-50 text-white font-medium backdrop-blur-sm border border-white/10 hover:border-white/30"
+                            >
+                              {subject}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="text-white/80 text-sm p-3">No subjects with marks found</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Student Selection - Glass Morphism */}
+                  <div className="bg-white/10 backdrop-blur-lg rounded-xl p-5 border border-white/20">
+                    <h3 className="text-lg font-bold mb-4 text-white drop-shadow-md">Select Individual Students</h3>
+                    <div className="flex items-center mb-4 bg-white/10 backdrop-blur-md p-3 rounded-lg border border-white/20">
+                      <input
+                        type="checkbox"
+                        checked={selectedPrintStudents.length === printClassStudents.length && printClassStudents.length > 0}
+                        onChange={handleSelectAllPrintStudents}
+                        className="mr-3 w-5 h-5 text-purple-600 focus:ring-purple-500 rounded"
+                      />
+                      <label className="font-semibold text-white">Select All ({printClassStudents.length} students)</label>
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto bg-white/10 backdrop-blur-md rounded-lg p-3 mb-4 border border-white/20">
+                      {printClassStudents.map((student) => (
+                        <div key={student.id} className="flex items-center mb-2 hover:bg-white/10 p-2 rounded-lg transition-all duration-200">
+                          <input
+                            type="checkbox"
+                            checked={selectedPrintStudents.includes(student.id)}
+                            onChange={() => handlePrintStudentSelection(student.id)}
+                            className="mr-3 w-4 h-4 text-purple-600 focus:ring-purple-500 rounded"
+                          />
+                          <label className="text-white font-medium">
+                            {student.firstName || student.first_name} {student.lastName || student.last_name} ({student.idNumber || student.id_number})
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={printSelectedReports}
+                      disabled={printing || selectedPrintStudents.length === 0}
+                      className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 w-full text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 border border-white/30 shadow-lg ${printing || selectedPrintStudents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                    >
+                      {printing ? "Printing..." : `Print Selected (${selectedPrintStudents.length})`}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-          </>
+          </div>
+        )}
+
+        {/* Teacher Leaderboard - At Bottom */}
+        <TeacherLeaderboard />
+
+        {/* Promote Students Modal */}
+        {isPromoteModalOpen && (
+          <PromoteStudentsModal
+            isOpen={isPromoteModalOpen}
+            onClose={() => setIsPromoteModalOpen(false)}
+            students={learners.filter(l => {
+              // Form Master can only promote students from their assigned form class
+              const assignedClass = user.formClass || user.classAssigned;
+              const studentClass = l.className || l.class_name;
+              return studentClass === assignedClass;
+            })}
+            userRole={user?.currentRole || user?.primaryRole}
+            currentTerm={settings.term || DEFAULT_TERM}
+            onPromotionComplete={() => {
+              setIsPromoteModalOpen(false);
+              window.location.reload();
+            }}
+          />
         )}
       </div>
-    </div>
-  )
-}
-
-{/* Teacher Leaderboard - At Bottom */ }
-<TeacherLeaderboard />
-
-{/* Promote Students Modal */ }
-{
-  isPromoteModalOpen && (
-    <PromoteStudentsModal
-      isOpen={isPromoteModalOpen}
-      onClose={() => setIsPromoteModalOpen(false)}
-      students={learners.filter(l => {
-        // Form Master can only promote students from their assigned form class
-        const assignedClass = user.formClass || user.classAssigned;
-        const studentClass = l.className || l.class_name;
-        return studentClass === assignedClass;
-      })}
-      userRole={user?.currentRole || user?.primaryRole}
-      currentTerm={selectedTerm || DEFAULT_TERM}
-      onPromotionComplete={() => {
-        setIsPromoteModalOpen(false);
-        window.location.reload();
-      }}
-    />
-  )
-}
-      </div >
-    </Layout >
+    </Layout>
   );
 };
 
