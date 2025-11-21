@@ -45,11 +45,10 @@ const ScoreEntryCard = React.memo(({
   const isCustomAssessment = selectedAssessment && selectedAssessment.assessment_type !== 'standard';
 
   return (
-    <div className={`glass-card-golden border-2 rounded-xl p-4 sm:p-5 shadow-xl transition-all ${
-      isSaved
+    <div className={`glass-card-golden border-2 rounded-xl p-4 sm:p-5 shadow-xl transition-all ${isSaved
         ? "border-green-400/80 shadow-green-500/20"
         : "border-yellow-400/60 hover:border-yellow-400/80 shadow-yellow-500/20"
-    }`}>
+      }`}>
       {/* Student Name Header */}
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/20">
         <div>
@@ -57,7 +56,7 @@ const ScoreEntryCard = React.memo(({
           {isSaved && (
             <span className="inline-flex items-center gap-1 mt-1 text-xs font-semibold text-green-400">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               Saved
             </span>
@@ -83,6 +82,8 @@ const ScoreEntryCard = React.memo(({
             </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9.]*"
               value={marks?.total || ""}
               onChange={(e) => onMarkChange(studentId, "total", e.target.value)}
               className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 text-center text-lg font-bold focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all"
@@ -114,6 +115,8 @@ const ScoreEntryCard = React.memo(({
                   <label className="block text-xs text-white/70 mb-1">Test {idx + 1}</label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9.]*"
                     value={marks?.[test] || ""}
                     onChange={(e) => onMarkChange(studentId, test, e.target.value)}
                     className="w-full px-3 py-2 bg-white border-2 border-gray-300 rounded-lg text-gray-900 text-center font-bold focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all"
@@ -131,6 +134,8 @@ const ScoreEntryCard = React.memo(({
             <label className="block text-xs font-semibold text-white/80 mb-2">Exam (100 marks)</label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9.]*"
               value={marks?.exam || ""}
               onChange={(e) => onMarkChange(studentId, "exam", e.target.value)}
               className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 text-center text-lg font-bold focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all"
@@ -163,11 +168,10 @@ const ScoreEntryCard = React.memo(({
       <button
         onClick={() => onSave(studentId)}
         disabled={saving}
-        className={`w-full mt-4 px-4 py-3 rounded-xl text-white font-bold transition-all shadow-lg ${
-          isSaved
+        className={`w-full mt-4 px-4 py-3 rounded-xl text-white font-bold transition-all shadow-lg ${isSaved
             ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
             : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-        } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+          } disabled:bg-gray-400 disabled:cursor-not-allowed`}
         style={{ minHeight: '44px', fontSize: '16px' }}
       >
         {saving ? (

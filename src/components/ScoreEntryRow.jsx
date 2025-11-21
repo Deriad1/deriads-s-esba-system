@@ -47,9 +47,8 @@ const ScoreEntryRow = React.memo(({
   const isCustomAssessment = selectedAssessment && selectedAssessment.assessment_type !== 'standard';
 
   return (
-    <tr className={`border-b border-gray-200/50 transition-colors ${
-      isSaved ? "bg-green-50/30" : "hover:bg-yellow-50/50"
-    }`}>
+    <tr className={`border-b border-gray-200/50 transition-colors ${isSaved ? "bg-green-50/30" : "hover:bg-yellow-50/50"
+      }`}>
       <td className="p-4 font-semibold text-gray-900">
         {studentName}
         {isSaved && <span className="ml-2 text-green-600 text-xs font-bold">✓ Saved</span>}
@@ -61,6 +60,8 @@ const ScoreEntryRow = React.memo(({
           <td className="p-2 text-center">
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9.]*"
               value={marks?.total || ""}
               onChange={(e) => onMarkChange(studentId, "total", e.target.value)}
               className="w-20 p-2 border-2 border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all font-semibold"
@@ -96,11 +97,10 @@ const ScoreEntryRow = React.memo(({
             <button
               onClick={() => onSave(studentId)}
               disabled={saving}
-              className={`w-full px-4 py-2 rounded-lg text-white text-sm font-semibold transition-all shadow-sm hover:shadow-md ${
-                isSaved
+              className={`w-full px-4 py-2 rounded-lg text-white text-sm font-semibold transition-all shadow-sm hover:shadow-md ${isSaved
                   ? "bg-green-600 hover:bg-green-700"
                   : "bg-gray-900 hover:bg-gray-800"
-              } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                } disabled:bg-gray-400 disabled:cursor-not-allowed`}
             >
               {saving ? "..." : isSaved ? "Update" : "Save"}
             </button>
@@ -113,6 +113,8 @@ const ScoreEntryRow = React.memo(({
             <td key={test} className="p-2 text-center">
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9.]*"
                 value={marks?.[test] || ""}
                 onChange={(e) => onMarkChange(studentId, test, e.target.value)}
                 className="w-16 p-2 border-2 border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all font-semibold"
@@ -126,6 +128,8 @@ const ScoreEntryRow = React.memo(({
           <td className="p-2 text-center">
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9.]*"
               value={marks?.exam || ""}
               onChange={(e) => onMarkChange(studentId, "exam", e.target.value)}
               className="w-20 p-2 border-2 border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all font-semibold"
@@ -165,11 +169,10 @@ const ScoreEntryRow = React.memo(({
             <button
               onClick={() => onSave(studentId)}
               disabled={saving}
-              className={`w-full px-4 py-2 rounded-lg text-white text-sm font-semibold transition-all shadow-sm hover:shadow-md ${
-                isSaved
+              className={`w-full px-4 py-2 rounded-lg text-white text-sm font-semibold transition-all shadow-sm hover:shadow-md ${isSaved
                   ? "bg-green-600 hover:bg-green-700"
                   : "bg-gray-900 hover:bg-gray-800"
-              } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                } disabled:bg-gray-400 disabled:cursor-not-allowed`}
             >
               {saving ? "..." : isSaved ? "Update" : "Save"}
             </button>
