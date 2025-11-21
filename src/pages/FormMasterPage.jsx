@@ -100,6 +100,7 @@ const FormMasterPage = () => {
       const response = await getClasses();
       if (response.status === 'success' && Array.isArray(response.data)) {
         const classNames = response.data.map(c => c.name || c.class_name).filter(Boolean);
+        console.log('Raw class names from API:', classNames); // Debug log
 
         // Filter for JHS classes (BS 7-9, Basic 7-9, JHS 1-3, etc.)
         const jhsClasses = classNames.filter(name => {
@@ -119,7 +120,12 @@ const FormMasterPage = () => {
             upperName.includes('GRADE 9');
         });
 
-        setAllClasses(jhsClasses);
+        if (jhsClasses.length === 0 && classNames.length > 0) {
+          console.warn('No JHS classes found matching filter. Showing all classes as fallback.');
+          setAllClasses(classNames);
+        } else {
+          setAllClasses(jhsClasses);
+        }
       }
     } catch (error) {
       console.error("Error loading classes:", error);
