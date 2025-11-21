@@ -1,4 +1,4 @@
-import Layout from "../components/Layout";
+﻿import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getLearners, updateFormMasterRemarks, getMarks, updateStudentScores, getClassPerformanceTrends, getClassSubjects, getStudentsByClass, getCustomAssessments, saveCustomAssessmentScores, getTeachers, getClasses, getSubjects } from '../api-client';
@@ -10,7 +10,7 @@ import TeacherLeaderboard from "../components/TeacherLeaderboard";
 import ManageClassView from "../components/formmaster/ManageClassView";
 import EnterScoresView from "../components/formmaster/EnterScoresView";
 import PromoteStudentsModal from "../components/PromoteStudentsModal";
-import { DEFAULT_TERM } from "../constants/terms";
+import { DEFAULT_TERM, AVAILABLE_TERMS } from "../constants/terms";
 import { useGlobalSettings } from "../context/GlobalSettingsContext";
 
 const FormMasterPage = () => {
@@ -75,6 +75,9 @@ const FormMasterPage = () => {
   const [allSubjects, setAllSubjects] = useState([]);
   const [availableSubjects, setAvailableSubjects] = useState([]); // Subjects available for the selected class
 
+  const [selectedTerm, setSelectedTerm] = useState(() => {
+    return localStorage.getItem('formMaster_selectedTerm') || settings.term || DEFAULT_TERM;
+  });
   // Get all classes (not filtered by user)
   const getUserClasses = () => {
     return allClasses;
@@ -84,6 +87,11 @@ const FormMasterPage = () => {
   const getUserSubjects = () => {
     return allSubjects;
   };
+
+  // Persist selectedTerm to localStorage
+  useEffect(() => {
+    localStorage.setItem('formMaster_selectedTerm', selectedTerm);
+  }, [selectedTerm]);
 
   useEffect(() => {
     loadLearners();
@@ -508,13 +516,13 @@ const FormMasterPage = () => {
     // Calculate tests total (out of 60)
     const testsTotal = test1 + test2 + test3 + test4;
 
-    // Convert tests to 50% (60 marks → 50%)
+    // Convert tests to 50% (60 marks â†’ 50%)
     const classScore50 = (testsTotal / 60) * 50;
 
     // Get exam score (out of 100)
     const examScore = parseFloat(updatedMarks.exam || 0);
 
-    // Convert exam to 50% (100 marks → 50%)
+    // Convert exam to 50% (100 marks â†’ 50%)
     const examScore50 = (examScore / 100) * 50;
 
     // Calculate final total (out of 100)
@@ -1540,7 +1548,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Auto-load marks when class, subject, and assessment are selected
   useEffect(() => {
     if (selectedClass && selectedSubject && selectedAssessment && filteredLearners.length > 0) {
-      console.log('🔄 Auto-loading marks for:', selectedClass, selectedSubject, selectedAssessment);
+      console.log('ðŸ”„ Auto-loading marks for:', selectedClass, selectedSubject, selectedAssessment);
       loadSubjectMarks();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1809,6 +1817,26 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6 text-white">Form Master Dashboard</h1>
 
+        {/* Term Selector - Glass Morphism */}
+        <div className="mb-6 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+          <h2 className="text-sm font-semibold text-white/80 mb-3">Select Term</h2>
+          <div className="flex gap-3 flex-wrap">
+            {AVAILABLE_TERMS.map((term) => (
+              <button
+                key={term}
+                onClick={() => setSelectedTerm(term)}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                  selectedTerm === term
+                    ? 'bg-blue-500/80 backdrop-blur-lg text-white shadow-xl border border-blue-300/50 scale-105'
+                    : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
+                }`}
+              >
+                {term}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Main View Switcher - Glass Morphism */}
         <div className="mb-6 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
           <div className="flex gap-4 flex-wrap">
@@ -1819,7 +1847,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
                 }`}
             >
-              <span className="text-2xl mr-2">🎓</span>
+              <span className="text-2xl mr-2">ðŸŽ“</span>
               Manage Class
             </button>
             <button
@@ -1829,7 +1857,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
                 }`}
             >
-              <span className="text-2xl mr-2">✏️</span>
+              <span className="text-2xl mr-2">âœï¸</span>
               Enter Scores
             </button>
             <button
@@ -1839,14 +1867,14 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
                 }`}
             >
-              <span className="text-2xl mr-2">🖨️</span>
+              <span className="text-2xl mr-2">ðŸ–¨ï¸</span>
               Print Section
             </button>
             <button
               onClick={() => setIsPromoteModalOpen(true)}
               className="flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-green-500/80 to-blue-500/80 backdrop-blur-lg text-white hover:from-green-600/90 hover:to-blue-600/90 shadow-xl border border-white/30 hover:scale-105"
             >
-              <span className="text-2xl mr-2">📈</span>
+              <span className="text-2xl mr-2">ðŸ“ˆ</span>
               Promote Students
             </button>
           </div>
@@ -1938,7 +1966,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                       className={`bg-blue-600/80 backdrop-blur-md hover:bg-blue-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                     >
-                      {printing ? "Printing..." : `📄 Print All Reports (${printClassStudents.length})`}
+                      {printing ? "Printing..." : `ðŸ“„ Print All Reports (${printClassStudents.length})`}
                     </button>
 
                     <button
@@ -1947,7 +1975,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                       className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                     >
-                      📊 Print Complete Broadsheet
+                      ðŸ“Š Print Complete Broadsheet
                     </button>
 
                     <button
@@ -1956,7 +1984,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                       className={`bg-purple-600/80 backdrop-blur-md hover:bg-purple-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                     >
-                      📋 Print Subject Broadsheet
+                      ðŸ“‹ Print Subject Broadsheet
                     </button>
                   </div>
 
