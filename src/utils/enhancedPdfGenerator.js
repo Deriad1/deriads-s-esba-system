@@ -78,7 +78,7 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   doc.text('VACATION DATE:', 110, boxY + 17);
   doc.setFont('helvetica', 'normal');
   console.log('[PDF Generator] Vacation date:', formMasterInfo.vacationDate);
-  doc.text(formMasterInfo.vacationDate || '__________', 155, boxY + 17);
+  doc.text(formMasterInfo.vacationDate || schoolInfo.vacationDate || '__________', 155, boxY + 17);
 
   doc.setFont('helvetica', 'bold');
   doc.text('ACADEMIC YEAR:', 20, boxY + 27);
@@ -88,7 +88,7 @@ export const generateStudentReportPDF = (student, subjectsData, schoolInfo, form
   doc.setFont('helvetica', 'bold');
   doc.text('NEXT TERM BEGINS:', 110, boxY + 27);
   doc.setFont('helvetica', 'normal');
-  doc.text(formMasterInfo.reopeningDate || schoolInfo.nextTermBegins || '__________', 165, boxY + 27);
+  doc.text(formMasterInfo.reopeningDate || schoolInfo.reopeningDate || schoolInfo.nextTermBegins || '__________', 165, boxY + 27);
 
   // Subjects Table
   yPosition = boxY + 35;

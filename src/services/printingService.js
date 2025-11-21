@@ -5,6 +5,18 @@ import {
   combinePDFs
 } from "../utils/enhancedPdfGenerator";
 import { getStudentReportData, getTeachers, getFormMasterRemarks, getMarks, getClassBroadsheet, getClassSubjects } from '../api-client';
+
+// Map internal subject identifiers to the names displayed in PDFs/reports
+const SUBJECT_DISPLAY_MAP = {
+  'Science': 'Integrated Science',
+  'Religious & Moral Education': 'Religious and Moral Education'
+};
+
+// Map class subject names to the keys used in the marks table for lookup
+const SUBJECT_NORMALIZE_MAP = {
+  'Science': 'Integrated Science',
+  'Religious & Moral Education': 'Religious and Moral Education'
+};
 import { calculateRemark } from '../utils/gradeHelpers';
 
 
@@ -39,7 +51,7 @@ class PrintingService {
       return { success: false, message: "Failed to generate student report: " + error.message };
     }
   }
-  
+
   /**
    * Generate and download reports for multiple students (Bulk Print)
    * @param {Array} students - Array of student objects
@@ -176,10 +188,13 @@ class PrintingService {
 
         // Format subjects data with position calculations - Include ALL subjects assigned to class
         const subjectsData = allSubjectsForClass.map(subjectName => {
+          // Translate internal subject name to display name if needed
+          const displayName = SUBJECT_DISPLAY_MAP[subjectName] || subjectName;
           const score = marksMap[subjectName];
 
           if (score) {
             // Subject has marks entered
+            const testName = displayName; // use displayName for PDF output
             const test1 = parseFloat(score.test1) || 0;
             const test2 = parseFloat(score.test2) || 0;
             const test3 = parseFloat(score.test3) || 0;
@@ -203,7 +218,7 @@ class PrintingService {
             }
 
             return {
-              name: subjectName,
+              name: displayName,
               cscore: classScore.toFixed(1),
               exam: parseFloat(score.exam) || 0,
               total,
@@ -213,7 +228,7 @@ class PrintingService {
           } else {
             // Subject has no marks - return placeholder
             return {
-              name: subjectName,
+              name: displayName,
               cscore: '-',
               exam: '-',
               total: '-',
@@ -632,12 +647,16 @@ class PrintingService {
     // Format subjects data for the report - Include ALL subjects assigned to class
     console.log(`\n📋 [FORMATTING] Formatting ${allSubjectsForClass.length} subjects for report...`);
     const subjectsData = allSubjectsForClass.map(subjectName => {
-      const score = marksMap[subjectName];
+      // Determine the display name for PDF output
+      const displayName = SUBJECT_DISPLAY_MAP[subjectName] || subjectName;
+      // Normalize the subject name to match the marks table key
+      const lookupName = SUBJECT_NORMALIZE_MAP[subjectName] || subjectName;
+      const score = marksMap[lookupName];
 
       if (!score) {
-        console.log(`   ⚠️ Subject "${subjectName}" - NO MARKS FOUND (will show dashes)`);
+        console.log(`   ⚠️ Subject "${subjectName}" (lookup: "${lookupName}") - NO MARKS FOUND (will show dashes)`);
       } else {
-        console.log(`   ✅ Subject "${subjectName}" - Found marks (Total: ${score.total})`);
+        console.log(`   ✅ Subject "${subjectName}" (lookup: "${lookupName}") - Found marks (Total: ${score.total})`);
       }
 
       if (score) {
@@ -657,7 +676,7 @@ class PrintingService {
         let position = "-";
         if (broadsheetData && broadsheetData.status === 'success') {
           position = this.calculatePosition(
-            subjectName,
+            subjectName, // Use original subjectName for position calculation if needed
             total,
             student.id,
             broadsheetData.data
@@ -665,7 +684,7 @@ class PrintingService {
         }
 
         return {
-          name: subjectName,
+          name: displayName,
           cscore: classScore.toFixed(1),
           exam: parseFloat(score.exam) || 0,
           total,
@@ -675,7 +694,7 @@ class PrintingService {
       } else {
         // Subject has no marks - return placeholder
         return {
-          name: subjectName,
+          name: displayName,
           cscore: '-',
           exam: '-',
           total: '-',
@@ -809,7 +828,7 @@ class PrintingService {
 
     return finalPDF;
   }
-  
+
   /**
    * Generate and download a subject broadsheet
    * @param {String} className - Class name
@@ -865,16 +884,18 @@ class PrintingService {
       return { success: false, message: "Failed to generate subject broadsheet: " + error.message };
     }
   }
-  
+
   /**
    * Generate and download a complete class broadsheet with all subjects
    * @param {String} className - Class name
    * @param {Object} schoolInfo - School information
+   * @param {String} term - Term for the broadsheet (optional)
    */
-  async printCompleteClassBroadsheet(className, schoolInfo) {
+  async printCompleteClassBroadsheet(className, schoolInfo, term = null) {
     try {
       // Fetch broadsheet data
-      const broadsheetData = await getClassBroadsheet(className);
+      const termToUse = term || schoolInfo.term;
+      const broadsheetData = await getClassBroadsheet(className, termToUse);
 
       // Check for error status
       if (broadsheetData.status === 'error') {
@@ -920,8 +941,8 @@ class PrintingService {
 
             // Check if teacher teaches this class
             const teachesThisClass = teacherClasses.includes(className) ||
-                                     teacher.classAssigned === className ||
-                                     teacher.form_class === className;
+              teacher.classAssigned === className ||
+              teacher.form_class === className;
 
             if (teachesThisClass && teacherSubjects.length > 0) {
               teacherSubjects.forEach(subject => {
@@ -951,7 +972,7 @@ class PrintingService {
       return { success: false, message: "Failed to generate complete class broadsheet: " + error.message };
     }
   }
-  
+
   /**
    * Format scores for display
    * @param {Object} scores - Raw scores data
@@ -994,7 +1015,7 @@ class PrintingService {
       position
     };
   }
-  
+
   /**
    * Calculate student position in a subject
    * @param {String} subject - Subject name
@@ -1094,7 +1115,7 @@ class PrintingService {
         return `${position}th`;
     }
   }
-  
+
   /**
    * Get remarks based on score
    * @param {Number} score - Student's score
@@ -1104,7 +1125,7 @@ class PrintingService {
     // Use standardized remark calculation from gradeHelpers
     return calculateRemark(score);
   }
-  
+
   /**
    * Get school information from localStorage or defaults
    * @returns {Object} School information
@@ -1128,7 +1149,9 @@ class PrintingService {
           logo: settings.schoolLogo || defaults.logo,
           term: settings.term || defaults.term,
           academicYear: settings.academicYear || defaults.academicYear,
-          headmaster: settings.headmaster || defaults.headmaster
+          headmaster: settings.headmaster || defaults.headmaster,
+          vacationDate: settings.vacationDate || "",
+          reopeningDate: settings.reopeningDate || ""
         };
       } catch (e) {
         console.error('Error parsing globalSettings:', e);

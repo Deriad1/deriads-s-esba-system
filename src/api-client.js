@@ -82,6 +82,11 @@ async function apiCall(endpoint, options = {}) {
     const data = await response.json();
 
     if (!response.ok) {
+      // Handle 401 Unauthorized globally
+      if (response.status === 401) {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      }
+
       // Create error with message and attach full response data
       const error = new Error(data.message || `API error: ${response.status}`);
       error.response = data; // Attach full response data including errors/details
@@ -537,9 +542,28 @@ export const getMarks = async (className, subject, term = null) => {
     return result;
   } catch (error) {
     console.error('Get marks error:', error);
+  }
+};
+
+/**
+ * Delete marks for a class, subject, and term
+ */
+export const deleteMarks = async (className, subject, term) => {
+  try {
+    const result = await apiCall(
+      `/marks?className=${encodeURIComponent(className)}&subject=${encodeURIComponent(subject)}&term=${encodeURIComponent(term)}`,
+      {
+        method: 'DELETE'
+      }
+    );
+
+    return result;
+  } catch (error) {
+    console.error('Delete marks error:', error);
     throw error;
   }
 };
+
 
 /**
  * Get student report data (all subjects)
@@ -1086,8 +1110,20 @@ export const changeTeacherPassword = async (teacherId, currentPassword, newPassw
  */
 export const getSubjects = async () => {
   try {
-    // Placeholder - would call /api/subjects
-    console.warn('getSubjects: Using placeholder data');
+    const result = await apiCallWithOfflineSupport(
+      '/subjects',
+      {},
+      {
+        storeName: STORES.SUBJECTS,
+        cacheable: true,
+        mutation: false
+      }
+    );
+    return result;
+  } catch (error) {
+    console.error('Get subjects error:', error);
+
+    // Fallback to default subjects if API fails (offline with no cache)
     return {
       status: 'success',
       data: [
@@ -1098,19 +1134,16 @@ export const getSubjects = async () => {
         { id: 5, name: 'Ghanaian Language', code: 'GHA' },
         { id: 6, name: 'Religious & Moral Education', code: 'RME' },
         { id: 7, name: 'ICT', code: 'ICT' },
-        { id: 8, name: 'Creative Arts', code: 'CA' },
-        { id: 9, name: 'Physical Education', code: 'PE' }
-      ]
+        { id: 8, name: 'French', code: 'FRE' },
+        { id: 9, name: 'Career Technology', code: 'CT' },
+        { id: 10, name: 'Creative Arts', code: 'CA' },
+        { id: 11, name: 'Our World Our People', code: 'OWOP' }
+      ],
+      fallback: true
     };
-  } catch (error) {
-    console.error('Get subjects error:', error);
-    throw error;
   }
 };
 
-/**
- * Add new subject
- */
 export const addSubject = async (subjectData) => {
   try {
     console.warn('addSubject: API endpoint not yet implemented');

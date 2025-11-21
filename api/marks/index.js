@@ -24,6 +24,9 @@ export default async function handler(req, res) {
       case 'PUT':
         return await handlePut(req, res);
 
+      case 'DELETE':
+        return await handleDelete(req, res);
+
       default:
         return res.status(405).json({
           status: 'error',
@@ -79,9 +82,9 @@ async function handleGet(req, res) {
       // Check if teacher is the class teacher for this student's class
       // Note: form_masters should still be filtered by their assigned subjects
       const isClassTeacher = (user.primaryRole === 'class_teacher' ||
-                             user.all_roles?.includes('class_teacher')) &&
-                            (user.form_class === studentClass ||
-                            (user.classes && user.classes.includes(studentClass)));
+        user.all_roles?.includes('class_teacher')) &&
+        (user.form_class === studentClass ||
+          (user.classes && user.classes.includes(studentClass)));
 
       if (classFilter.hasRestriction && !isClassTeacher) {
         // Regular teacher and Form Masters - filter by assigned subjects only
@@ -162,7 +165,7 @@ async function handleGet(req, res) {
 
       // Check if user is class_teacher for this class (form_masters should be filtered by subjects)
       const isClassTeacher = user.primaryRole === 'class_teacher' ||
-                             user.all_roles?.includes('class_teacher');
+        user.all_roles?.includes('class_teacher');
 
       if (classFilter.hasRestriction && !isClassTeacher) {
         // Subject teachers and Form Masters: Filter by assigned subjects only
@@ -375,6 +378,55 @@ async function handlePost(req, res) {
     });
   } catch (error) {
     throw error;
+  }
+}
+
+// DELETE /api/marks - Delete marks by class, subject, and term
+// SECURITY: Only allows deletion for classes AND subjects the teacher is assigned to
+async function handleDelete(req, res) {
+  const { className, subject, term } = req.query;
+
+  try {
+    // Authenticate user
+    const user = requireAuth(req, res);
+    if (!user) return;
+
+    // Validate required parameters
+    if (!className || !subject || !term) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required parameters: className, subject, and term are required'
+      });
+    }
+
+    // Check class access
+    if (!requireClassAccess(user, className, res)) return;
+
+    // Check subject access
+    if (!requireSubjectAccess(user, className, subject, res)) return;
+
+    // Delete marks for the specified class, subject, and term
+    const result = await sql`
+      DELETE FROM marks
+      WHERE class_name = ${className}
+        AND subject = ${subject}
+        AND term = ${term}
+      RETURNING id
+    `;
+
+    return res.status(200).json({
+      status: 'success',
+      message: `Deleted ${result.length} mark(s) for ${subject} in ${className} (${term})`,
+      deletedCount: result.length
+    });
+
+  } catch (error) {
+    console.error('Delete marks error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete marks',
+      error: error.message
+    });
   }
 }
 

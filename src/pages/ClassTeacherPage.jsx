@@ -2,7 +2,7 @@ import Layout from "../components/Layout";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { getLearners, updateFormMasterRemarks, getClassPerformanceTrends, updateStudentScores, getMarks, getClasses, getSubjects } from '../api-client';
+import { getLearners, updateFormMasterRemarks, getClassPerformanceTrends, updateStudentScores, getMarks, deleteMarks, getClasses, getSubjects } from '../api-client';
 import PerformanceChart from "../components/PerformanceChart";
 import TrendAnalysisChart from "../components/TrendAnalysisChart";
 import printingService from "../services/printingService";
@@ -11,7 +11,7 @@ import ScoreEntryRow from "../components/ScoreEntryRow";
 import ScoreEntryCard from "../components/ScoreEntryCard";
 import PromoteStudentsModal from "../components/PromoteStudentsModal";
 import { calculatePositions, calculateScoreDetails, getRemarksColorClass } from "../utils/gradeHelpers";
-import { DEFAULT_TERM } from "../constants/terms";
+import { DEFAULT_TERM, AVAILABLE_TERMS } from "../constants/terms";
 import { useGlobalSettings } from "../context/GlobalSettingsContext";
 
 const ClassTeacherPage = () => {
@@ -61,6 +61,10 @@ const ClassTeacherPage = () => {
   // State for all classes and subjects
   const [allClasses, setAllClasses] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
+  // Local term selection (overrides global setting)
+  const [selectedTerm, setSelectedTerm] = useState(() => {
+    return localStorage.getItem('classTeacher_selectedTerm') || settings.term || DEFAULT_TERM;
+  });
 
   // Get all classes (not filtered by user)
   const getUserClasses = () => {
@@ -227,6 +231,12 @@ const ClassTeacherPage = () => {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (selectedTerm) {
+      localStorage.setItem('classTeacher_selectedTerm', selectedTerm);
+    }
+  }, [selectedTerm]);
+
   // Save marks to localStorage whenever they change (with timestamp for cache invalidation)
   // Use a ref to debounce cache saves
   const cacheSaveTimeoutRef = useRef(null);
@@ -257,7 +267,7 @@ const ClassTeacherPage = () => {
               marks: marksWithValues,
               savedStudents: Array.from(savedStudents),
               timestamp: Date.now(),
-              term: settings.term || DEFAULT_TERM
+              term: selectedTerm
             };
 
             // Check cache size before saving (max 100KB)
@@ -382,7 +392,7 @@ const ClassTeacherPage = () => {
           const CACHE_DURATION = 2 * 60 * 1000; // Reduced from 5 minutes to 2 minutes
 
           // If cache is fresh and matches current term, use it immediately
-          if (cacheAge < CACHE_DURATION && parsed.term === (settings.term || DEFAULT_TERM)) {
+          if (cacheAge < CACHE_DURATION && parsed.term === selectedTerm) {
             console.log('📦 Loading marks from cache (instant load)');
             setMarks(parsed.marks);
             setSavedStudents(new Set(parsed.savedStudents || []));
@@ -400,7 +410,7 @@ const ClassTeacherPage = () => {
         }
       }
 
-      const response = await getMarks(selectedClass, selectedSubject);
+      const response = await getMarks(selectedClass, selectedSubject, selectedTerm);
       const newMarks = {};
       const savedSet = new Set();
 
@@ -414,7 +424,17 @@ const ClassTeacherPage = () => {
 
       // Populate with saved marks from database
       if (response.status === 'success' && response.data) {
+        console.log(`📊 Processing ${response.data.length} marks from API/cache for subject: "${selectedSubject}"`);
+
         response.data.forEach(mark => {
+          // Ensure we only process marks for the selected subject
+          // This prevents "mirroring" if the API/cache returns mixed data
+          // Use case-insensitive comparison with trimmed whitespace for robustness
+          const markSubject = (mark.subject || '').trim().toLowerCase();
+          const currentSubject = (selectedSubject || '').trim().toLowerCase();
+
+          if (markSubject !== currentSubject) return;
+
           // API returns id_number field from the students table
           const studentId = mark.id_number || mark.student_id || mark.studentId;
           if (newMarks[studentId]) {
@@ -760,7 +780,7 @@ const ClassTeacherPage = () => {
         studentId,
         className: selectedClass,
         subject: selectedSubject,
-        term: settings.term || DEFAULT_TERM, // You might want to make this dynamic
+        term: selectedTerm,
         test1: studentMarks.test1 || "0",
         test2: studentMarks.test2 || "0",
         test3: studentMarks.test3 || "0",
@@ -868,7 +888,7 @@ const ClassTeacherPage = () => {
             studentId,
             className: selectedClass,
             subject: selectedSubject,
-            term: settings.term || DEFAULT_TERM,
+            term: selectedTerm,
             test1: studentMarks.test1 || "0",
             test2: studentMarks.test2 || "0",
             test3: studentMarks.test3 || "0",
@@ -923,6 +943,75 @@ const ClassTeacherPage = () => {
     }
   };
 
+  // Clear all marks for the selected class, subject, and term
+  const clearMarks = async () => {
+    if (!selectedClass || !selectedSubject || !selectedTerm) {
+      showNotification({
+        type: "error",
+        message: "Please select class, subject, and term first.",
+        duration: 5000
+      });
+      return;
+    }
+
+    // Confirm deletion
+    const confirmed = window.confirm(
+      `⚠️ WARNING: This will permanently delete ALL marks for:\n\n` +
+      `Class: ${selectedClass}\n` +
+      `Subject: ${selectedSubject}\n` +
+      `Term: ${selectedTerm}\n\n` +
+      `This action CANNOT be undone!\n\n` +
+      `Are you sure you want to continue?`
+    );
+
+    if (!confirmed) return;
+
+    setBatchSaving(true);
+    try {
+      const response = await deleteMarks(selectedClass, selectedSubject, selectedTerm);
+
+      if (response.status === 'success') {
+        // Clear local state
+        const emptyMarks = {};
+        filteredLearners.forEach(learner => {
+          const studentId = learner.idNumber;
+          emptyMarks[studentId] = {
+            test1: "", test2: "", test3: "", test4: "", exam: ""
+          };
+        });
+        setMarks(emptyMarks);
+        setSavedStudents(new Set());
+
+        // Clear cache
+        const cacheKey = `classTeacher_marks_${selectedClass}_${selectedSubject}`;
+        localStorage.removeItem(cacheKey);
+        clearDraft(selectedClass, selectedSubject);
+
+        showNotification({
+          type: "success",
+          message: response.message || `Marks cleared successfully for ${selectedSubject}!`,
+          duration: 5000
+        });
+      } else {
+        showNotification({
+          type: "error",
+          message: `Error clearing marks: ${response.message}`,
+          duration: 7000
+        });
+      }
+    } catch (error) {
+      console.error("Clear marks error:", error);
+      showNotification({
+        type: "error",
+        message: `Error clearing marks: ${error.message}`,
+        duration: 7000
+      });
+    } finally {
+      setBatchSaving(false);
+    }
+  };
+
+
   // Save all remarks and attendance
   const saveAllData = async () => {
     if (!selectedClass) {
@@ -953,7 +1042,7 @@ const ClassTeacherPage = () => {
             const response = await updateFormMasterRemarks({
               studentId: databaseId, // Use database ID for API
               className: selectedClass,
-              term: settings.term || DEFAULT_TERM,
+              term: selectedTerm,
               academicYear: settings.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
               remarks: studentData?.remarks || "",
               attendance: studentData?.attendance || "",
@@ -1080,7 +1169,7 @@ const ClassTeacherPage = () => {
       const schoolInfo = printingService.getSchoolInfo();
       const result = await printingService.printBulkStudentReportsServerSide(
         filteredLearners,
-        schoolInfo.term,
+        selectedTerm, // Use selected term
         schoolInfo,
         (progress) => console.log(`Printing progress: ${progress}%`)
       );
@@ -1141,7 +1230,7 @@ const ClassTeacherPage = () => {
         selectedSubject,
         schoolInfo,
         teacherName,
-        settings.term || DEFAULT_TERM // term from global settings
+        selectedTerm // Use selected term
       );
       if (result.success) {
         showNotification({
@@ -1184,7 +1273,8 @@ const ClassTeacherPage = () => {
       const schoolInfo = printingService.getSchoolInfo();
       const result = await printingService.printCompleteClassBroadsheet(
         selectedClass,
-        schoolInfo
+        schoolInfo,
+        selectedTerm // Use selected term
       );
       if (result.success) {
         showNotification({
@@ -1279,6 +1369,26 @@ const ClassTeacherPage = () => {
             {getUserClasses().length === 0 && (
               <p className="text-white/60 text-sm italic">No classes available</p>
             )}
+          </div>
+
+          {/* Term Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-white/90 mb-3">📅 Select Term</label>
+            <div className="grid grid-cols-3 gap-2">
+              {AVAILABLE_TERMS.map(term => (
+                <button
+                  key={term}
+                  onClick={() => setSelectedTerm(term)}
+                  className={`px-4 py-3 rounded-lg font-medium transition-all text-sm ${selectedTerm === term
+                    ? 'bg-green-500 text-white border-2 border-green-400 shadow-lg scale-105'
+                    : 'bg-white/10 text-white/90 border-2 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-102'
+                    }`}
+                  style={{ minHeight: '48px', touchAction: 'manipulation' }}
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Subject Selection Cards */}
@@ -1391,6 +1501,15 @@ const ClassTeacherPage = () => {
                       className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors font-medium text-sm flex items-center gap-1"
                     >
                       {batchSaving ? "⏳ Saving..." : "💾 Save All"}
+                    </button>
+
+                    <button
+                      onClick={clearMarks}
+                      disabled={batchSaving || !selectedClass || !selectedSubject}
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors font-medium text-sm flex items-center gap-1"
+                      title="Delete all marks for this class, subject, and term"
+                    >
+                      {batchSaving ? "⏳ Clearing..." : "🗑️ Clear Marks"}
                     </button>
                   </div>
                 </div>
