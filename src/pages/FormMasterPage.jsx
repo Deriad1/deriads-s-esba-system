@@ -73,6 +73,7 @@ const FormMasterPage = () => {
   // State for all classes and subjects
   const [allClasses, setAllClasses] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
+  const [availableSubjects, setAvailableSubjects] = useState([]); // Subjects available for the selected class
 
   // Get all classes (not filtered by user)
   const getUserClasses = () => {
@@ -99,7 +100,17 @@ const FormMasterPage = () => {
       const response = await getClasses();
       if (response.status === 'success' && Array.isArray(response.data)) {
         const classNames = response.data.map(c => c.name || c.class_name).filter(Boolean);
-        setAllClasses(classNames);
+
+        // Filter for JHS classes (BS 7-9)
+        const jhsClasses = classNames.filter(name => {
+          const upperName = name.toUpperCase();
+          return upperName.includes('BS 7') ||
+            upperName.includes('BS 8') ||
+            upperName.includes('BS 9') ||
+            upperName.includes('JHS');
+        });
+
+        setAllClasses(jhsClasses);
       }
     } catch (error) {
       console.error("Error loading classes:", error);
@@ -138,11 +149,11 @@ const FormMasterPage = () => {
         setLearners(response.data || []);
       } else {
         console.error('Learners error:', response.message);
-        showNotification({message: 'Error loading students: ' + response.message, type: 'error'});
+        showNotification({ message: 'Error loading students: ' + response.message, type: 'error' });
       }
     } catch (error) {
       console.error("Error loading learners:", error);
-      showNotification({message: "Error loading students: " + error.message, type: 'error'});
+      showNotification({ message: "Error loading students: " + error.message, type: 'error' });
     } finally {
       setLoading('learners', false);
     }
@@ -236,7 +247,7 @@ const FormMasterPage = () => {
       setErrors(newErrors);
     } catch (error) {
       console.error("Error loading saved data:", error);
-      showNotification({message: "Error loading saved data: " + error.message, type: 'error'});
+      showNotification({ message: "Error loading saved data: " + error.message, type: 'error' });
     }
   };
 
@@ -244,10 +255,40 @@ const FormMasterPage = () => {
   const loadMarksDataForClass = async (className) => {
     setLoading('marks', true, 'Loading marks data...');
     try {
-      const userSubjects = getUserSubjects();
-      if (userSubjects.length === 0) return;
+      // Determine if this is the Form Class
+      const isFormClass = className === user?.formClass;
 
-      const marksPromises = userSubjects.map(subject => 
+      let subjectsToLoad = [];
+
+      if (isFormClass) {
+        // Form Class: Load ALL class subjects
+        try {
+          const subjectsResponse = await getClassSubjects(className);
+          if (subjectsResponse.status === 'success' && Array.isArray(subjectsResponse.data)) {
+            subjectsToLoad = subjectsResponse.data;
+          } else {
+            console.warn('Could not load class subjects, falling back to teacher subjects');
+            subjectsToLoad = user?.subjects || [];
+          }
+        } catch (error) {
+          console.error('Error loading class subjects:', error);
+          subjectsToLoad = user?.subjects || [];
+        }
+      } else {
+        // Other Classes: Load ONLY teacher's subjects
+        subjectsToLoad = user?.subjects || [];
+      }
+
+      if (subjectsToLoad.length === 0) {
+        console.warn('No subjects to load for class:', className);
+        setMarksData({});
+        setAvailableSubjects([]);
+        return;
+      }
+
+      setAvailableSubjects(subjectsToLoad);
+
+      const marksPromises = subjectsToLoad.map(subject =>
         getMarks(className, subject)
       );
 
@@ -255,7 +296,7 @@ const FormMasterPage = () => {
       const newMarksData = {};
 
       marksResponses.forEach((response, index) => {
-        const subject = userSubjects[index];
+        const subject = subjectsToLoad[index];
         if (response.status === 'success') {
           // Initialize marks for this subject
           newMarksData[subject] = {};
@@ -286,9 +327,16 @@ const FormMasterPage = () => {
       });
 
       setMarksData(newMarksData);
+
+      // Log for debugging
+      console.log(`[Form Master] Loaded marks for ${className}:`, {
+        isFormClass,
+        subjectsCount: subjectsToLoad.length,
+        subjects: subjectsToLoad
+      });
     } catch (error) {
       console.error("Error loading marks data:", error);
-      showNotification({message: "Error loading marks data: " + error.message, type: 'error'});
+      showNotification({ message: "Error loading marks data: " + error.message, type: 'error' });
     } finally {
       setLoading('marks', false);
     }
@@ -301,7 +349,7 @@ const FormMasterPage = () => {
       setFootnoteInfo(savedFootnote);
     } catch (error) {
       console.error("Error loading footnote info:", error);
-      showNotification({message: "Error loading footnote info: " + error.message, type: 'error'});
+      showNotification({ message: "Error loading footnote info: " + error.message, type: 'error' });
     }
   };
 
@@ -312,7 +360,7 @@ const FormMasterPage = () => {
       const userSubjects = getUserSubjects();
       if (userSubjects.length === 0) return;
 
-      const analyticsPromises = userSubjects.map(subject => 
+      const analyticsPromises = userSubjects.map(subject =>
         getClassPerformanceTrends(className, subject)
       );
 
@@ -329,7 +377,7 @@ const FormMasterPage = () => {
       setAnalyticsData(newAnalyticsData);
     } catch (error) {
       console.error("Error loading analytics data:", error);
-      showNotification({message: "Error loading analytics data: " + error.message, type: 'error'});
+      showNotification({ message: "Error loading analytics data: " + error.message, type: 'error' });
     } finally {
       setLoading('analytics', false);
     }
@@ -354,7 +402,7 @@ const FormMasterPage = () => {
         localStorage.setItem(`formMasterAttendance_${selectedClass}`, JSON.stringify(attendance));
       } catch (error) {
         console.error("Error saving data to localStorage:", error);
-        showNotification({message: "Error saving data to localStorage: " + error.message, type: 'error'});
+        showNotification({ message: "Error saving data to localStorage: " + error.message, type: 'error' });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -367,7 +415,7 @@ const FormMasterPage = () => {
         localStorage.setItem(`footnoteInfo_${selectedClass}`, footnoteInfo);
       } catch (error) {
         console.error("Error saving footnote info to localStorage:", error);
-        showNotification({message: "Error saving footnote info: " + error.message, type: 'error'});
+        showNotification({ message: "Error saving footnote info: " + error.message, type: 'error' });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -412,12 +460,12 @@ const FormMasterPage = () => {
   const handleAttendanceChange = (studentId, value) => {
     // Allow only numbers
     if (value && !/^\d*$/.test(value)) return;
-    
+
     setAttendance(prev => ({
       ...prev,
       [studentId]: value
     }));
-    
+
     // Clear error for this field when user starts typing
     if (errors[studentId]) {
       setErrors(prev => ({
@@ -488,34 +536,34 @@ const FormMasterPage = () => {
   // Load daily attendance for selected date
   const loadDailyAttendance = () => {
     if (!selectedClass || !dailyAttendanceDate) return;
-    
+
     try {
       const dailyAttendanceKey = `dailyAttendance_${selectedClass}_${dailyAttendanceDate}`;
       const savedDailyAttendance = JSON.parse(localStorage.getItem(dailyAttendanceKey) || '{}');
       setDailyAttendance(savedDailyAttendance);
     } catch (error) {
       console.error("Error loading daily attendance:", error);
-      showNotification({message: "Error loading daily attendance: " + error.message, type: 'error'});
+      showNotification({ message: "Error loading daily attendance: " + error.message, type: 'error' });
     }
   };
 
   // Save daily attendance
   const saveDailyAttendance = () => {
     if (!selectedClass || !dailyAttendanceDate) {
-      showNotification({message: "Please select a class and date first.", type: 'error'});
+      showNotification({ message: "Please select a class and date first.", type: 'error' });
       return;
     }
 
     setSaving(true);
-    
+
     try {
       const dailyAttendanceKey = `dailyAttendance_${selectedClass}_${dailyAttendanceDate}`;
       localStorage.setItem(dailyAttendanceKey, JSON.stringify(dailyAttendance));
-      
+
       // Also save to the main attendance record for reporting
       const attendanceSummaryKey = `formMasterAttendance_${selectedClass}`;
       const existingAttendance = JSON.parse(localStorage.getItem(attendanceSummaryKey) || '{}');
-      
+
       // Update the summary attendance based on daily records
       filteredLearners.forEach(learner => {
         const studentId = learner.idNumber || learner.LearnerID;
@@ -528,7 +576,7 @@ const FormMasterPage = () => {
             total: 0
           };
         }
-        
+
         // Get all daily attendance records for this student
         const studentDailyRecords = {};
         const keys = Object.keys(localStorage);
@@ -541,7 +589,7 @@ const FormMasterPage = () => {
             }
           }
         });
-        
+
         // Calculate summary from all daily records
         let present = 0, absent = 0, late = 0;
         Object.values(studentDailyRecords).forEach(status => {
@@ -551,7 +599,7 @@ const FormMasterPage = () => {
             case 'late': late++; break;
           }
         });
-        
+
         existingAttendance[studentId] = {
           present,
           absent,
@@ -559,13 +607,13 @@ const FormMasterPage = () => {
           total: present + absent + late
         };
       });
-      
+
       localStorage.setItem(attendanceSummaryKey, JSON.stringify(existingAttendance));
-      
-      showNotification({message: "Daily attendance saved successfully!", type: 'success'});
+
+      showNotification({ message: "Daily attendance saved successfully!", type: 'success' });
     } catch (error) {
       console.error("Error saving daily attendance:", error);
-      showNotification({message: "Error saving daily attendance: " + error.message, type: 'error'});
+      showNotification({ message: "Error saving daily attendance: " + error.message, type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -574,35 +622,35 @@ const FormMasterPage = () => {
   // Generate attendance report
   const generateAttendanceReport = () => {
     if (!selectedClass || !reportStartDate || !reportEndDate) {
-      showNotification({message: "Please select a class and date range first.", type: 'error'});
+      showNotification({ message: "Please select a class and date range first.", type: 'error' });
       return;
     }
-    
+
     setLoading('report', true, 'Generating attendance report...');
     try {
       const reportData = [];
-      
+
       // Get all dates between start and end date
       const startDate = new Date(reportStartDate);
       const endDate = new Date(reportEndDate);
       const dates = [];
-      
+
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         dates.push(new Date(d).toISOString().split('T')[0]);
       }
-      
+
       // For each student, calculate attendance stats
       filteredLearners.forEach(learner => {
         const studentId = learner.idNumber || learner.LearnerID;
         let present = 0;
         let absent = 0;
         let late = 0;
-        
+
         dates.forEach(date => {
           const dailyAttendanceKey = `dailyAttendance_${selectedClass}_${date}`;
           const dailyData = JSON.parse(localStorage.getItem(dailyAttendanceKey) || '{}');
           const status = dailyData[studentId] || 'present'; // Default to present if no record
-          
+
           switch (status) {
             case 'present':
               present++;
@@ -615,10 +663,10 @@ const FormMasterPage = () => {
               break;
           }
         });
-        
+
         const totalDays = present + absent + late;
         const percentage = totalDays > 0 ? Math.round(((present + (late * 0.5)) / totalDays) * 100) : 0;
-        
+
         reportData.push({
           studentId,
           name: `${learner.firstName} ${learner.lastName}`,
@@ -629,15 +677,15 @@ const FormMasterPage = () => {
           percentage
         });
       });
-      
+
       // Sort by student name
       reportData.sort((a, b) => a.name.localeCompare(b.name));
-      
+
       setAttendanceReportData(reportData);
-      showNotification({message: `Attendance report generated for ${reportData.length} students.`, type: 'success'});
+      showNotification({ message: `Attendance report generated for ${reportData.length} students.`, type: 'success' });
     } catch (error) {
       console.error("Error generating attendance report:", error);
-      showNotification({message: "Error generating attendance report: " + error.message, type: 'error'});
+      showNotification({ message: "Error generating attendance report: " + error.message, type: 'error' });
     } finally {
       setLoading('report', false);
     }
@@ -646,10 +694,10 @@ const FormMasterPage = () => {
   // Print attendance report
   const printAttendanceReport = () => {
     if (attendanceReportData.length === 0) {
-      showNotification({message: "No report data to print.", type: 'error'});
+      showNotification({ message: "No report data to print.", type: 'error' });
       return;
     }
-    
+
     try {
       let tableRows = '';
       attendanceReportData.forEach((student) => {
@@ -669,7 +717,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error printing attendance report:", error);
-      showNotification({message: "Error printing attendance report: " + error.message, type: 'error'});
+      showNotification({ message: "Error printing attendance report: " + error.message, type: 'error' });
     }
   };
 
@@ -677,7 +725,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Print broadsheet for a specific class and subject
   const printBroadsheet = async (subject) => {
     if (!selectedClass || !subject) {
-      showNotification({message: "Please select a class and subject first.", type: 'error'});
+      showNotification({ message: "Please select a class and subject first.", type: 'error' });
       return;
     }
 
@@ -695,8 +743,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
             const teacherClasses = teacher.classes || [];
             const teacherSubjects = teacher.subjects || [];
             const teachesThisClass = teacherClasses.includes(selectedClass) ||
-                                     teacher.classAssigned === selectedClass ||
-                                     teacher.form_class === selectedClass;
+              teacher.classAssigned === selectedClass ||
+              teacher.form_class === selectedClass;
             return teachesThisClass && teacherSubjects.includes(subject);
           });
           if (subjectTeacher) {
@@ -718,20 +766,20 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       );
 
       if (result.success) {
-        showNotification({message: result.message, type: 'success'});
+        showNotification({ message: result.message, type: 'success' });
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
       console.error("Error printing broadsheet:", error);
-      showNotification({message: "Error printing broadsheet: " + error.message, type: 'error'});
+      showNotification({ message: "Error printing broadsheet: " + error.message, type: 'error' });
     }
   };
 
   // Print complete class broadsheet with all subjects
   const _printCompleteClassBroadsheet = async () => {
     if (!selectedClass) {
-      showNotification({message: "Please select a class first.", type: 'error'});
+      showNotification({ message: "Please select a class first.", type: 'error' });
       return;
     }
 
@@ -744,15 +792,15 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         selectedClass,
         schoolInfo
       );
-      
+
       if (result.success) {
-        showNotification({message: result.message, type: 'success'});
+        showNotification({ message: result.message, type: 'success' });
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
       console.error("Error printing complete class broadsheet:", error);
-      showNotification({message: "Error printing complete class broadsheet: " + error.message, type: 'error'});
+      showNotification({ message: "Error printing complete class broadsheet: " + error.message, type: 'error' });
     }
   };
 
@@ -760,13 +808,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Print Student Terminal Reports
   const printStudentReports = async () => {
     if (!selectedClass) {
-      showNotification({message: "Please select a class first.", type: 'error'});
+      showNotification({ message: "Please select a class first.", type: 'error' });
       return;
     }
 
     // Verify this is the form class
     if (selectedClass !== user?.formClass) {
-      showNotification({message: "You can only print reports for your assigned form class.", type: 'error'});
+      showNotification({ message: "You can only print reports for your assigned form class.", type: 'error' });
       return;
     }
 
@@ -775,7 +823,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       const classStudents = filteredLearners;
 
       if (classStudents.length === 0) {
-        showNotification({message: "No students found in this class", type: 'error'});
+        showNotification({ message: "No students found in this class", type: 'error' });
         return;
       }
 
@@ -796,7 +844,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           );
 
           if (result.success) {
-            showNotification({message: result.message, type: 'success'});
+            showNotification({ message: result.message, type: 'success' });
             return;
           } else {
             throw new Error(result.message);
@@ -833,27 +881,27 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         );
 
         if (result.success) {
-          showNotification({message: result.message, type: 'success'});
+          showNotification({ message: result.message, type: 'success' });
         } else {
           throw new Error(result.message);
         }
       }
     } catch (error) {
       console.error("Error printing student reports:", error);
-      showNotification({message: "Error printing student reports: " + error.message, type: 'error'});
+      showNotification({ message: "Error printing student reports: " + error.message, type: 'error' });
     }
   };
 
   // Print Complete Class Broadsheet
   const printClassBroadsheet = async () => {
     if (!selectedClass) {
-      showNotification({message: "Please select a class first.", type: 'error'});
+      showNotification({ message: "Please select a class first.", type: 'error' });
       return;
     }
 
     // Verify this is the form class
     if (selectedClass !== user?.formClass) {
-      showNotification({message: "You can only print broadsheets for your assigned form class.", type: 'error'});
+      showNotification({ message: "You can only print broadsheets for your assigned form class.", type: 'error' });
       return;
     }
 
@@ -865,13 +913,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       );
 
       if (result.success) {
-        showNotification({message: result.message, type: 'success'});
+        showNotification({ message: result.message, type: 'success' });
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
       console.error("Error printing class broadsheet:", error);
-      showNotification({message: "Error printing class broadsheet: " + error.message, type: 'error'});
+      showNotification({ message: "Error printing class broadsheet: " + error.message, type: 'error' });
     }
   };
 
@@ -904,7 +952,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         setSelectedPrintSubject("");
       } catch (error) {
         console.error("Error loading print class data:", error);
-        showNotification({message: `Error loading class data: ${error.message}`, type: 'error'});
+        showNotification({ message: `Error loading class data: ${error.message}`, type: 'error' });
         setPrintClassStudents([]);
         setPrintClassSubjects([]);
       }
@@ -939,7 +987,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Print all class reports
   const printAllClassReports = async () => {
     if (!printClass) {
-      showNotification({message: "Please select a class first", type: 'warning'});
+      showNotification({ message: "Please select a class first", type: 'warning' });
       return;
     }
 
@@ -954,13 +1002,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       );
 
       if (result.success) {
-        showNotification({message: result.message, type: 'success'});
+        showNotification({ message: result.message, type: 'success' });
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
       console.error("Error printing class reports:", error);
-      showNotification({message: `Error printing reports: ${error.message}`, type: 'error'});
+      showNotification({ message: `Error printing reports: ${error.message}`, type: 'error' });
     } finally {
       setPrinting(false);
     }
@@ -969,7 +1017,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Print selected students
   const printSelectedReports = async () => {
     if (selectedPrintStudents.length === 0) {
-      showNotification({message: "Please select at least one student", type: 'warning'});
+      showNotification({ message: "Please select at least one student", type: 'warning' });
       return;
     }
 
@@ -988,13 +1036,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       );
 
       if (result.success) {
-        showNotification({message: result.message, type: 'success'});
+        showNotification({ message: result.message, type: 'success' });
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
       console.error("Error printing selected reports:", error);
-      showNotification({message: `Error printing reports: ${error.message}`, type: 'error'});
+      showNotification({ message: `Error printing reports: ${error.message}`, type: 'error' });
     } finally {
       setPrinting(false);
     }
@@ -1003,7 +1051,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Print complete broadsheet for print class
   const printCompleteBroadsheet = async () => {
     if (!printClass) {
-      showNotification({message: "Please select a class first", type: 'warning'});
+      showNotification({ message: "Please select a class first", type: 'warning' });
       return;
     }
 
@@ -1016,13 +1064,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       );
 
       if (result.success) {
-        showNotification({message: result.message, type: 'success'});
+        showNotification({ message: result.message, type: 'success' });
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
       console.error("Error printing broadsheet:", error);
-      showNotification({message: `Error printing broadsheet: ${error.message}`, type: 'error'});
+      showNotification({ message: `Error printing broadsheet: ${error.message}`, type: 'error' });
     } finally {
       setPrinting(false);
     }
@@ -1031,12 +1079,12 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Print subject broadsheet from print section
   const printSubjectBroadsheetFromPrintSection = async (subject) => {
     if (!printClass) {
-      showNotification({message: "Please select a class first", type: 'warning'});
+      showNotification({ message: "Please select a class first", type: 'warning' });
       return;
     }
 
     if (!subject) {
-      showNotification({message: "Please select a subject", type: 'warning'});
+      showNotification({ message: "Please select a subject", type: 'warning' });
       return;
     }
 
@@ -1052,13 +1100,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       );
 
       if (result.success) {
-        showNotification({message: `${subject} broadsheet for ${printClass} generated successfully`, type: 'success'});
+        showNotification({ message: `${subject} broadsheet for ${printClass} generated successfully`, type: 'success' });
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
       console.error("Error printing subject broadsheet:", error);
-      showNotification({message: `Error printing ${subject} broadsheet: ${error.message}`, type: 'error'});
+      showNotification({ message: `Error printing ${subject} broadsheet: ${error.message}`, type: 'error' });
     } finally {
       setPrinting(false);
     }
@@ -1067,7 +1115,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Handle confirmation dialog
   const handleConfirmDialog = (action) => {
     setShowConfirmDialog(false);
-    
+
     if (action === 'save') {
       handleSave();
     }
@@ -1078,17 +1126,17 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     const userSubjects = getUserSubjects();
 
     if (userClasses.length === 0) {
-      showNotification({message: "You are not assigned to any classes.", type: 'error'});
+      showNotification({ message: "You are not assigned to any classes.", type: 'error' });
       return;
     }
 
     if (userSubjects.length === 0) {
-      showNotification({message: "You are not assigned to any subjects.", type: 'error'});
+      showNotification({ message: "You are not assigned to any subjects.", type: 'error' });
       return;
     }
 
     if (Object.keys(remarks).length === 0 || Object.keys(attendance).length === 0) {
-      showNotification({message: "No data to save.", type: 'error'});
+      showNotification({ message: "No data to save.", type: 'error' });
       return;
     }
 
@@ -1127,24 +1175,24 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           results.forEach(response => {
             if (response.status !== 'success') {
               console.error('Update error:', response.message);
-              showNotification({message: 'Error saving data: ' + response.message, type: 'error'});
+              showNotification({ message: 'Error saving data: ' + response.message, type: 'error' });
             }
           });
 
-          showNotification({message: 'Data saved successfully!', type: 'success'});
+          showNotification({ message: 'Data saved successfully!', type: 'success' });
         }).catch(error => {
           console.error('Update error:', error);
-          showNotification({message: 'Error saving data: ' + error.message, type: 'error'});
+          showNotification({ message: 'Error saving data: ' + error.message, type: 'error' });
         }).finally(() => {
           setSaving(false);
         });
       } else {
-        showNotification({message: 'No data to save.', type: 'error'});
+        showNotification({ message: 'No data to save.', type: 'error' });
         setSaving(false);
       }
     } catch (error) {
       console.error('Update error:', error);
-      showNotification({message: 'Error saving data: ' + error.message, type: 'error'});
+      showNotification({ message: 'Error saving data: ' + error.message, type: 'error' });
       setSaving(false);
     }
   };
@@ -1153,18 +1201,18 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   const validateFormData = () => {
     const newErrors = {};
     let isValid = true;
-    
+
     filteredLearners.forEach(learner => {
       const studentId = learner.idNumber || learner.LearnerID;
       const studentAttendance = attendance[studentId];
-      
+
       // Validate attendance - must be a number between 0 and 365
       if (studentAttendance && (isNaN(studentAttendance) || studentAttendance < 0 || studentAttendance > 365)) {
         newErrors[studentId] = "Attendance must be a number between 0 and 365";
         isValid = false;
       }
     });
-    
+
     setErrors(newErrors);
     return isValid;
   };
@@ -1224,13 +1272,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Show confirmation dialog before saving
   const confirmSave = () => {
     if (!selectedClass) {
-      showNotification({message: "Please select a class first.", type: 'error'});
+      showNotification({ message: "Please select a class first.", type: 'error' });
       return;
     }
 
     // Validate form before saving
     if (!validateFormData()) {
-      showNotification({message: "Please fix the validation errors before saving.", type: 'error'});
+      showNotification({ message: "Please fix the validation errors before saving.", type: 'error' });
       return;
     }
 
@@ -1241,13 +1289,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Save all marks data
   const saveAllMarksData = async () => {
     if (!selectedClass) {
-      showNotification({message: "Please select a class first.", type: 'error'});
+      showNotification({ message: "Please select a class first.", type: 'error' });
       return;
     }
 
     // Validate marks before saving
     if (!validateMarksData()) {
-      showNotification({message: "Please fix the validation errors before saving.", type: 'error'});
+      showNotification({ message: "Please fix the validation errors before saving.", type: 'error' });
       return;
     }
 
@@ -1327,14 +1375,14 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       });
 
       if (errorCount === 0) {
-        showNotification({message: `All marks saved successfully! (${successCount} records)`, type: 'success'});
+        showNotification({ message: `All marks saved successfully! (${successCount} records)`, type: 'success' });
       } else {
-        showNotification({message: `Saved ${successCount} marks successfully. ${errorCount} failed.`, type: 'warning'});
+        showNotification({ message: `Saved ${successCount} marks successfully. ${errorCount} failed.`, type: 'warning' });
       }
 
     } catch (error) {
       console.error("Save all marks error:", error);
-      showNotification({message: "Error saving marks: " + error.message, type: 'error'});
+      showNotification({ message: "Error saving marks: " + error.message, type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -1343,16 +1391,16 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Save footnote information
   const saveFootnoteInfo = () => {
     if (!selectedClass) {
-      showNotification({message: "Please select a class first.", type: 'error'});
+      showNotification({ message: "Please select a class first.", type: 'error' });
       return;
     }
 
     try {
       localStorage.setItem(`footnoteInfo_${selectedClass}`, footnoteInfo);
-      showNotification({message: "Footnote information saved successfully!", type: 'success'});
+      showNotification({ message: "Footnote information saved successfully!", type: 'success' });
     } catch (error) {
       console.error("Save footnote info error:", error);
-      showNotification({message: "Error saving footnote info: " + error.message, type: 'error'});
+      showNotification({ message: "Error saving footnote info: " + error.message, type: 'error' });
     }
   };
 
@@ -1369,7 +1417,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Load saved marks from database for Enter Scores view
   const loadSubjectMarks = async () => {
     if (!selectedClass || !selectedSubject || !selectedAssessment) {
-      showNotification({message: "Please select class, subject, and assessment first", type: 'warning'});
+      showNotification({ message: "Please select class, subject, and assessment first", type: 'warning' });
       return;
     }
 
@@ -1425,7 +1473,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
               // Mark as already saved if any marks exist
               const hasMarks = existingMark.test1 || existingMark.test2 ||
-                              existingMark.test3 || existingMark.test4 || existingMark.exam;
+                existingMark.test3 || existingMark.test4 || existingMark.exam;
               if (hasMarks) {
                 savedSet.add(studentId);
               }
@@ -1444,13 +1492,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
         setSubjectMarks(newMarks);
         setSavedStudents(savedSet);
-        showNotification({message: "Marks loaded successfully!", type: 'success'});
+        showNotification({ message: "Marks loaded successfully!", type: 'success' });
       } else {
         throw new Error(response.message || "Failed to load marks");
       }
     } catch (error) {
       console.error("Error loading subject marks:", error);
-      showNotification({message: "Error loading saved marks: " + error.message, type: 'error'});
+      showNotification({ message: "Error loading saved marks: " + error.message, type: 'error' });
 
       // Still initialize with empty marks even if loading fails
       const isCustomAssessment = selectedAssessment !== 'regular';
@@ -1525,12 +1573,12 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Save individual student scores (Enter Scores view)
   const saveStudentScores = async (studentId) => {
     if (!selectedClass || !selectedSubject) {
-      showNotification({message: "Please select both class and subject", type: 'error'});
+      showNotification({ message: "Please select both class and subject", type: 'error' });
       return;
     }
 
     if (!selectedAssessment) {
-      showNotification({message: "Please select an assessment type", type: 'error'});
+      showNotification({ message: "Please select an assessment type", type: 'error' });
       return;
     }
 
@@ -1552,9 +1600,9 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
         if (response.status === 'success') {
           setSavedStudents(prev => new Set([...prev, studentId]));
-          showNotification({message: "Score saved successfully!", type: 'success'});
+          showNotification({ message: "Score saved successfully!", type: 'success' });
         } else {
-          showNotification({message: "Error saving score: " + response.message, type: 'error'});
+          showNotification({ message: "Error saving score: " + response.message, type: 'error' });
         }
       } else {
         // Save regular term scores
@@ -1580,11 +1628,11 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         });
 
         setSavedStudents(prev => new Set([...prev, studentId]));
-        showNotification({message: "Scores saved successfully!", type: 'success'});
+        showNotification({ message: "Scores saved successfully!", type: 'success' });
       }
     } catch (error) {
       console.error("Error saving scores:", error);
-      showNotification({message: "Error saving scores: " + error.message, type: 'error'});
+      showNotification({ message: "Error saving scores: " + error.message, type: 'error' });
     } finally {
       setSavingScores(false);
     }
@@ -1593,12 +1641,12 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
   // Save all scores for the subject (Enter Scores view)
   const saveAllSubjectScores = async () => {
     if (!selectedClass || !selectedSubject) {
-      showNotification({message: "Please select both class and subject", type: 'error'});
+      showNotification({ message: "Please select both class and subject", type: 'error' });
       return;
     }
 
     if (!selectedAssessment) {
-      showNotification({message: "Please select an assessment type", type: 'error'});
+      showNotification({ message: "Please select an assessment type", type: 'error' });
       return;
     }
 
@@ -1649,11 +1697,11 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
       });
 
       await Promise.all(promises);
-      showNotification({message: "All scores saved successfully!", type: 'success'});
+      showNotification({ message: "All scores saved successfully!", type: 'success' });
       setSavedStudents(new Set(filteredLearners.map(l => l.idNumber || l.LearnerID)));
     } catch (error) {
       console.error("Error saving all scores:", error);
-      showNotification({message: "Error saving scores: " + error.message, type: 'error'});
+      showNotification({ message: "Error saving scores: " + error.message, type: 'error' });
     } finally {
       setSavingScores(false);
     }
@@ -1751,33 +1799,30 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           <div className="flex gap-4 flex-wrap">
             <button
               onClick={() => setMainView('manageClass')}
-              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
-                mainView === 'manageClass'
-                  ? 'bg-blue-500/80 backdrop-blur-lg text-white shadow-xl border border-blue-300/50 scale-105'
-                  : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
-              }`}
+              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${mainView === 'manageClass'
+                ? 'bg-blue-500/80 backdrop-blur-lg text-white shadow-xl border border-blue-300/50 scale-105'
+                : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
+                }`}
             >
               <span className="text-2xl mr-2">🎓</span>
               Manage Class
             </button>
             <button
               onClick={() => setMainView('enterScores')}
-              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
-                mainView === 'enterScores'
-                  ? 'bg-green-500/80 backdrop-blur-lg text-white shadow-xl border border-green-300/50 scale-105'
-                  : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
-              }`}
+              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${mainView === 'enterScores'
+                ? 'bg-green-500/80 backdrop-blur-lg text-white shadow-xl border border-green-300/50 scale-105'
+                : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
+                }`}
             >
               <span className="text-2xl mr-2">✏️</span>
               Enter Scores
             </button>
             <button
               onClick={() => setMainView('printSection')}
-              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
-                mainView === 'printSection'
-                  ? 'bg-purple-500/80 backdrop-blur-lg text-white shadow-xl border border-purple-300/50 scale-105'
-                  : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
-              }`}
+              className={`flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${mainView === 'printSection'
+                ? 'bg-purple-500/80 backdrop-blur-lg text-white shadow-xl border border-purple-300/50 scale-105'
+                : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
+                }`}
             >
               <span className="text-2xl mr-2">🖨️</span>
               Print Section
@@ -1826,6 +1871,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 >
                   Save
                 </button>
+                ```
               </div>
             </div>
           </div>
@@ -1836,12 +1882,13 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
           <EnterScoresView
             state={state}
             actions={actions}
-            userSubjects={getUserSubjects()}
+            userSubjects={availableSubjects}
             userClasses={getUserClasses()}
             students={filteredLearners}
             loadingStates={loadingStates}
             errors={errors}
             saving={savingScores}
+            isReadOnly={selectedClass === user?.formClass && !user?.subjects?.includes(selectedSubject)}
           />
         )}
 
@@ -1873,9 +1920,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     <button
                       onClick={printAllClassReports}
                       disabled={printing || printClassStudents.length === 0}
-                      className={`bg-blue-600/80 backdrop-blur-md hover:bg-blue-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${
-                        printing ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
+                      className={`bg-blue-600/80 backdrop-blur-md hover:bg-blue-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                     >
                       {printing ? "Printing..." : `📄 Print All Reports (${printClassStudents.length})`}
                     </button>
@@ -1883,9 +1929,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     <button
                       onClick={printCompleteBroadsheet}
                       disabled={printing}
-                      className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${
-                        printing ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
+                      className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                     >
                       📊 Print Complete Broadsheet
                     </button>
@@ -1893,9 +1938,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     <button
                       onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
                       disabled={printing}
-                      className={`bg-purple-600/80 backdrop-blur-md hover:bg-purple-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${
-                        printing ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
+                      className={`bg-purple-600/80 backdrop-blur-md hover:bg-purple-700/90 disabled:bg-gray-400/50 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-300 border border-white/30 shadow-lg hover:scale-105 ${printing ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                     >
                       📋 Print Subject Broadsheet
                     </button>
@@ -1959,9 +2003,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                     <button
                       onClick={printSelectedReports}
                       disabled={printing || selectedPrintStudents.length === 0}
-                      className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 w-full text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 border border-white/30 shadow-lg ${
-                        printing || selectedPrintStudents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
+                      className={`bg-green-600/80 backdrop-blur-md hover:bg-green-700/90 disabled:bg-gray-400/50 w-full text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 border border-white/30 shadow-lg ${printing || selectedPrintStudents.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                     >
                       {printing ? "Printing..." : `Print Selected (${selectedPrintStudents.length})`}
                     </button>

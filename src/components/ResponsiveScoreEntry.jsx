@@ -18,7 +18,8 @@ const ResponsiveScoreEntry = ({
   positions,
   getRemarks,
   assessmentType = 'regular', // 'regular' or 'custom'
-  customAssessmentInfo = null // { name, max_score }
+  customAssessmentInfo = null, // { name, max_score }
+  readOnly = false
 }) => {
   const isCustomAssessment = assessmentType === 'custom';
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
@@ -147,9 +148,8 @@ const ResponsiveScoreEntry = ({
             <span className="text-sm font-medium text-gray-600">
               Student {currentStudentIndex + 1} of {learners.length}
             </span>
-            <span className={`text-xs px-2 py-1 rounded-full ${
-              isSaved ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-            }`}>
+            <span className={`text-xs px-2 py-1 rounded-full ${isSaved ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+              }`}>
               {isSaved ? '✓ Saved' : 'Not saved'}
             </span>
           </div>
@@ -177,11 +177,10 @@ const ResponsiveScoreEntry = ({
               {fields.map((field) => (
                 <div
                   key={field}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    currentField === field
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white'
-                  }`}
+                  className={`p-4 rounded-lg border-2 transition-all ${currentField === field
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white'
+                    }`}
                 >
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     {getFieldLabel(field)} (Max: {getMaxScore(field)})
@@ -203,7 +202,8 @@ const ResponsiveScoreEntry = ({
                     }}
                     onKeyDown={(e) => handleKeyDown(e, field)}
                     onFocus={() => setCurrentField(field)}
-                    className="w-full text-4xl font-bold text-center p-6 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-200 focus:outline-none touch-manipulation"
+                    disabled={readOnly}
+                    className={`w-full text-4xl font-bold text-center p-6 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-200 focus:outline-none touch-manipulation ${readOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     placeholder="0"
                     min="0"
                     max={getMaxScore(field)}
@@ -269,29 +269,27 @@ const ResponsiveScoreEntry = ({
                   </p>
                   {position && (
                     <p className="text-center mt-2">
-                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-lg font-bold ${
-                        position === 1 ? 'bg-yellow-400 text-yellow-900' :
+                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-lg font-bold ${position === 1 ? 'bg-yellow-400 text-yellow-900' :
                         position === 2 ? 'bg-gray-300 text-gray-800' :
-                        position === 3 ? 'bg-orange-400 text-orange-900' :
-                        'bg-blue-100 text-blue-800'
-                      }`}>
+                          position === 3 ? 'bg-orange-400 text-orange-900' :
+                            'bg-blue-100 text-blue-800'
+                        }`}>
                         {position === 1 ? '🥇 1st' :
-                         position === 2 ? '🥈 2nd' :
-                         position === 3 ? '🥉 3rd' :
-                         `${position}th`}
+                          position === 2 ? '🥈 2nd' :
+                            position === 3 ? '🥉 3rd' :
+                              `${position}th`}
                       </span>
                     </p>
                   )}
                   {remarks && (
                     <p className="text-center mt-2">
-                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
-                        totals.finalTotal >= 80 ? 'bg-green-100 text-green-800' :
+                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${totals.finalTotal >= 80 ? 'bg-green-100 text-green-800' :
                         totals.finalTotal >= 70 ? 'bg-blue-100 text-blue-800' :
-                        totals.finalTotal >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                        totals.finalTotal >= 50 ? 'bg-orange-100 text-orange-800' :
-                        totals.finalTotal >= 40 ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                          totals.finalTotal >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                            totals.finalTotal >= 50 ? 'bg-orange-100 text-orange-800' :
+                              totals.finalTotal >= 40 ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                        }`}>
                         {remarks}
                       </span>
                     </p>
@@ -322,17 +320,18 @@ const ResponsiveScoreEntry = ({
           </div>
 
           {/* Save Button */}
-          <button
-            onClick={() => onSaveStudent(studentId)}
-            disabled={saving}
-            className={`w-full py-5 rounded-xl font-bold text-xl transition-colors touch-manipulation ${
-              isSaved
+          {!readOnly && (
+            <button
+              onClick={() => onSaveStudent(studentId)}
+              disabled={saving}
+              className={`w-full py-5 rounded-xl font-bold text-xl transition-colors touch-manipulation ${isSaved
                 ? 'bg-green-500 text-white'
                 : 'bg-green-600 text-white hover:bg-green-700'
-            } disabled:opacity-50 disabled:cursor-not-allowed active:bg-green-800`}
-          >
-            {saving ? 'Saving...' : isSaved ? '✓ Saved' : 'Save Student Scores'}
-          </button>
+                } disabled:opacity-50 disabled:cursor-not-allowed active:bg-green-800`}
+            >
+              {saving ? 'Saving...' : isSaved ? '✓ Saved' : 'Save Student Scores'}
+            </button>
+          )}
 
           {/* Quick Navigation Hint */}
           <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
@@ -358,7 +357,7 @@ const ResponsiveScoreEntry = ({
             {isCustomAssessment ? (
               <>
                 <th className="border border-gray-300 p-2">
-                  {customAssessmentInfo?.name || 'Score'}<br/>
+                  {customAssessmentInfo?.name || 'Score'}<br />
                   (0-{customAssessmentInfo?.max_score || 100})
                 </th>
                 <th className="border border-gray-300 p-2">Percentage</th>
@@ -368,13 +367,13 @@ const ResponsiveScoreEntry = ({
               </>
             ) : (
               <>
-                <th className="border border-gray-300 p-2">Test 1<br/>(0-15)</th>
-                <th className="border border-gray-300 p-2">Test 2<br/>(0-15)</th>
-                <th className="border border-gray-300 p-2">Test 3<br/>(0-15)</th>
-                <th className="border border-gray-300 p-2">Test 4<br/>(0-15)</th>
+                <th className="border border-gray-300 p-2">Test 1<br />(0-15)</th>
+                <th className="border border-gray-300 p-2">Test 2<br />(0-15)</th>
+                <th className="border border-gray-300 p-2">Test 3<br />(0-15)</th>
+                <th className="border border-gray-300 p-2">Test 4<br />(0-15)</th>
                 <th className="border border-gray-300 p-2">Tests Total</th>
                 <th className="border border-gray-300 p-2">50%</th>
-                <th className="border border-gray-300 p-2">Exam<br/>(0-100)</th>
+                <th className="border border-gray-300 p-2">Exam<br />(0-100)</th>
                 <th className="border border-gray-300 p-2">50%</th>
                 <th className="border border-gray-300 p-2">Final Total</th>
                 <th className="border border-gray-300 p-2">Position</th>
@@ -418,17 +417,18 @@ const ResponsiveScoreEntry = ({
                             }
                           }
                         }}
-                        className="w-24 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                        className={`w-24 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation ${readOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         placeholder="0"
                         maxLength="5"
+                        disabled={readOnly}
                       />
                     </td>
                     {(() => {
                       const result = studentMarks.score
                         ? formatMockExamResult(
-                            parseFloat(studentMarks.score),
-                            customAssessmentInfo?.max_score || 100
-                          )
+                          parseFloat(studentMarks.score),
+                          customAssessmentInfo?.max_score || 100
+                        )
                         : { percentage: 0, grade: '-', interpretation: '-' };
                       return (
                         <>
@@ -447,18 +447,19 @@ const ResponsiveScoreEntry = ({
                       );
                     })()}
                     <td className="border border-gray-300 p-3 text-center sticky right-0 bg-white">
-                      <button
-                        onClick={() => onSaveStudent(studentId)}
-                        disabled={saving}
-                        className={`px-3 py-1 rounded text-sm flex items-center justify-center ${
-                          isSaved
+                      {!readOnly && (
+                        <button
+                          onClick={() => onSaveStudent(studentId)}
+                          disabled={saving}
+                          className={`px-3 py-1 rounded text-sm flex items-center justify-center ${isSaved
                             ? 'bg-green-100 text-green-800'
                             : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                        }`}
-                        title={isSaved ? "Saved" : "Save student marks"}
-                      >
-                        {isSaved ? '✓' : 'Save'}
-                      </button>
+                            }`}
+                          title={isSaved ? "Saved" : "Save student marks"}
+                        >
+                          {isSaved ? '✓' : 'Save'}
+                        </button>
+                      )}
                     </td>
                   </>
                 ) : (
@@ -476,9 +477,10 @@ const ResponsiveScoreEntry = ({
                               onMarkChange(studentId, test, value);
                             }
                           }}
-                          className="w-20 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                          className={`w-20 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation ${readOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                           placeholder="0"
                           maxLength="4"
+                          disabled={readOnly}
                         />
                       </td>
                     ))}
@@ -502,9 +504,10 @@ const ResponsiveScoreEntry = ({
                             onMarkChange(studentId, 'exam', value);
                           }
                         }}
-                        className="w-24 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation"
+                        className={`w-24 p-3 border rounded text-center text-lg focus:ring-2 focus:ring-blue-500 touch-manipulation ${readOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         placeholder="0"
                         maxLength="5"
+                        disabled={readOnly}
                       />
                     </td>
 
@@ -518,57 +521,57 @@ const ResponsiveScoreEntry = ({
 
                     <td className="border border-gray-300 p-3 text-center">
                       {position && (
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                          position === 1 ? 'bg-yellow-400 text-yellow-900' :
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${position === 1 ? 'bg-yellow-400 text-yellow-900' :
                           position === 2 ? 'bg-gray-300 text-gray-800' :
-                          position === 3 ? 'bg-orange-400 text-orange-900' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
+                            position === 3 ? 'bg-orange-400 text-orange-900' :
+                              'bg-blue-100 text-blue-800'
+                          }`}>
                           {position === 1 ? '🥇 1st' :
-                           position === 2 ? '🥈 2nd' :
-                           position === 3 ? '🥉 3rd' :
-                           `${position}th`}
+                            position === 2 ? '🥈 2nd' :
+                              position === 3 ? '🥉 3rd' :
+                                `${position}th`}
                         </span>
                       )}
                     </td>
 
                     <td className="border border-gray-300 p-2 text-center">
                       {remarks && (
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          totals.finalTotal >= 80 ? 'bg-green-100 text-green-800' :
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${totals.finalTotal >= 80 ? 'bg-green-100 text-green-800' :
                           totals.finalTotal >= 70 ? 'bg-blue-100 text-blue-800' :
-                          totals.finalTotal >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                          totals.finalTotal >= 50 ? 'bg-orange-100 text-orange-800' :
-                          totals.finalTotal >= 40 ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                            totals.finalTotal >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                              totals.finalTotal >= 50 ? 'bg-orange-100 text-orange-800' :
+                                totals.finalTotal >= 40 ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                          }`}>
                           {remarks}
                         </span>
                       )}
                     </td>
 
                     <td className="border border-gray-300 p-3 text-center sticky right-0 bg-white">
-                      <button
-                        onClick={() => onSaveStudent(studentId)}
-                        disabled={saving}
-                        className={`px-3 py-1 rounded text-sm flex items-center justify-center ${
-                          isSaved
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                        }`}
-                        title={isSaved ? "Saved" : "Save student marks"}
-                      >
-                        {isSaved ? '✓' : 'Save'}
-                      </button>
+                      {!readOnly && (
+                        <button
+                          onClick={() => onSaveStudent(studentId)}
+                          disabled={saving}
+                          className={`px-3 py-1 rounded text-sm flex items-center justify-center ${isSaved
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                            }`}
+                          title={isSaved ? "Saved" : "Save student marks"}
+                        >
+                          {isSaved ? '✓' : 'Save'}
+                        </button>
+                      )}
                     </td>
                   </>
-                )}
+                )
+                }
               </tr>
             );
           })}
         </tbody>
       </table>
-    </div>
+    </div >
   );
 };
 

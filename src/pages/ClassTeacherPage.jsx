@@ -89,7 +89,17 @@ const ClassTeacherPage = () => {
       const response = await getClasses();
       if (response.status === 'success' && Array.isArray(response.data)) {
         const classNames = response.data.map(c => c.name || c.class_name).filter(Boolean);
-        setAllClasses(classNames);
+
+        // Filter for Primary/KG classes (KG-BS6)
+        const primaryClasses = classNames.filter(name => {
+          const upperName = name.toUpperCase();
+          return !upperName.includes('BS 7') &&
+            !upperName.includes('BS 8') &&
+            !upperName.includes('BS 9') &&
+            !upperName.includes('JHS');
+        });
+
+        setAllClasses(primaryClasses);
       }
     } catch (error) {
       console.error("Error loading classes:", error);

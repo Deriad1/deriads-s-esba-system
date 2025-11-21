@@ -13,7 +13,8 @@ const EnterScoresView = ({
   actions,
   userSubjects,
   userClasses,
-  students
+  students,
+  isReadOnly = false
 }) => {
   // Extract state values with defaults to prevent undefined errors
   const {
@@ -206,8 +207,8 @@ const EnterScoresView = ({
                   <ScoresTable
                     students={students}
                     marks={subjectMarks}
-                    isEditable={true}
-                    readOnly={false}
+                    isEditable={!isReadOnly}
+                    readOnly={isReadOnly}
                     onMarkChange={actions.handleScoreChange}
                     onSave={actions.saveScore}
                     onSaveAll={actions.saveAllScores}
@@ -228,6 +229,7 @@ const EnterScoresView = ({
                     getRemarks={() => ''}
                     assessmentType="custom"
                     customAssessmentInfo={customAssessments.find(a => a.id === parseInt(selectedAssessment))}
+                    readOnly={isReadOnly}
                   />
                 )}
               </div>
@@ -346,7 +348,8 @@ EnterScoresView.propTypes = {
       firstName: PropTypes.string.isRequired,
       lastName: PropTypes.string.isRequired
     })
-  ).isRequired
+  ).isRequired,
+  isReadOnly: PropTypes.bool
 };
 
 export default EnterScoresView;
