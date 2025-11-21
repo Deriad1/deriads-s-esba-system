@@ -49,6 +49,7 @@ import archives from './api/archives/index.js';
 import assessments from './api/assessments/index.js';
 import assessmentScores from './api/assessments/scores.js';
 import assessmentAggregates from './api/assessments/aggregates.js';
+import subjects from './api/subjects/index.js';
 
 // Register API routes
 app.use('/api/auth/login', authLogin);
@@ -77,6 +78,7 @@ app.use('/api/archives', archives);
 app.use('/api/assessments', assessments);
 app.use('/api/assessments/scores', assessmentScores);
 app.use('/api/assessments/aggregates', assessmentAggregates);
+app.use('/api/subjects', subjects);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
