@@ -596,12 +596,34 @@ class PrintingService {
     if (!formMasterInfo || Object.keys(formMasterInfo).length === 0) {
       console.log(`[_getFormattedStudentData] Fetching remarks for student: ${student.idNumber || student.id_number}, term: ${term}`);
 
-      const remarksResponse = await getFormMasterRemarks(
+      let remarksResponse = await getFormMasterRemarks(
         student.idNumber || student.id_number,
         student.className || student.class_name,
         term, // Pass the term parameter
         null  // Academic year will be handled by API if needed
       );
+
+      // Fallback: If no remarks found, try alternative term naming (e.g., "Third Term" -> "Term 3")
+      if (!remarksResponse.data || remarksResponse.data.length === 0) {
+        let fallbackTerm = null;
+        if (term === 'First Term') fallbackTerm = 'Term 1';
+        else if (term === 'Second Term') fallbackTerm = 'Term 2';
+        else if (term === 'Third Term') fallbackTerm = 'Term 3';
+
+        if (fallbackTerm) {
+          console.log(`[_getFormattedStudentData] No remarks for "${term}", trying fallback "${fallbackTerm}"...`);
+          const fallbackResponse = await getFormMasterRemarks(
+            student.idNumber || student.id_number,
+            student.className || student.class_name,
+            fallbackTerm,
+            null
+          );
+          if (fallbackResponse.data && fallbackResponse.data.length > 0) {
+            remarksResponse = fallbackResponse;
+            console.log(`[_getFormattedStudentData] Found remarks using fallback term "${fallbackTerm}"`);
+          }
+        }
+      }
 
       console.log(`[_getFormattedStudentData] Remarks response:`, remarksResponse);
 
@@ -651,7 +673,8 @@ class PrintingService {
       const displayName = SUBJECT_DISPLAY_MAP[subjectName] || subjectName;
       // Normalize the subject name to match the marks table key
       const lookupName = SUBJECT_NORMALIZE_MAP[subjectName] || subjectName;
-      const score = marksMap[lookupName];
+      // Try lookup with normalized name, then fallback to original name (handles non-normalized DBs)
+      const score = marksMap[lookupName] || marksMap[subjectName];
 
       if (!score) {
         console.log(`   ⚠️ Subject "${subjectName}" (lookup: "${lookupName}") - NO MARKS FOUND (will show dashes)`);
