@@ -101,13 +101,22 @@ const FormMasterPage = () => {
       if (response.status === 'success' && Array.isArray(response.data)) {
         const classNames = response.data.map(c => c.name || c.class_name).filter(Boolean);
 
-        // Filter for JHS classes (BS 7-9)
+        // Filter for JHS classes (BS 7-9, Basic 7-9, JHS 1-3, etc.)
         const jhsClasses = classNames.filter(name => {
           const upperName = name.toUpperCase();
           return upperName.includes('BS 7') ||
             upperName.includes('BS 8') ||
             upperName.includes('BS 9') ||
-            upperName.includes('JHS');
+            upperName.includes('BASIC 7') ||
+            upperName.includes('BASIC 8') ||
+            upperName.includes('BASIC 9') ||
+            upperName.includes('JHS') ||
+            upperName.includes('FORM 1') ||
+            upperName.includes('FORM 2') ||
+            upperName.includes('FORM 3') ||
+            upperName.includes('GRADE 7') ||
+            upperName.includes('GRADE 8') ||
+            upperName.includes('GRADE 9');
         });
 
         setAllClasses(jhsClasses);
