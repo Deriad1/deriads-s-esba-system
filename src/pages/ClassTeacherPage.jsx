@@ -1169,7 +1169,7 @@ const ClassTeacherPage = () => {
       const schoolInfo = printingService.getSchoolInfo();
 
       // DEBUG: Check subjects count before printing
-      const subjectsResponse = await printingService.getClassSubjects(selectedClass);
+      const subjectsResponse = await getClassSubjects(selectedClass);
       const subjectCount = subjectsResponse.data?.subjects?.length || 0;
       showNotification({
         type: "info",
