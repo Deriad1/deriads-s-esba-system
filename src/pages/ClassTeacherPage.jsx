@@ -1167,6 +1167,16 @@ const ClassTeacherPage = () => {
     });
     try {
       const schoolInfo = printingService.getSchoolInfo();
+
+      // DEBUG: Check subjects count before printing
+      const subjectsResponse = await printingService.getClassSubjects(selectedClass);
+      const subjectCount = subjectsResponse.data?.subjects?.length || 0;
+      showNotification({
+        type: "info",
+        message: `Generating reports... Found ${subjectCount} subjects for ${selectedClass}. (v1.1)`,
+        duration: 4000
+      });
+
       const result = await printingService.printBulkStudentReportsServerSide(
         filteredLearners,
         selectedTerm, // Use selected term
