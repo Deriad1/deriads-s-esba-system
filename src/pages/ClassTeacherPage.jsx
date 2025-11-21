@@ -2,7 +2,7 @@ import Layout from "../components/Layout";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { getLearners, updateFormMasterRemarks, getClassPerformanceTrends, updateStudentScores, getMarks, deleteMarks, getClasses, getSubjects } from '../api-client';
+import { getLearners, updateFormMasterRemarks, getClassPerformanceTrends, updateStudentScores, getMarks, deleteMarks, getClasses, getSubjects, getClassSubjects } from '../api-client';
 import PerformanceChart from "../components/PerformanceChart";
 import TrendAnalysisChart from "../components/TrendAnalysisChart";
 import printingService from "../services/printingService";
