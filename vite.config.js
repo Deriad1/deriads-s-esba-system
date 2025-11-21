@@ -10,7 +10,7 @@ export default defineConfig({
     hmr: {
       port: 9000
     },
-    // Proxy API requests to Vercel dev server
+    // Proxy API requests to production server
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

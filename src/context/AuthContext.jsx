@@ -55,6 +55,20 @@ export const AuthProvider = ({ children }) => {
     };
 
     validateSession();
+
+    // Listen for 401 Unauthorized events from api-client
+    const handleUnauthorized = () => {
+      console.log('🔒 Received unauthorized signal. Logging out...');
+      localStorage.removeItem('user');
+      removeAuthToken();
+      setUser(null);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   const login = async (email, password) => {

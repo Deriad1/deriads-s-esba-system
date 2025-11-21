@@ -158,6 +158,12 @@ app.all('/api/broadsheet', async (req, res) => {
   if (handler) await handler(req, res);
 });
 
+// Subjects routes
+app.all('/api/subjects', async (req, res) => {
+  const handler = await importRoute('./api/subjects/index.js');
+  if (handler) await handler(req, res);
+});
+
 // PDF generation
 app.post('/api/generate-bulk-pdfs', async (req, res) => {
   const handler = await importRoute('./api/generate-bulk-pdfs.js');

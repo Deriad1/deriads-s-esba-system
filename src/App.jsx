@@ -6,6 +6,7 @@ import Routes from './Routes';
 import Notification from './components/Notification';
 import GlobalBackground from './components/GlobalBackground';
 import useApiClientInit from './hooks/useApiClientInit';
+import GlobalErrorNotifier from './components/GlobalErrorNotifier';
 import './App.css';
 
 // ✅ PERFORMANCE FIX: Removed duplicate AuthProvider and GlobalSettingsProvider
@@ -32,6 +33,7 @@ function AppContent() {
   return (
     <LoadingProvider>
       <GlobalBackground />
+      <GlobalErrorNotifier />
       <div className="App">
         <Routes />
         <Notification />

@@ -582,6 +582,22 @@ tbody td {
   animation-delay: 4s;
 }
 
+/* Dropdown slide-down animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.2s ease-out;
+}
+
 body { background-color: #f6f7fb; }
 .site-logo {
   width:120px;

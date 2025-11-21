@@ -10,6 +10,7 @@ import TeacherLeaderboard from "../components/TeacherLeaderboard";
 import ScoreEntryRow from "../components/ScoreEntryRow";
 import ScoreEntryCard from "../components/ScoreEntryCard";
 import PromoteStudentsModal from "../components/PromoteStudentsModal";
+import ActionDropdown from "../components/ActionDropdown";
 import { calculatePositions, calculateScoreDetails, getRemarksColorClass } from "../utils/gradeHelpers";
 import { DEFAULT_TERM, AVAILABLE_TERMS } from "../constants/terms";
 import { useGlobalSettings } from "../context/GlobalSettingsContext";
@@ -1560,11 +1561,11 @@ const ClassTeacherPage = () => {
             </div>
           )}
 
-          {/* Action Buttons Row */}
+          {/* Action Buttons Row - Redesigned with Dropdowns */}
           {selectedClass && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
 
-              {/* Save Button */}
+              {/* Save All Data - Primary Action */}
               <button
                 className="w-full glass-button-primary px-4 py-3 rounded-xl text-white border-2 border-blue-400/50 hover:border-blue-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
                 style={{ minHeight: '44px', fontSize: '16px' }}
@@ -1574,52 +1575,60 @@ const ClassTeacherPage = () => {
                 {saving ? "Saving..." : "💾 Save All Data"}
               </button>
 
-              {/* Print Student Reports */}
-              <button
-                className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-purple-400/50 hover:border-purple-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
-                style={{ minHeight: '44px', fontSize: '16px' }}
-                onClick={printStudentReports}
+              {/* Print Reports Dropdown */}
+              <ActionDropdown
+                label={printing ? "⏳ Printing..." : "📄 Print Reports"}
+                icon="▼"
                 disabled={printing || !selectedClass}
-                title="Print individual terminal reports for all students"
-              >
-                {printing ? "⏳ Printing..." : "📄 Student Reports"}
-              </button>
+                buttonClassName="border-purple-400/50 hover:border-purple-400"
+                items={[
+                  {
+                    icon: "📄",
+                    label: "Student Reports",
+                    onClick: printStudentReports,
+                    disabled: printing || !selectedClass,
+                    title: "Print individual terminal reports for all students"
+                  },
+                  {
+                    icon: "📊",
+                    label: "Subject Sheet",
+                    onClick: printSubjectBroadsheet,
+                    disabled: printing || !selectedClass || !selectedSubject,
+                    title: "Print broadsheet for selected subject only"
+                  },
+                  {
+                    icon: "📋",
+                    label: "Class Sheet",
+                    onClick: printClassBroadsheet,
+                    disabled: printing || !selectedClass,
+                    title: "Print complete broadsheet with all subjects"
+                  }
+                ]}
+              />
 
-              {/* Print Subject Broadsheet */}
-              <button
-                className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-orange-400/50 hover:border-orange-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
-                style={{ minHeight: '44px', fontSize: '16px' }}
-                onClick={printSubjectBroadsheet}
-                disabled={printing || !selectedClass || !selectedSubject}
-                title="Print broadsheet for selected subject only"
-              >
-                {printing ? "⏳ Printing..." : "📊 Subject Sheet"}
-              </button>
-
-              {/* Print Class Broadsheet */}
-              <button
-                className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-green-400/50 hover:border-green-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg"
-                style={{ minHeight: '44px', fontSize: '16px' }}
-                onClick={printClassBroadsheet}
-                disabled={printing || !selectedClass}
-                title="Print complete broadsheet with all subjects"
-              >
-                {printing ? "⏳ Printing..." : "📋 Class Sheet"}
-              </button>
-
-              <button
-                className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${showAnalytics
-                  ? "text-white border-2 border-purple-400 bg-white/30"
-                  : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                style={{ minHeight: '44px', fontSize: '16px' }}
-                onClick={() => setShowAnalytics(!showAnalytics)}
+              {/* Analytics Dropdown */}
+              <ActionDropdown
+                label="📊 Analytics"
+                icon="▼"
                 disabled={!selectedClass}
-              >
-                {showAnalytics ? "📉 Hide Analytics" : "📈 Show Analytics"}
-              </button>
+                buttonClassName="border-indigo-400/50 hover:border-indigo-400"
+                items={[
+                  {
+                    icon: showAnalytics ? "📉" : "📈",
+                    label: showAnalytics ? "Hide Analytics" : "Show Analytics",
+                    onClick: () => setShowAnalytics(!showAnalytics),
+                    disabled: !selectedClass
+                  },
+                  {
+                    icon: showTrendAnalysis ? "📉" : "📊",
+                    label: showTrendAnalysis ? "Hide Trends" : "Show Trends",
+                    onClick: () => setShowTrendAnalysis(!showTrendAnalysis),
+                    disabled: !selectedClass
+                  }
+                ]}
+              />
 
-              {/* Promote Students Button */}
+              {/* Promote Students - Primary Action */}
               <button
                 className="w-full glass-button px-4 py-3 rounded-xl text-white border-2 border-emerald-400/50 hover:border-emerald-400 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg"
                 style={{ minHeight: '44px', fontSize: '16px' }}
@@ -1628,19 +1637,6 @@ const ClassTeacherPage = () => {
                 title="Promote students to next class"
               >
                 📈 Promote Students
-              </button>
-
-              {/* Trend Analysis Button */}
-              <button
-                className={`w-full glass-button px-4 py-3 rounded-xl transition-all font-medium shadow-lg ${showTrendAnalysis
-                  ? "text-white border-2 border-indigo-400 bg-white/30"
-                  : "text-white border-2 border-white/30 hover:border-white/50 hover:bg-white/20"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                style={{ minHeight: '44px', fontSize: '16px' }}
-                onClick={() => setShowTrendAnalysis(!showTrendAnalysis)}
-                disabled={!selectedClass}
-              >
-                {showTrendAnalysis ? "📉 Hide Trends" : "📊 Show Trends"}
               </button>
             </div>
           )}
