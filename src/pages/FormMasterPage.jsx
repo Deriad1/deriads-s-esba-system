@@ -1825,11 +1825,10 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
               <button
                 key={term}
                 onClick={() => setSelectedTerm(term)}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                  selectedTerm === term
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${selectedTerm === term
                     ? 'bg-blue-500/80 backdrop-blur-lg text-white shadow-xl border border-blue-300/50 scale-105'
                     : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
-                }`}
+                  }`}
               >
                 {term}
               </button>
@@ -1847,7 +1846,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
                 }`}
             >
-              <span className="text-2xl mr-2">ðŸŽ“</span>
+
               Manage Class
             </button>
             <button
@@ -1857,7 +1856,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
                 }`}
             >
-              <span className="text-2xl mr-2">âœï¸</span>
+
               Enter Scores
             </button>
             <button
@@ -1874,7 +1873,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
               onClick={() => setIsPromoteModalOpen(true)}
               className="flex-1 min-w-[200px] py-4 px-6 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-green-500/80 to-blue-500/80 backdrop-blur-lg text-white hover:from-green-600/90 hover:to-blue-600/90 shadow-xl border border-white/30 hover:scale-105"
             >
-              <span className="text-2xl mr-2">ðŸ“ˆ</span>
+
               Promote Students
             </button>
           </div>
