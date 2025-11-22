@@ -529,8 +529,12 @@ export const getMarks = async (className, subject, term = null) => {
     const { currentTerm } = getCurrentTermInfo();
     const termParam = term || currentTerm;
 
+    const url = `/marks?className=${encodeURIComponent(className)}&subject=${encodeURIComponent(subject)}&term=${encodeURIComponent(termParam)}`;
+    console.log('🌐 API URL:', url);
+    console.log('📋 Raw params:', { className, subject, term: termParam });
+
     const result = await apiCallWithOfflineSupport(
-      `/marks?className=${encodeURIComponent(className)}&subject=${encodeURIComponent(subject)}&term=${encodeURIComponent(termParam)}`,
+      url,
       {},
       {
         storeName: STORES.MARKS,
