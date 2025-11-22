@@ -1747,6 +1747,116 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     }
   };
 
+  // ==================== FUNCTION 3: LOAD ALL CLASS MARKS ====================
+
+  /**
+   * Load marks for ALL subjects in the class
+   */
+  const loadAllClassMarks = async () => {
+    const formClass = selectedClass;
+    if (!formClass) {
+      console.log('⏭️ No form class, skipping marks load');
+      return;
+    }
+
+    console.log('📚 Loading all class marks for:', formClass, selectedTerm);
+    setLoading('marks', true, 'Loading class marks...');
+
+    try {
+      // Get all subjects for the class
+      const subjectsResponse = await getClassSubjects(formClass);
+      const subjects = subjectsResponse.data || [];
+
+      console.log(`Found ${subjects.length} subjects for ${formClass}`);
+
+      const marksDataBySubject = {};
+
+      // Fetch marks for each subject
+      for (const subject of subjects) {
+        try {
+          const response = await getMarks(formClass, subject, selectedTerm);
+
+          if (response.status === 'success' && response.data) {
+            const marks = response.data;
+            const subjectMarks = {};
+
+            marks.forEach(mark => {
+              const studentId = mark.student_id || mark.id_number || mark.studentId;
+              if (studentId) {
+                subjectMarks[studentId] = {
+                  test1: mark.test1 ?? '',
+                  test2: mark.test2 ?? '',
+                  test3: mark.test3 ?? '',
+                  test4: mark.test4 ?? '',
+                  exam: mark.exam ?? '',
+                  total: mark.total ?? '',
+                  grade: mark.grade ?? '',
+                  remark: mark.remark ?? ''
+                };
+              }
+            });
+
+            marksDataBySubject[subject] = subjectMarks;
+            console.log(`✅ Loaded ${marks.length} marks for ${subject}`);
+          }
+        } catch (error) {
+          console.error(`Error loading marks for ${subject}:`, error);
+        }
+      }
+
+      setClassMarksData(marksDataBySubject);
+      showNotification({
+        message: `Loaded marks for ${Object.keys(marksDataBySubject).length} subjects`,
+        type: 'success'
+      });
+
+    } catch (error) {
+      console.error('Error loading all class marks:', error);
+      showNotification({
+        message: 'Error loading class marks: ' + error.message,
+        type: 'error'
+      });
+    } finally {
+      setLoading('marks', false);
+    }
+  };
+
+  // ==================== FUNCTION 4: PRINT SUBJECT BROADSHEET ====================
+
+  /**
+   * Print broadsheet for a single subject
+   */
+  const printSubjectBroadsheet = async (subject) => {
+    const formClass = selectedClass;
+    if (!formClass || !subject) {
+      showNotification({
+        message: 'Missing class or subject information',
+        type: 'error'
+      });
+      return;
+    }
+
+    setPrinting(true);
+    try {
+      console.log(`🖨️ Printing broadsheet for ${formClass} - ${subject}`);
+
+      await printClassBroadsheet({
+        className: formClass,
+        subject: subject,
+        term: selectedTerm
+      });
+
+    } catch (error) {
+      console.error('Error printing subject broadsheet:', error);
+      showNotification({
+        message: 'Error printing broadsheet: ' + error.message,
+        type: 'error'
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   // Calculate totals for a student (Enter Scores view)
   const calculateStudentTotals = (studentMarks) => {
     const test1 = Math.min(parseFloat(studentMarks.test1) || 0, 15);
