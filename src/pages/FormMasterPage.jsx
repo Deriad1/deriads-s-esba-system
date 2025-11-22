@@ -1439,11 +1439,14 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
   // Load saved marks from database for Enter Scores view
   const loadSubjectMarks = async () => {
+    console.log('📍 loadSubjectMarks called:', { selectedClass, selectedSubject, selectedAssessment, selectedTerm, learners: filteredLearners.length });
     if (!selectedClass || !selectedSubject || !selectedAssessment) {
+      console.log('❌ Early return - missing selection');
       showNotification({ message: "Please select class, subject, and assessment first", type: 'warning' });
       return;
     }
 
+    console.log('✅ Starting marks load...');
     setLoading('marks', true, 'Loading saved marks...');
     try {
       const isCustomAssessment = selectedAssessment !== 'regular';
@@ -1458,7 +1461,9 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         );
       } else {
         // Fetch regular term marks
+        console.log('🔍 Fetching marks:', { selectedClass, selectedSubject, selectedTerm });
         response = await getMarks(selectedClass, selectedSubject, selectedTerm);
+        console.log('📥 Response received:', response);
       }
 
       if (response.status === 'success') {
