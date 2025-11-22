@@ -1840,11 +1840,23 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     try {
       console.log(`🖨️ Printing broadsheet for ${formClass} - ${subject}`);
 
-      await printClassBroadsheet({
-        className: formClass,
-        subject: subject,
-        term: selectedTerm
-      });
+      const schoolInfo = printingService.getSchoolInfo();
+      const result = await printingService.printSubjectBroadsheet(
+        formClass,
+        subject,
+        schoolInfo,
+        '', // teacherName
+        selectedTerm
+      );
+
+      if (result.success) {
+        showNotification({
+          message: `${subject} broadsheet for ${formClass} generated successfully`,
+          type: 'success'
+        });
+      } else {
+        throw new Error(result.message);
+      }
 
     } catch (error) {
       console.error('Error printing subject broadsheet:', error);
