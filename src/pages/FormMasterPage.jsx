@@ -74,7 +74,7 @@ const FormMasterPage = () => {
   const [allClasses, setAllClasses] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [availableSubjects, setAvailableSubjects] = useState([]); // Subjects available for the selected class
-
+  const [classMarksData, setClassMarksData] = useState({}); // For View Scores tab
   const [selectedTerm, setSelectedTerm] = useState(() => {
     return localStorage.getItem('formMaster_selectedTerm') || settings.term || DEFAULT_TERM;
   });
@@ -101,6 +101,14 @@ const FormMasterPage = () => {
     loadAllSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-load all class marks when in Manage Class view
+  useEffect(() => {
+    if (mainView === 'manageClass' && formClass) {
+      loadAllClassMarks();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainView, formClass, selectedTerm]);
 
   // Load all classes
   const loadAllClasses = async () => {
@@ -1903,6 +1911,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
   // Actions object for ManageClassView and EnterScoresView
   const actions = {
+    loadAllClassMarks,
+    printSubjectBroadsheet,
     // Tab navigation
     setActiveTab,
 
@@ -2055,7 +2065,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         {/* Manage Class View */}
         {mainView === 'manageClass' && selectedClass && (
           <ManageClassView
-            state={state}
+            state={{ ...state, marksData: classMarksData }}
             actions={actions}
             formClass={selectedClass}
             students={filteredLearners}
@@ -2086,7 +2096,6 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 >
                   Save
                 </button>
-                ```
               </div>
             </div>
           </div>
