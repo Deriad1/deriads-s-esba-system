@@ -20,6 +20,7 @@
     "db:migrate": "node src/lib/migrate-data.js",
     "db:migrate-passwords": "node src/lib/migrate-passwords.js",
     "db:add-teacher-level": "node src/lib/add-teacher-level.js",
+    "db:fix-terms": "node api/fix-term-format.js",
     "setup:env": "node src/lib/setup-env.js",
     "setup:admin": "node create-production-admin.js",
     "setup:godmode": "node create-godmode-user.js",
