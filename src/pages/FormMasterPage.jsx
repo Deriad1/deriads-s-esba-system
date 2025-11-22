@@ -1826,8 +1826,8 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 key={term}
                 onClick={() => setSelectedTerm(term)}
                 className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${selectedTerm === term
-                    ? 'bg-blue-500/80 backdrop-blur-lg text-white shadow-xl border border-blue-300/50 scale-105'
-                    : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
+                  ? 'bg-blue-500/80 backdrop-blur-lg text-white shadow-xl border border-blue-300/50 scale-105'
+                  : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
                   }`}
               >
                 {term}
@@ -1866,7 +1866,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
                 : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
                 }`}
             >
-              <span className="text-2xl mr-2">ðŸ–¨ï¸</span>
+
               Print Section
             </button>
             <button
