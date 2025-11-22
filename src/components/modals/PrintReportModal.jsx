@@ -67,40 +67,40 @@ const PrintReportModal = ({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] overflow-y-auto">
       <div className="min-h-screen flex items-center justify-center p-4 py-8">
         <div className="glass-card-golden rounded-xl p-6 w-full max-w-6xl border-2 border-white/30 shadow-2xl my-auto">
-        <div className="flex justify-between items-center mb-6 pb-4 border-b-4 border-yellow-500/50">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/90 to-blue-600/90 backdrop-blur-sm flex items-center justify-center text-white text-2xl shadow-lg border-2 border-white/50">
-              🖨️
+          <div className="flex justify-between items-center mb-6 pb-4 border-b-4 border-yellow-500/50">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/90 to-blue-600/90 backdrop-blur-sm flex items-center justify-center text-white text-2xl shadow-lg border-2 border-white/50">
+                🖨️
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white text-shadow">Print Reports & Broadsheets</h2>
+                <p className="text-sm text-white/90">Select a class and choose students to print</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white text-shadow">Print Reports & Broadsheets</h2>
-              <p className="text-sm text-white/90">Select a class and choose students to print</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:text-white/80 text-2xl font-bold p-2 hover:bg-white/20 rounded-xl transition-colors"
+              style={{ minWidth: '44px', minHeight: '44px' }}
+            >
+              &times;
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white hover:text-white/80 text-2xl font-bold p-2 hover:bg-white/20 rounded-xl transition-colors"
-            style={{ minWidth: '44px', minHeight: '44px' }}
-          >
-            &times;
-          </button>
-        </div>
 
-        {/* Class Selection with Grouped Display */}
-        <div className="bg-white/10 border-2 border-white/30 rounded-xl p-4 mb-6 backdrop-blur-md shadow-lg">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/90 to-indigo-600/90 backdrop-blur-sm flex items-center justify-center text-white text-lg shadow-md border-2 border-white/50">
-              🎓
+          {/* Class Selection with Grouped Display */}
+          <div className="bg-white/10 border-2 border-white/30 rounded-xl p-4 mb-6 backdrop-blur-md shadow-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/90 to-indigo-600/90 backdrop-blur-sm flex items-center justify-center text-white text-lg shadow-md border-2 border-white/50">
+                🎓
+              </div>
+              <h3 className="text-lg font-bold text-white">Select Class</h3>
             </div>
-            <h3 className="text-lg font-bold text-white">Select Class</h3>
+            <GroupedClassList
+              classes={classes}
+              onClassSelect={handleClassChange}
+              selectedClass={selectedClass}
+              showCounts={false}
+            />
           </div>
-          <GroupedClassList
-            classes={classes}
-            onClassSelect={handleClassChange}
-            selectedClass={selectedClass}
-            showCounts={false}
-          />
-        </div>
 
           {/* Action Buttons and Student Selection */}
           {selectedClass && (
@@ -120,7 +120,7 @@ const PrintReportModal = ({
                     className="px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 border-2 border-white/70 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all font-bold shadow-2xl backdrop-blur-sm disabled:opacity-50"
                     style={{ minHeight: '44px', boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)' }}
                   >
-                    {printing ? "⏳ Printing..." : `📄 Print All Reports (${classStudents.length})`}
+                    {printing ? "⏳ Printing..." : `Print All Reports (${classStudents.length})`}
                   </button>
                   <button
                     onClick={handlePrintClassBroadsheet}
@@ -128,7 +128,7 @@ const PrintReportModal = ({
                     className="px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 border-2 border-white/70 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all font-bold shadow-2xl backdrop-blur-sm disabled:opacity-50"
                     style={{ minHeight: '44px', boxShadow: '0 4px 20px rgba(168, 85, 247, 0.4)' }}
                   >
-                    {printing ? "⏳ Printing..." : `📊 Complete Broadsheet`}
+                    {printing ? "⏳ Printing..." : `Complete Broadsheet`}
                   </button>
                   <button
                     onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
@@ -136,7 +136,7 @@ const PrintReportModal = ({
                     className="px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 border-2 border-white/70 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all font-bold shadow-2xl backdrop-blur-sm disabled:opacity-50"
                     style={{ minHeight: '44px', boxShadow: '0 4px 20px rgba(34, 197, 94, 0.4)' }}
                   >
-                    📋 Subject Broadsheet
+                    Subject Broadsheet
                   </button>
                 </div>
 
