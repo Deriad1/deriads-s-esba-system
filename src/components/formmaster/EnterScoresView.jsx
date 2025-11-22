@@ -150,9 +150,10 @@ const EnterScoresView = ({
           </div>
         </div>
 
-        {/* Refresh Marks Button */}
+        {/* Action Buttons */}
         {selectedClass && selectedSubject && selectedAssessment && (
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex flex-wrap gap-3 justify-end">
+            {/* Refresh Marks Button */}
             <button
               onClick={actions?.loadMarks}
               disabled={savingScores}
@@ -160,6 +161,26 @@ const EnterScoresView = ({
               title="Refresh marks from database (marks auto-load when selections change)"
             >
               🔄 Refresh Marks
+            </button>
+
+            {/* Load from Database Button */}
+            <button
+              onClick={actions?.loadMarksFromDatabase}
+              disabled={savingScores}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Load marks from database with cache"
+            >
+              📥 Load Marks
+            </button>
+
+            {/* Clear Marks Button */}
+            <button
+              onClick={actions?.clearMarks}
+              disabled={savingScores}
+              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Delete all marks for this class, subject, and term"
+            >
+              🗑️ Clear Marks
             </button>
           </div>
         )}
