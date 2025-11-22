@@ -133,6 +133,9 @@ async function handleGet(req, res) {
         return; // Response already sent
       }
 
+      // DEBUG: Log query parameters
+      console.log('🔍 [BACKEND] Query params:', { className, subject, term });
+
       // Get marks for class and subject
       if (term) {
         result = await sql`
@@ -144,6 +147,19 @@ async function handleGet(req, res) {
             AND s.term = ${term}
           ORDER BY st.last_name, st.first_name
         `;
+
+        // DEBUG: Log result count
+        console.log(`📊 [BACKEND] Found ${result.length} marks records`);
+
+        // DEBUG: Show what's actually in the database for this class
+        const debugQuery = await sql`
+          SELECT DISTINCT s.subject, s.term, st.class_name
+          FROM marks s
+          JOIN students st ON s.student_id = st.id
+          WHERE st.class_name = ${className}
+          LIMIT 10
+        `;
+        console.log('📋 [BACKEND] Available combinations for this class:', debugQuery);
       } else {
         result = await sql`
           SELECT s.*, st.first_name, st.last_name, st.class_name, st.id_number
