@@ -1458,7 +1458,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
         );
       } else {
         // Fetch regular term marks
-        response = await getMarks(selectedClass, selectedSubject);
+        response = await getMarks(selectedClass, selectedSubject, selectedTerm);
       }
 
       if (response.status === 'success') {
