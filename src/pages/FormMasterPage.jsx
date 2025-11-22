@@ -1765,7 +1765,18 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
     try {
       // Get all subjects for the class
       const subjectsResponse = await getClassSubjects(formClass);
-      const subjects = subjectsResponse.data || [];
+      let subjects = subjectsResponse.data || [];
+
+      // Ensure subjects is an array
+      if (!Array.isArray(subjects)) {
+        console.warn('Subjects data is not an array:', subjects);
+        // Try to handle if it's wrapped in an object or if the API changed
+        if (subjectsResponse.subjects && Array.isArray(subjectsResponse.subjects)) {
+          subjects = subjectsResponse.subjects;
+        } else {
+          subjects = [];
+        }
+      }
 
       console.log(`Found ${subjects.length} subjects for ${formClass}`);
 
@@ -1780,24 +1791,28 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
             const marks = response.data;
             const subjectMarks = {};
 
-            marks.forEach(mark => {
-              const studentId = mark.student_id || mark.id_number || mark.studentId;
-              if (studentId) {
-                subjectMarks[studentId] = {
-                  test1: mark.test1 ?? '',
-                  test2: mark.test2 ?? '',
-                  test3: mark.test3 ?? '',
-                  test4: mark.test4 ?? '',
-                  exam: mark.exam ?? '',
-                  total: mark.total ?? '',
-                  grade: mark.grade ?? '',
-                  remark: mark.remark ?? ''
-                };
-              }
-            });
+            if (Array.isArray(marks)) {
+              marks.forEach(mark => {
+                const studentId = mark.student_id || mark.id_number || mark.studentId;
+                if (studentId) {
+                  subjectMarks[studentId] = {
+                    test1: mark.test1 ?? '',
+                    test2: mark.test2 ?? '',
+                    test3: mark.test3 ?? '',
+                    test4: mark.test4 ?? '',
+                    exam: mark.exam ?? '',
+                    total: mark.total ?? '',
+                    grade: mark.grade ?? '',
+                    remark: mark.remark ?? ''
+                  };
+                }
+              });
+            } else {
+              console.warn(`Marks data for ${subject} is not an array:`, marks);
+            }
 
             marksDataBySubject[subject] = subjectMarks;
-            console.log(`✅ Loaded ${marks.length} marks for ${subject}`);
+            console.log(`✅ Loaded ${Array.isArray(marks) ? marks.length : 0} marks for ${subject}`);
           }
         } catch (error) {
           console.error(`Error loading marks for ${subject}:`, error);
