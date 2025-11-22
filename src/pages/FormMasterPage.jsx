@@ -104,11 +104,11 @@ const FormMasterPage = () => {
 
   // Auto-load all class marks when in Manage Class view
   useEffect(() => {
-    if (mainView === 'manageClass' && formClass) {
+    if (mainView === 'manageClass' && selectedClass) {
       loadAllClassMarks();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainView, formClass, selectedTerm]);
+  }, [mainView, selectedClass, selectedTerm]);
 
   // Load all classes
   const loadAllClasses = async () => {
