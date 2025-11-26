@@ -1,6 +1,8 @@
 import PropTypes from 'prop-types';
+import { useState, useEffect } from 'react';
 import { ScoresTable, SyncStatusPanel } from './shared';
 import ResponsiveScoreEntry from '../ResponsiveScoreEntry';
+import ScoreEntryCard from '../ScoreEntryCard';
 
 /**
  * EnterScoresView Component
@@ -27,6 +29,34 @@ const EnterScoresView = ({
     customAssessments = []
   } = state || {};
 
+  // Mobile navigation state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Scroll detection for floating button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Filter students based on search query
+  const filteredStudents = students.filter(student => {
+    if (!searchQuery) return true;
+    const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+    const studentId = (student.idNumber || student.LearnerID || '').toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase()) ||
+           studentId.includes(searchQuery.toLowerCase());
+  });
+
   // Calculate sync stats for SyncStatusPanel
   const calculateSyncStats = () => {
     const total = students.length;
@@ -35,6 +65,32 @@ const EnterScoresView = ({
     const pending = 0;
 
     return { drafts, saved, pending };
+  };
+
+  // Calculate grade based on total score
+  const calculateGrade = (total) => {
+    const totalNum = parseFloat(total);
+    if (isNaN(totalNum) || totalNum === 0) return '';
+    if (totalNum >= 80) return 'Excellent';
+    if (totalNum >= 70) return 'Very Good';
+    if (totalNum >= 60) return 'Good';
+    if (totalNum >= 50) return 'Credit';
+    if (totalNum >= 40) return 'Pass';
+    return 'Fail';
+  };
+
+  // Calculate total score for a student
+  const calculateStudentTotal = (studentMarks) => {
+    if (!studentMarks) return 0;
+    const test1 = parseFloat(studentMarks.test1) || 0;
+    const test2 = parseFloat(studentMarks.test2) || 0;
+    const test3 = parseFloat(studentMarks.test3) || 0;
+    const test4 = parseFloat(studentMarks.test4) || 0;
+    const testsTotal = test1 + test2 + test3 + test4;
+    const classScore50 = (testsTotal / 60) * 50;
+    const exam = parseFloat(studentMarks.exam) || 0;
+    const examScore50 = exam * 0.5;
+    return classScore50 + examScore50;
   };
 
   const syncStats = calculateSyncStats();
@@ -221,7 +277,8 @@ const EnterScoresView = ({
             </div>
           </div>
 
-          <div className="overflow-x-auto -mx-4 md:mx-0">
+          {/* Desktop Table View - Hidden on Mobile */}
+          <div className="hidden md:block overflow-x-auto -mx-4 md:mx-0">
             <div className="inline-block min-w-full align-middle">
               <div className="overflow-hidden">
                 {selectedAssessment === 'regular' ? (
@@ -256,6 +313,113 @@ const EnterScoresView = ({
               </div>
             </div>
           </div>
+
+          {/* Mobile Card View - Hidden on Desktop */}
+          <div className="block md:hidden">
+            {/* Mobile Search Bar */}
+            <div className="mb-4 sticky top-0 z-10 bg-white/10 backdrop-blur-xl rounded-xl p-3 border border-white/20">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search by name or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 bg-white/90 border-2 border-white/30 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  style={{ fontSize: '16px' }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="mt-2 text-xs text-white/70 text-center">
+                Showing {filteredStudents.length} of {students.length} students
+              </div>
+            </div>
+
+            {/* Student Cards */}
+            <div className="space-y-4">
+              {filteredStudents.length === 0 ? (
+                <div className="text-center py-8 text-white/80">
+                  <p className="text-lg">No students found</p>
+                  <p className="text-sm mt-2">Try a different search term</p>
+                </div>
+              ) : (
+                filteredStudents.map((student) => {
+                  const studentId = student.idNumber || student.LearnerID;
+                  const studentName = `${student.firstName} ${student.lastName}`;
+                  const studentMarks = subjectMarks?.[studentId] || {};
+                  const isSaved = savedStudents.has(studentId);
+                  const total = calculateStudentTotal(studentMarks);
+                  const remarks = calculateGrade(total);
+
+                  // For custom assessments, use different props
+                  const customAssessment = customAssessments.find(a => a.id === parseInt(selectedAssessment));
+
+                  return (
+                    <ScoreEntryCard
+                      key={studentId}
+                      studentId={studentId}
+                      studentName={studentName}
+                      marks={studentMarks}
+                      isSaved={isSaved}
+                      position={null}
+                      remarks={remarks}
+                      onMarkChange={actions.handleScoreChange}
+                      onSave={actions.saveScore}
+                      saving={savingScores}
+                      selectedAssessment={selectedAssessment === 'regular' ? null : customAssessment}
+                    />
+                  );
+                })
+              )}
+            </div>
+
+            {/* Sticky Save All Button - Mobile Only */}
+            {!isReadOnly && actions.saveAllScores && filteredStudents.length > 0 && (
+              <div className="sticky bottom-4 mt-6 z-10">
+                <button
+                  onClick={actions.saveAllScores}
+                  disabled={savingScores}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{ minHeight: '48px', fontSize: '16px' }}
+                >
+                  {savingScores ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving All...
+                    </>
+                  ) : (
+                    <>
+                      💾 Save All Scores ({filteredStudents.length})
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Floating Scroll to Top Button - Mobile Only */}
+          {showScrollTop && (
+            <button
+              onClick={scrollToTop}
+              className="md:hidden fixed bottom-24 right-4 z-20 p-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full shadow-2xl transition-all transform hover:scale-110"
+              style={{ minHeight: '56px', minWidth: '56px' }}
+              aria-label="Scroll to top"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
 

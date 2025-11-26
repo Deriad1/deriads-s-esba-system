@@ -67,6 +67,10 @@ const ClassTeacherPage = () => {
     return localStorage.getItem('classTeacher_selectedTerm') || settings.term || DEFAULT_TERM;
   });
 
+  // Mobile navigation state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   // Get all classes (not filtered by user)
   const getUserClasses = () => {
     return allClasses;
@@ -82,6 +86,21 @@ const ClassTeacherPage = () => {
     loadAllClasses();
     loadAllSubjects();
   }, []);
+
+  // Scroll detection for floating button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Load all classes
   const loadAllClasses = async () => {
@@ -350,6 +369,17 @@ const ClassTeacherPage = () => {
   const filteredLearners = useMemo(() => {
     return learners.filter(l => l.className === selectedClass);
   }, [learners, selectedClass]);
+
+  // Further filter learners based on search query (for mobile)
+  const searchFilteredLearners = useMemo(() => {
+    if (!searchQuery) return filteredLearners;
+    return filteredLearners.filter(student => {
+      const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+      const studentId = (student.idNumber || '').toLowerCase();
+      return fullName.includes(searchQuery.toLowerCase()) ||
+             studentId.includes(searchQuery.toLowerCase());
+    });
+  }, [filteredLearners, searchQuery]);
 
   // Auto-switch to scores tab when there's cached data on page load
   useEffect(() => {
@@ -1871,13 +1901,44 @@ const ClassTeacherPage = () => {
                       </div>
                     </div>
 
+                    {/* Mobile Search Bar */}
+                    <div className="mb-4 sticky top-20 z-10 bg-white/10 backdrop-blur-xl rounded-xl p-3 border border-white/20">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60">🔍</span>
+                        <input
+                          type="text"
+                          placeholder="Search by name or ID..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-10 py-3 bg-white/90 border-2 border-white/30 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                          style={{ fontSize: '16px' }}
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <div className="mt-2 text-xs text-white/70 text-center">
+                        Showing {searchFilteredLearners.length} of {filteredLearners.length} students
+                      </div>
+                    </div>
+
                     {/* Student Cards */}
                     <div className="space-y-4">
-                      {(() => {
+                      {searchFilteredLearners.length === 0 ? (
+                        <div className="text-center py-8 text-white/80">
+                          <p className="text-lg">No students found</p>
+                          <p className="text-sm mt-2">Try a different search term</p>
+                        </div>
+                      ) : (() => {
                         // Calculate scores and positions for all students (same logic as table)
                         const isCustomAssessment = selectedAssessment && selectedAssessment.assessment_type !== 'standard';
 
-                        const studentsWithScores = filteredLearners.map(learner => {
+                        const studentsWithScores = searchFilteredLearners.map(learner => {
                           const studentId = learner.idNumber;
                           const studentMarks = marks[studentId] || {};
 
@@ -1932,6 +1993,46 @@ const ClassTeacherPage = () => {
                         });
                       })()}
                     </div>
+
+                    {/* Sticky Save All Button - Mobile Only */}
+                    {searchFilteredLearners.length > 0 && (
+                      <div className="sticky bottom-4 mt-6 z-10">
+                        <button
+                          onClick={saveAllScores}
+                          disabled={batchSaving}
+                          className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          style={{ minHeight: '48px', fontSize: '16px' }}
+                        >
+                          {batchSaving ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Saving All...
+                            </>
+                          ) : (
+                            <>
+                              💾 Save All Scores ({searchFilteredLearners.length})
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Floating Scroll to Top Button - Mobile Only */}
+                    {showScrollTop && (
+                      <button
+                        onClick={scrollToTop}
+                        className="fixed bottom-24 right-4 z-20 p-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-full shadow-2xl transition-all transform hover:scale-110"
+                        style={{ minHeight: '56px', minWidth: '56px' }}
+                        aria-label="Scroll to top"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
