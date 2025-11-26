@@ -69,9 +69,16 @@ export default async function handler(req, res) {
 
     const teacher = result[0];
 
-    // If currentPassword is provided, verify it
-    // (Skip verification if requires_password_change is true - first time password change)
-    if (currentPassword && !teacher.requires_password_change) {
+    // Verify current password (required unless it's a first-time password change)
+    if (!teacher.requires_password_change) {
+      // Regular password change - verify current password
+      if (!currentPassword) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Current password is required'
+        });
+      }
+
       // Check if current password is hashed
       const isPasswordHashed = teacher.password &&
         (teacher.password.startsWith('$2a$') || teacher.password.startsWith('$2b$'));
@@ -90,6 +97,29 @@ export default async function handler(req, res) {
           status: 'error',
           message: 'Current password is incorrect'
         });
+      }
+    } else {
+      // First-time password change (temporary password reset)
+      // Verify the temporary password they're logging in with
+      if (currentPassword) {
+        const isPasswordHashed = teacher.password &&
+          (teacher.password.startsWith('$2a$') || teacher.password.startsWith('$2b$'));
+
+        let isTempPasswordValid = false;
+
+        if (isPasswordHashed) {
+          isTempPasswordValid = await bcrypt.compare(currentPassword, teacher.password);
+        } else {
+          // Plain text comparison for temporary passwords
+          isTempPasswordValid = currentPassword === teacher.password;
+        }
+
+        if (!isTempPasswordValid) {
+          return res.status(401).json({
+            status: 'error',
+            message: 'Temporary password is incorrect'
+          });
+        }
       }
     }
 
