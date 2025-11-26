@@ -83,10 +83,15 @@ const FormMasterPage = () => {
   const [vacationDate, setVacationDate] = useState('');
   const [reopeningDate, setReopeningDate] = useState('');
   const [attendanceTotal, setAttendanceTotal] = useState({}); // Total school days per student
-  // Get classes accessible by this Form Master
-  // Form Masters can only access their assigned form class for printing reports
+  // Get all classes where this Form Master teaches (for score entry and class selection)
+  // Form Masters can teach subjects in multiple classes
   const getUserClasses = () => {
-    // Form Masters should only see their form class
+    return user?.classes || [];
+  };
+
+  // Get ONLY the form class for class management (attendance, remarks, printing reports)
+  // Form Masters can only manage ONE form class
+  const getFormClass = () => {
     const formClass = user?.form_class || user?.classAssigned;
 
     if (!formClass) {
@@ -94,7 +99,6 @@ const FormMasterPage = () => {
       return [];
     }
 
-    // Return only the form class, not all classes
     return [formClass];
   };
 
@@ -2424,7 +2428,7 @@ return (
                 className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Choose Class</option>
-                {getUserClasses().map(cls => (
+                {getFormClass().map(cls => (
                   <option key={cls} value={cls}>{cls}</option>
                 ))}
               </select>
