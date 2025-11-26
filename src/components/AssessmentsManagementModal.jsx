@@ -314,20 +314,18 @@ const AssessmentsManagementModal = ({ isOpen, onClose }) => {
                   {assessments.map((assessment) => (
                     <div
                       key={assessment.id}
-                      className={`glass-card-golden rounded-xl p-5 border-2 ${
-                        assessment.is_active ? 'border-green-500/50' : 'border-white/30'
-                      }`}
+                      className={`glass-card-golden rounded-xl p-5 border-2 ${assessment.is_active ? 'border-green-500/50' : 'border-white/30'
+                        }`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 flex-wrap">
                             <h3 className="text-lg font-semibold text-white">{assessment.name}</h3>
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-bold shadow-md ${
-                                assessment.is_active
+                              className={`px-3 py-1 rounded-full text-xs font-bold shadow-md ${assessment.is_active
                                   ? 'bg-green-500/90 text-white border-2 border-white/50'
                                   : 'bg-gray-400/90 text-white border-2 border-white/50'
-                              }`}
+                                }`}
                             >
                               {assessment.is_active ? 'Active' : 'Inactive'}
                             </span>
@@ -359,11 +357,10 @@ const AssessmentsManagementModal = ({ isOpen, onClose }) => {
                           </button>
                           <button
                             onClick={() => toggleActive(assessment)}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold shadow-md border-2 border-white/50 transition-all ${
-                              assessment.is_active
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold shadow-md border-2 border-white/50 transition-all ${assessment.is_active
                                 ? 'bg-gray-400/90 hover:bg-gray-500 text-white'
                                 : 'bg-green-500/90 hover:bg-green-600 text-white'
-                            }`}
+                              }`}
                             style={{ minHeight: '40px' }}
                           >
                             {assessment.is_active ? 'Deactivate' : 'Activate'}

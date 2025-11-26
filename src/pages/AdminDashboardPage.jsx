@@ -149,7 +149,7 @@ const AdminDashboardPage = () => {
         // Only use classes from the database - don't merge with DEFAULT_CLASSES
         // This ensures deleted classes actually disappear from the UI
         const dbClasses = (classesResponse.data || []).map(cls => cls.name || cls);
-        const sortedClasses = [...new Set(dbClasses)].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+        const sortedClasses = [...new Set(dbClasses)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         setClasses(sortedClasses);
       }
     } catch (error) {
@@ -722,7 +722,7 @@ const AdminDashboardPage = () => {
                 isOpen={isModalOpen('classManagement')}
                 onClose={() => closeModal('classManagement')}
                 classes={classes}
-                onClassAdded={(newClass) => setClasses(prev => [...new Set([...prev, newClass])].sort((a, b) => a.localeCompare(b, undefined, {numeric: true})))}
+                onClassAdded={(newClass) => setClasses(prev => [...new Set([...prev, newClass])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))}
                 allSubjects={allSubjects}
                 onSubjectAdded={(newSubject) => setAllSubjects(prev => [...new Set([...prev, newSubject])].sort())}
                 teachers={teachers}
@@ -870,7 +870,7 @@ const AdminDashboardPage = () => {
           />
         )}
       </Suspense>
-    
+
       <Suspense fallback={<LoadingSpinner message="Loading..." />}>
         {isModalOpen('assessments') && (
           <AssessmentsManagementModal

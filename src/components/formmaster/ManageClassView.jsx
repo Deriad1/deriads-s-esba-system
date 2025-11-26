@@ -151,20 +151,26 @@ const ManageClassView = ({
           <AttendanceTab
             students={students}
             attendanceData={state.attendance || {}}
+            attendanceTotalData={state.attendanceTotal || {}}
             remarksData={state.remarks || {}}
             attitudeData={state.attitude || {}}
             interestData={state.interest || {}}
             commentsData={state.comments || {}}
             footnoteInfo={state.footnoteInfo || ''}
+            vacationDate={state.vacationDate || ''}
+            reopeningDate={state.reopeningDate || ''}
             errors={errors}
             saving={saving}
             isLoading={loadingStates?.learners || false}
             onAttendanceChange={actions.handleAttendanceChange}
+            onAttendanceTotalChange={actions.handleAttendanceTotalChange}
             onRemarkChange={actions.handleRemarkChange}
             onAttitudeChange={actions.handleAttitudeChange}
             onInterestChange={actions.handleInterestChange}
             onCommentsChange={actions.handleCommentsChange}
             onFootnoteChange={actions.handleFootnoteChange}
+            onVacationDateChange={actions.setVacationDate}
+            onReopeningDateChange={actions.setReopeningDate}
             onSaveAll={actions.confirmSave}
             onSaveFootnote={actions.saveFootnoteInfo}
           />

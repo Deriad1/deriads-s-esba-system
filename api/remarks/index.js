@@ -210,10 +210,29 @@ export default async function handler(req, res) {
         });
       }
 
+      // Handle both numeric database ID and string id_number
+      let dbStudentId = studentId;
+      const parsedId = parseInt(studentId);
+      const isNumericId = !isNaN(parsedId) && parsedId.toString() === studentId.toString();
+
+      if (!isNumericId) {
+        // It's a string id_number, look up the database ID
+        const studentLookup = await sql`
+          SELECT id FROM students WHERE id_number = ${studentId}
+        `;
+        if (studentLookup.length === 0) {
+          return res.status(404).json({
+            status: 'error',
+            message: `Student with id_number ${studentId} not found`
+          });
+        }
+        dbStudentId = studentLookup[0].id;
+      }
+
       // Check if remark already exists
       const existing = await sql`
         SELECT id FROM remarks
-        WHERE student_id = ${studentId}
+        WHERE student_id = ${dbStudentId}
         AND term = ${term}
         AND academic_year = ${academicYear}
       `;
@@ -248,7 +267,7 @@ export default async function handler(req, res) {
             conduct, attitude, interest, remarks, comments, attendance, attendance_total,
             vacation_date, reopening_date, teacher_id
           ) VALUES (
-            ${studentId}, ${className}, ${term}, ${academicYear},
+            ${dbStudentId}, ${className}, ${term}, ${academicYear},
             ${conduct || comments || null}, ${attitude || null}, ${interest || null},
             ${remarks || null}, ${comments || conduct || null}, ${attendance || null},
             ${attendanceTotal || null}, ${vacationDate || null}, ${reopeningDate || null}, ${teacherId || null}

@@ -546,6 +546,7 @@ export const getMarks = async (className, subject, term = null) => {
     return result;
   } catch (error) {
     console.error('Get marks error:', error);
+    return { status: 'error', message: error.message, data: [] };
   }
 };
 
@@ -658,6 +659,44 @@ export const getFormMasterRemarks = async (studentId, className, term = null, ac
     return result;
   } catch (error) {
     console.error('Get form master remarks error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get form master remarks for an entire class
+ * @param {string} className - Class name
+ * @param {string} term - Optional term filter
+ * @param {string} academicYear - Optional academic year filter
+ */
+export const getClassRemarks = async (className, term = null, academicYear = null) => {
+  try {
+    let url = `/remarks?className=${encodeURIComponent(className)}`;
+
+    // Add term and academicYear to query if provided
+    if (term) {
+      url += `&term=${encodeURIComponent(term)}`;
+    }
+    if (academicYear) {
+      url += `&year=${encodeURIComponent(academicYear)}`;
+    }
+
+    console.log(`[getClassRemarks] Fetching remarks for class: ${url}`);
+
+    const result = await apiCallWithOfflineSupport(
+      url,
+      {},
+      {
+        storeName: STORES.REMARKS,
+        cacheable: true,
+        mutation: false
+      }
+    );
+
+    console.log(`[getClassRemarks] Result:`, result);
+    return result;
+  } catch (error) {
+    console.error('Get class remarks error:', error);
     throw error;
   }
 };

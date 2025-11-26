@@ -147,6 +147,8 @@ class PrintingService {
             attitude: remarksResponse.data.attitude || '',
             interest: remarksResponse.data.interest || '',
             comments: remarksResponse.data.comments || '',
+            vacationDate: remarksResponse.data.vacationDate || '',
+            reopeningDate: remarksResponse.data.reopeningDate || '',
             attendance: {
               present: remarksResponse.data.attendance || 0,
               total: remarksResponse.data.attendance_total || remarksResponse.data.attendanceTotal || 0

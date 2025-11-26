@@ -9,12 +9,14 @@ import LoadingSpinner from '../../LoadingSpinner';
 const StudentRow = memo(({
   learner,
   attendance,
+  attendanceTotal,
   remarks,
   attitude,
   interest,
   comments,
   error,
   onAttendanceChange,
+  onAttendanceTotalChange,
   onRemarkChange,
   onAttitudeChange,
   onInterestChange,
@@ -32,7 +34,7 @@ const StudentRow = memo(({
         <div className="text-sm text-white/70">{studentId}</div>
       </td>
 
-      {/* Attendance Input */}
+      {/* Days Present Input */}
       <td className="px-6 py-4 whitespace-nowrap">
         <input
           type="number"
@@ -40,12 +42,25 @@ const StudentRow = memo(({
           max="365"
           value={attendance || ""}
           onChange={(e) => onAttendanceChange(studentId, e.target.value)}
-          className="w-24 p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
-          placeholder="0-365"
+          className="w-20 p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400 text-center"
+          placeholder="45"
         />
         {error && (
           <div className="text-red-400 text-sm mt-1 drop-shadow-md">{error}</div>
         )}
+      </td>
+
+      {/* Total Days Input */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <input
+          type="number"
+          min="0"
+          max="365"
+          value={attendanceTotal || ""}
+          onChange={(e) => onAttendanceTotalChange(studentId, e.target.value)}
+          className="w-20 p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white placeholder-white/50 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400 text-center"
+          placeholder="50"
+        />
       </td>
 
       {/* Remarks Dropdown */}
@@ -136,12 +151,14 @@ StudentRow.propTypes = {
     lastName: PropTypes.string.isRequired
   }).isRequired,
   attendance: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  attendanceTotal: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   remarks: PropTypes.string,
   attitude: PropTypes.string,
   interest: PropTypes.string,
   comments: PropTypes.string,
   error: PropTypes.string,
   onAttendanceChange: PropTypes.func.isRequired,
+  onAttendanceTotalChange: PropTypes.func.isRequired,
   onRemarkChange: PropTypes.func.isRequired,
   onAttitudeChange: PropTypes.func.isRequired,
   onInterestChange: PropTypes.func.isRequired,
@@ -165,25 +182,68 @@ StudentRow.propTypes = {
 const AttendanceTab = ({
   students,
   attendanceData,
+  attendanceTotalData,
   remarksData,
   attitudeData,
   interestData,
   commentsData,
   footnoteInfo,
+  vacationDate,
+  reopeningDate,
   errors,
   saving,
   isLoading,
   onAttendanceChange,
+  onAttendanceTotalChange,
   onRemarkChange,
   onAttitudeChange,
   onInterestChange,
   onCommentsChange,
   onFootnoteChange,
+  onVacationDateChange,
+  onReopeningDateChange,
   onSaveAll,
   onSaveFootnote
 }) => {
   return (
     <div>
+      {/* Term Dates Section */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 mb-6 border border-white/30">
+        <h2 className="text-xl font-semibold mb-4 text-white drop-shadow-md">📅 Term Dates</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="vacationDate" className="block text-sm font-medium text-white mb-2">
+              Vacation Date
+            </label>
+            <input
+              type="date"
+              id="vacationDate"
+              value={vacationDate || ''}
+              onChange={(e) => onVacationDateChange(e.target.value)}
+              className="w-full p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white focus:ring-2 focus:ring-blue-400/50"
+            />
+            <p className="text-xs text-white/70 mt-1">
+              Will appear on student reports
+            </p>
+          </div>
+          <div>
+            <label htmlFor="reopeningDate" className="block text-sm font-medium text-white mb-2">
+              Next Term Begins
+            </label>
+            <input
+              type="date"
+              id="reopeningDate"
+              value={reopeningDate || ''}
+              onChange={(e) => onReopeningDateChange(e.target.value)}
+              className="w-full p-2 bg-white/10 backdrop-blur-md border border-white/30 rounded-md text-white focus:ring-2 focus:ring-blue-400/50"
+            />
+            <p className="text-xs text-white/70 mt-1">
+              Will appear on student reports
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Main Attendance & Remarks Table */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 mb-6 border border-white/30">
         <h2 className="text-xl font-semibold mb-4 text-white drop-shadow-md">Attendance & Remarks</h2>
@@ -200,7 +260,10 @@ const AttendanceTab = ({
                       Student
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
-                      Attendance
+                      Days Present
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
+                      Total Days
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/90 uppercase tracking-wider">
                       Remarks
@@ -224,12 +287,14 @@ const AttendanceTab = ({
                         key={studentId}
                         learner={learner}
                         attendance={attendanceData[studentId]}
+                        attendanceTotal={attendanceTotalData?.[studentId]}
                         remarks={remarksData[studentId]}
                         attitude={attitudeData[studentId]}
                         interest={interestData[studentId]}
                         comments={commentsData[studentId]}
                         error={errors[studentId]}
                         onAttendanceChange={onAttendanceChange}
+                        onAttendanceTotalChange={onAttendanceTotalChange}
                         onRemarkChange={onRemarkChange}
                         onAttitudeChange={onAttitudeChange}
                         onInterestChange={onInterestChange}
@@ -296,6 +361,11 @@ AttendanceTab.propTypes = {
     PropTypes.oneOfType([PropTypes.string, PropTypes.number])
   ).isRequired,
 
+  /** Attendance total data: { studentId: "150" } (total school days) */
+  attendanceTotalData: PropTypes.objectOf(
+    PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+  ),
+
   /** Remarks data: { studentId: "RESPECTFUL" } */
   remarksData: PropTypes.objectOf(PropTypes.string).isRequired,
 
@@ -311,6 +381,12 @@ AttendanceTab.propTypes = {
   /** Footnote text for the entire class */
   footnoteInfo: PropTypes.string,
 
+  /** Vacation date for reports */
+  vacationDate: PropTypes.string,
+
+  /** Reopening date for reports */
+  reopeningDate: PropTypes.string,
+
   /** Validation errors: { studentId: "error message" } */
   errors: PropTypes.objectOf(PropTypes.string),
 
@@ -322,6 +398,9 @@ AttendanceTab.propTypes = {
 
   /** Callback when attendance changes */
   onAttendanceChange: PropTypes.func.isRequired,
+
+  /** Callback when attendance total changes */
+  onAttendanceTotalChange: PropTypes.func.isRequired,
 
   /** Callback when remark changes */
   onRemarkChange: PropTypes.func.isRequired,
@@ -338,6 +417,12 @@ AttendanceTab.propTypes = {
   /** Callback when footnote changes */
   onFootnoteChange: PropTypes.func.isRequired,
 
+  /** Callback when vacation date changes */
+  onVacationDateChange: PropTypes.func.isRequired,
+
+  /** Callback when reopening date changes */
+  onReopeningDateChange: PropTypes.func.isRequired,
+
   /** Callback to save all attendance data */
   onSaveAll: PropTypes.func.isRequired,
 
@@ -347,6 +432,9 @@ AttendanceTab.propTypes = {
 
 AttendanceTab.defaultProps = {
   footnoteInfo: '',
+  vacationDate: '',
+  reopeningDate: '',
+  attendanceTotalData: {},
   errors: {},
   saving: false,
   isLoading: false

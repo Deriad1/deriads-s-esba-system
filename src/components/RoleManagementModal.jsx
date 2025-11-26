@@ -70,20 +70,20 @@ const RoleManagementModal = ({ isOpen, onClose, teacher, onRolesUpdated }) => {
     try {
       setLoading(true);
       setError('');
-      
+
       const response = await assignRole(
         teacher.id,
         selectedRole,
         selectedSubjects,
         selectedClasses
       );
-      
+
       if (response.status === 'success') {
         // Update local state
         if (!roles.includes(selectedRole)) {
           setRoles([...roles, selectedRole]);
         }
-        
+
         // Update subjects and classes
         const newSubjects = [...subjects];
         selectedSubjects.forEach(subject => {
@@ -92,7 +92,7 @@ const RoleManagementModal = ({ isOpen, onClose, teacher, onRolesUpdated }) => {
           }
         });
         setSubjects(newSubjects);
-        
+
         const newClasses = [...classes];
         selectedClasses.forEach(cls => {
           if (!newClasses.includes(cls)) {
@@ -100,12 +100,12 @@ const RoleManagementModal = ({ isOpen, onClose, teacher, onRolesUpdated }) => {
           }
         });
         setClasses(newClasses);
-        
+
         // Reset form
         setSelectedRole('');
         setSelectedSubjects([]);
         setSelectedClasses([]);
-        
+
         // Notify parent
         onRolesUpdated();
       } else {
@@ -123,9 +123,9 @@ const RoleManagementModal = ({ isOpen, onClose, teacher, onRolesUpdated }) => {
     try {
       setLoading(true);
       setError('');
-      
+
       const response = await removeRole(teacher.id, role);
-      
+
       if (response.status === 'success') {
         // Update local state
         setRoles(roles.filter(r => r !== role));
@@ -143,7 +143,7 @@ const RoleManagementModal = ({ isOpen, onClose, teacher, onRolesUpdated }) => {
   };
 
   const handleSubjectToggle = (subject) => {
-    setSelectedSubjects(prev => 
+    setSelectedSubjects(prev =>
       prev.includes(subject)
         ? prev.filter(s => s !== subject)
         : [...prev, subject]
@@ -151,7 +151,7 @@ const RoleManagementModal = ({ isOpen, onClose, teacher, onRolesUpdated }) => {
   };
 
   const handleClassToggle = (cls) => {
-    setSelectedClasses(prev => 
+    setSelectedClasses(prev =>
       prev.includes(cls)
         ? prev.filter(c => c !== cls)
         : [...prev, cls]
@@ -168,7 +168,7 @@ const RoleManagementModal = ({ isOpen, onClose, teacher, onRolesUpdated }) => {
             <h2 className="text-2xl font-bold text-gray-800">
               Manage Roles for {teacher.firstName} {teacher.lastName}
             </h2>
-            <button 
+            <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 text-2xl"
             >
@@ -211,7 +211,7 @@ const RoleManagementModal = ({ isOpen, onClose, teacher, onRolesUpdated }) => {
             {/* Assign New Role */}
             <div>
               <h3 className="text-lg font-semibold text-gray-700 mb-3">Assign New Role</h3>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Select Role</label>
