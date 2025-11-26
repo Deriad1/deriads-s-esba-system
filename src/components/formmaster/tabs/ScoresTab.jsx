@@ -13,11 +13,14 @@ import LoadingSpinner from '../../LoadingSpinner';
  * - Filter by subject
  * - Shows test scores, exam, and totals
  * - Color-coded remarks
+ * - Shows which subjects Form Master can edit vs view-only
  */
 const ScoresTab = ({
   students,
   marksData,
   subjects,
+  userSubjects = [],
+  subjectTeachers = {},
   isLoading
 }) => {
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -78,9 +81,37 @@ const ScoresTab = ({
                 <p>No subjects available.</p>
               </div>
             ) : (
-              displaySubjects.map(subject => (
-                <div key={subject} className="mb-6 p-4 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg">
-                  <h3 className="text-lg font-medium mb-3 text-white drop-shadow-md">{subject}</h3>
+              displaySubjects.map(subject => {
+                const canEdit = userSubjects.includes(subject);
+                const teacherName = subjectTeachers[subject];
+
+                return (
+                <div
+                  key={subject}
+                  className={`mb-6 p-4 backdrop-blur-sm border rounded-lg ${
+                    canEdit
+                      ? 'bg-white/10 border-blue-400/40'
+                      : 'bg-white/5 border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-medium text-white drop-shadow-md flex items-center gap-2">
+                      {subject}
+                      {canEdit ? (
+                        <span className="text-xs px-2 py-1 bg-blue-500/30 border border-blue-400/50 rounded-full text-blue-200">
+                          ✏️ You teach this
+                        </span>
+                      ) : teacherName ? (
+                        <span className="text-xs px-2 py-1 bg-purple-500/20 border border-purple-400/40 rounded-full text-purple-200">
+                          👁️ View Only • Taught by: {teacherName}
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 bg-gray-500/20 border border-gray-400/40 rounded-full text-gray-300">
+                          👁️ View Only
+                        </span>
+                      )}
+                    </h3>
+                  </div>
 
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-white/20">
@@ -198,7 +229,8 @@ const ScoresTab = ({
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -235,6 +267,12 @@ ScoresTab.propTypes = {
 
   /** Array of subject names */
   subjects: PropTypes.arrayOf(PropTypes.string).isRequired,
+
+  /** Array of subjects the current user teaches (for Form Masters) */
+  userSubjects: PropTypes.arrayOf(PropTypes.string),
+
+  /** Object mapping subject names to teacher names */
+  subjectTeachers: PropTypes.objectOf(PropTypes.string),
 
   /** Whether data is being loaded */
   isLoading: PropTypes.bool

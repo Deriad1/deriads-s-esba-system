@@ -56,16 +56,17 @@ export function hasClassAccess(user, className) {
 }
 
 /**
- * Check if user has access to a specific subject in a specific class
+ * Check if user has READ access to a specific subject in a specific class
+ * Form Masters and Class Teachers can VIEW all subjects in their class (read-only for subjects they don't teach)
  * @param {Object} user - User object from JWT
  * @param {string} className - Class name to check
  * @param {string} subject - Subject name to check
  * @returns {boolean}
  */
-export function hasSubjectAccess(user, className, subject) {
+export function hasSubjectReadAccess(user, className, subject) {
   if (!user) return false;
 
-  // Admin and head_teacher have access to all subjects
+  // Admin and head_teacher have READ access to all subjects
   if (user.primaryRole === 'admin' ||
       user.all_roles?.includes('admin') ||
       user.all_roles?.includes('head_teacher')) {
@@ -77,19 +78,73 @@ export function hasSubjectAccess(user, className, subject) {
     return false;
   }
 
-  // Class teachers and form masters have access to ALL subjects in their assigned class
-  // This allows them to enter marks for any subject in their class
+  // Class teachers can READ all subjects in their assigned class
   if (user.primaryRole === 'class_teacher' ||
-      user.primaryRole === 'form_master' ||
-      user.all_roles?.includes('class_teacher') ||
-      user.all_roles?.includes('form_master')) {
-    // They already passed the hasClassAccess check, so they can access all subjects in this class
+      user.all_roles?.includes('class_teacher')) {
     return true;
   }
 
-  // Subject teachers can only access subjects they teach
+  // Form masters can READ all subjects in their form class (for class management purposes)
+  if (user.primaryRole === 'form_master' ||
+      user.all_roles?.includes('form_master')) {
+    return true;
+  }
+
+  // Subject teachers can only READ subjects they teach
   const subjects = user.subjects || [];
   return subjects.includes(subject);
+}
+
+/**
+ * Check if user has WRITE access to a specific subject in a specific class
+ * Form Masters can only EDIT subjects they teach (read-only for other subjects)
+ * @param {Object} user - User object from JWT
+ * @param {string} className - Class name to check
+ * @param {string} subject - Subject name to check
+ * @returns {boolean}
+ */
+export function hasSubjectWriteAccess(user, className, subject) {
+  if (!user) return false;
+
+  // Admin has WRITE access to all subjects
+  if (user.primaryRole === 'admin' ||
+      user.all_roles?.includes('admin')) {
+    return true;
+  }
+
+  // Head teacher has NO write access (supervisor only)
+  if (user.primaryRole === 'head_teacher' ||
+      user.all_roles?.includes('head_teacher')) {
+    return false;
+  }
+
+  // Must have access to the class
+  if (!hasClassAccess(user, className)) {
+    return false;
+  }
+
+  // Class teachers can WRITE all subjects in their assigned class
+  if (user.primaryRole === 'class_teacher' ||
+      user.all_roles?.includes('class_teacher')) {
+    return true;
+  }
+
+  // Form masters and subject teachers can only WRITE subjects they teach
+  const subjects = user.subjects || [];
+  return subjects.includes(subject);
+}
+
+/**
+ * Check if user has access to a specific subject in a specific class
+ * @deprecated Use hasSubjectReadAccess or hasSubjectWriteAccess instead
+ * @param {Object} user - User object from JWT
+ * @param {string} className - Class name to check
+ * @param {string} subject - Subject name to check
+ * @returns {boolean}
+ */
+export function hasSubjectAccess(user, className, subject) {
+  // Default to READ access for backward compatibility
+  return hasSubjectReadAccess(user, className, subject);
 }
 
 /**
@@ -177,15 +232,34 @@ export function requireClassAccess(user, className, res) {
 }
 
 /**
- * Require subject access - sends 403 if user doesn't have access
+ * Require subject READ access - sends 403 if user doesn't have access
  * @param {Object} user - User object from JWT
  * @param {string} className - Class name to check
  * @param {string} subject - Subject name to check
  * @param {Object} res - Response object
  * @returns {boolean} - true if has access, false if forbidden (with response sent)
  */
-export function requireSubjectAccess(user, className, subject, res) {
-  if (!hasSubjectAccess(user, className, subject)) {
+export function requireSubjectReadAccess(user, className, subject, res) {
+  if (!hasSubjectReadAccess(user, className, subject)) {
+    res.status(403).json({
+      status: 'error',
+      message: `Access denied. You do not have permission to view ${subject} in class ${className}.`
+    });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Require subject WRITE access - sends 403 if user doesn't have access
+ * @param {Object} user - User object from JWT
+ * @param {string} className - Class name to check
+ * @param {string} subject - Subject name to check
+ * @param {Object} res - Response object
+ * @returns {boolean} - true if has access, false if forbidden (with response sent)
+ */
+export function requireSubjectWriteAccess(user, className, subject, res) {
+  if (!hasSubjectWriteAccess(user, className, subject)) {
     res.status(403).json({
       status: 'error',
       message: `Access denied. You are not assigned to teach ${subject} in class ${className}.`
@@ -193,4 +267,18 @@ export function requireSubjectAccess(user, className, subject, res) {
     return false;
   }
   return true;
+}
+
+/**
+ * Require subject access - sends 403 if user doesn't have access
+ * @deprecated Use requireSubjectReadAccess or requireSubjectWriteAccess instead
+ * @param {Object} user - User object from JWT
+ * @param {string} className - Class name to check
+ * @param {string} subject - Subject name to check
+ * @param {Object} res - Response object
+ * @returns {boolean} - true if has access, false if forbidden (with response sent)
+ */
+export function requireSubjectAccess(user, className, subject, res) {
+  // Default to READ access for backward compatibility
+  return requireSubjectReadAccess(user, className, subject, res);
 }

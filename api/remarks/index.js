@@ -2,6 +2,7 @@
 // Handles CRUD operations for student remarks
 
 import { sql } from '../lib/db.js';
+import { extractUser, hasClassAccess } from '../lib/authMiddleware.js';
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -17,6 +18,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Authenticate user for all operations
+    const user = extractUser(req);
+
     // GET: Fetch remarks
     if (req.method === 'GET') {
       const { studentId, className, term, year } = req.query;
@@ -208,6 +212,44 @@ export default async function handler(req, res) {
           status: 'error',
           message: 'studentId, className, term, and academicYear are required'
         });
+      }
+
+      // Permission check: Only Class Teachers and Form Masters can add/update remarks
+      // Subject Teachers should NOT be able to add remarks
+      if (user) {
+        const isClassTeacher = user.primaryRole === 'class_teacher' ||
+                              user.all_roles?.includes('class_teacher');
+        const isFormMaster = user.primaryRole === 'form_master' ||
+                            user.all_roles?.includes('form_master');
+        const isAdmin = user.primaryRole === 'admin' ||
+                       user.all_roles?.includes('admin');
+
+        // Head Teacher should NOT be able to add remarks (supervisor only)
+        const isHeadTeacher = user.primaryRole === 'head_teacher' ||
+                             user.all_roles?.includes('head_teacher');
+
+        if (isHeadTeacher) {
+          return res.status(403).json({
+            status: 'error',
+            message: 'Head Teachers cannot add or update remarks. This is for Class Teachers and Form Masters only.'
+          });
+        }
+
+        // Only Class Teachers and Form Masters (and Admin) can add remarks
+        if (!isAdmin && !isClassTeacher && !isFormMaster) {
+          return res.status(403).json({
+            status: 'error',
+            message: 'Only Class Teachers and Form Masters can add or update remarks for their assigned class.'
+          });
+        }
+
+        // Verify the teacher has access to this class
+        if (!isAdmin && !hasClassAccess(user, className)) {
+          return res.status(403).json({
+            status: 'error',
+            message: `Access denied. You are not assigned to class ${className}.`
+          });
+        }
       }
 
       // Handle both numeric database ID and string id_number

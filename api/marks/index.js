@@ -2,7 +2,7 @@ import { sql } from '../lib/db.js';
 import { validateScoreData } from '../../src/utils/validation.js';
 import { isNumericStudentId } from '../../src/utils/studentIdHelpers.js';
 import { calculateRemark } from '../../src/utils/gradeHelpers.js';
-import { extractUser, requireAuth, requireClassAccess, requireSubjectAccess, getClassFilterForUser } from '../lib/authMiddleware.js';
+import { extractUser, requireAuth, requireClassAccess, requireSubjectReadAccess, requireSubjectWriteAccess, getClassFilterForUser } from '../lib/authMiddleware.js';
 
 /**
  * API Endpoint: /api/marks
@@ -128,8 +128,9 @@ async function handleGet(req, res) {
         }
       }
     } else if (className && subject) {
-      // Verify teacher has access to this class AND subject
-      if (!requireSubjectAccess(user, className, subject, res)) {
+      // Verify teacher has READ access to this class AND subject
+      // Form Masters can view all subjects in their class (read-only for non-assigned subjects)
+      if (!requireSubjectReadAccess(user, className, subject, res)) {
         return; // Response already sent
       }
 
@@ -267,6 +268,10 @@ async function handlePost(req, res) {
   }
 
   try {
+    // Authenticate user
+    const user = requireAuth(req, res);
+    if (!user) return; // Response already sent by requireAuth
+
     // First, resolve the student's database ID and get class_name and academic_year
     // studentId could be either numeric ID or id_number (e.g., "eSBA020")
     let dbStudentId = scoreData.studentId;
@@ -306,6 +311,12 @@ async function handlePost(req, res) {
           academicYear = academicYear || studentLookup[0].academic_year;
         }
       }
+    }
+
+    // Verify teacher has WRITE access to this class AND subject
+    // Form Masters can only edit subjects they teach
+    if (!requireSubjectWriteAccess(user, studentClassName, scoreData.subject, res)) {
+      return; // Response already sent
     }
 
     // Calculate total
@@ -418,8 +429,8 @@ async function handleDelete(req, res) {
     // Check class access
     if (!requireClassAccess(user, className, res)) return;
 
-    // Check subject access
-    if (!requireSubjectAccess(user, className, subject, res)) return;
+    // Check WRITE access to subject (Form Masters can only delete subjects they teach)
+    if (!requireSubjectWriteAccess(user, className, subject, res)) return;
 
     // Delete marks for the specified class, subject, and term
     const result = await sql`

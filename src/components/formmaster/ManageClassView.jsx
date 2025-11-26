@@ -43,6 +43,7 @@ const ManageClassView = ({
   formClass,
   students,
   userSubjects,
+  allSubjects,
   subjectTeachers,
   loadingStates,
   errors,
@@ -141,7 +142,9 @@ const ManageClassView = ({
           <ScoresTab
             students={students}
             marksData={state.marksData || {}}
-            subjects={userSubjects}
+            subjects={allSubjects || userSubjects}
+            userSubjects={userSubjects}
+            subjectTeachers={subjectTeachers || {}}
             isLoading={loadingStates?.marks || false}
           />
         )}
@@ -301,6 +304,11 @@ ManageClassView.propTypes = {
    * Array of subjects taught by the form master
    */
   userSubjects: PropTypes.arrayOf(PropTypes.string).isRequired,
+
+  /**
+   * Array of ALL subjects for the class (for Form Masters to view all subjects)
+   */
+  allSubjects: PropTypes.arrayOf(PropTypes.string),
 
   /**
    * Mapping of subject names to teacher names

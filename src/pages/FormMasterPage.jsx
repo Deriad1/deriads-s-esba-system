@@ -2352,6 +2352,7 @@ return (
           formClass={selectedClass}
           students={filteredLearners}
           userSubjects={getUserSubjects()}
+          allSubjects={availableSubjects}
           subjectTeachers={subjectTeachers}
           loadingStates={loadingStates}
           errors={errors}
