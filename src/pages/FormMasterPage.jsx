@@ -83,9 +83,19 @@ const FormMasterPage = () => {
   const [vacationDate, setVacationDate] = useState('');
   const [reopeningDate, setReopeningDate] = useState('');
   const [attendanceTotal, setAttendanceTotal] = useState({}); // Total school days per student
-  // Get all classes (not filtered by user)
+  // Get classes accessible by this Form Master
+  // Form Masters can only access their assigned form class for printing reports
   const getUserClasses = () => {
-    return allClasses;
+    // Form Masters should only see their form class
+    const formClass = user?.form_class || user?.classAssigned;
+
+    if (!formClass) {
+      console.warn('⚠️ Form Master has no assigned form class');
+      return [];
+    }
+
+    // Return only the form class, not all classes
+    return [formClass];
   };
 
   // Get subjects assigned to this teacher
