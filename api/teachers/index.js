@@ -84,6 +84,52 @@ async function handlePost(req, res) {
   }
 
   try {
+    // VALIDATION: Enforce 1:1:1 constraint (one teacher per subject per class)
+    // Check if another teacher is already assigned to any subject-class combination
+    if (teacherData.subjects && teacherData.classes &&
+        teacherData.subjects.length > 0 && teacherData.classes.length > 0) {
+
+      // Get all existing teachers
+      const existingTeachers = await sql`
+        SELECT id, first_name, last_name, subjects, classes
+        FROM teachers
+      `;
+
+      // Check for conflicts
+      const conflicts = [];
+      for (const subject of teacherData.subjects) {
+        for (const className of teacherData.classes) {
+          // Check if any teacher teaches this subject in this class
+          const conflictingTeacher = existingTeachers.find(teacher => {
+            const teacherSubjects = teacher.subjects || [];
+            const teacherClasses = teacher.classes || [];
+            return teacherSubjects.includes(subject) && teacherClasses.includes(className);
+          });
+
+          if (conflictingTeacher) {
+            conflicts.push({
+              subject,
+              className,
+              teacherName: `${conflictingTeacher.first_name} ${conflictingTeacher.last_name}`,
+              teacherId: conflictingTeacher.id
+            });
+          }
+        }
+      }
+
+      // If conflicts found, return error with details
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          status: 'error',
+          message: 'Teacher assignment conflict: One or more subject-class combinations are already assigned to other teachers.',
+          conflicts: conflicts,
+          details: conflicts.map(c =>
+            `${c.subject} in ${c.className} is already taught by ${c.teacherName}`
+          ).join('; ')
+        });
+      }
+    }
+
     // Get current term and academic year information
     const { currentTerm, currentYear } = getCurrentTermInfo();
 
@@ -161,6 +207,52 @@ async function handlePut(req, res) {
   }
 
   try {
+    // VALIDATION: Enforce 1:1:1 constraint (one teacher per subject per class)
+    // Check if another teacher is already assigned to any subject-class combination
+    if (teacherData.subjects && teacherData.classes &&
+        teacherData.subjects.length > 0 && teacherData.classes.length > 0) {
+
+      // Get all other teachers (excluding current teacher being updated)
+      const otherTeachers = await sql`
+        SELECT id, first_name, last_name, subjects, classes
+        FROM teachers
+        WHERE id != ${teacherData.id}
+      `;
+
+      // Check for conflicts
+      const conflicts = [];
+      for (const subject of teacherData.subjects) {
+        for (const className of teacherData.classes) {
+          // Check if any other teacher teaches this subject in this class
+          const conflictingTeacher = otherTeachers.find(teacher => {
+            const teacherSubjects = teacher.subjects || [];
+            const teacherClasses = teacher.classes || [];
+            return teacherSubjects.includes(subject) && teacherClasses.includes(className);
+          });
+
+          if (conflictingTeacher) {
+            conflicts.push({
+              subject,
+              className,
+              teacherName: `${conflictingTeacher.first_name} ${conflictingTeacher.last_name}`,
+              teacherId: conflictingTeacher.id
+            });
+          }
+        }
+      }
+
+      // If conflicts found, return error with details
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          status: 'error',
+          message: 'Teacher assignment conflict: One or more subject-class combinations are already assigned to other teachers.',
+          conflicts: conflicts,
+          details: conflicts.map(c =>
+            `${c.subject} in ${c.className} is already taught by ${c.teacherName}`
+          ).join('; ')
+        });
+      }
+    }
     // Get existing teacher to preserve password if not being updated
     const existingResult = await sql`
       SELECT password FROM teachers WHERE id = ${teacherData.id}
