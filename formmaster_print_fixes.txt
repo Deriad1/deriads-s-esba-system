@@ -1,0 +1,72 @@
+# Form Master Print Fix - Complete Patch
+
+Apply these 6 changes to `src/pages/FormMasterPage.jsx`:
+
+## Change 1: printAllClassReports (line ~1030)
+**Replace:**
+```javascript
+schoolInfo.term,
+```
+**With:**
+```javascript
+selectedTerm,
+```
+
+## Change 2: printSelectedReports (line ~1064)
+**Replace:**
+```javascript
+schoolInfo.term,
+```
+**With:**
+```javascript
+selectedTerm,
+```
+
+## Change 3: printStudentReports - server-side (line ~873)
+**Replace:**
+```javascript
+schoolInfo.term,
+```
+**With:**
+```javascript
+selectedTerm,
+```
+
+## Change 4: printStudentReports - client fallback (line ~893)
+**Replace:**
+```javascript
+schoolInfo.term,
+```
+**With:**
+```javascript
+selectedTerm,
+```
+
+## Change 5: printStudentReports - client direct (line ~910)
+**Replace:**
+```javascript
+schoolInfo.term,
+```
+**With:**
+```javascript
+selectedTerm,
+```
+
+## Change 6: printCompleteBroadsheet (line ~1091-1094)
+**Replace:**
+```javascript
+const result = await printingService.printCompleteClassBroadsheet(
+  printClass,
+  schoolInfo
+);
+```
+**With:**
+```javascript
+const result = await printingService.printCompleteClassBroadsheet(
+  printClass,
+  schoolInfo,
+  selectedTerm // Add this line
+);
+```
+
+Save the file and both student reports AND class broadsheets should work!

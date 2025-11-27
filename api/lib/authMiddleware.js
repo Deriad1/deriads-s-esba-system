@@ -50,7 +50,13 @@ export function hasClassAccess(user, className) {
     return true;
   }
 
-  // Check if teacher is assigned to this class
+  // Check if this is the teacher's form class (for Form Masters and Class Teachers)
+  // Form Masters need access to their form class for attendance, remarks, and printing reports
+  if (user.form_class === className || user.classAssigned === className) {
+    return true;
+  }
+
+  // Check if teacher is assigned to teach subjects in this class
   const classes = user.classes || [];
   return classes.includes(className);
 }
@@ -163,9 +169,13 @@ export function filterClassesByAccess(user, classes) {
     return classes;
   }
 
-  // Filter to only classes the teacher is assigned to
-  const userClasses = user.classes || [];
-  return classes.filter(className => userClasses.includes(className));
+  // Collect all classes the teacher has access to
+  const teachingClasses = user.classes || [];
+  const formClass = user.form_class || user.classAssigned;
+  const allAccessibleClasses = [...new Set([...teachingClasses, ...(formClass ? [formClass] : [])])];
+
+  // Filter to only classes the teacher is assigned to or is form master of
+  return classes.filter(className => allAccessibleClasses.includes(className));
 }
 
 /**
@@ -186,10 +196,17 @@ export function getClassFilterForUser(user, classColumnName = 'class_name') {
     return { hasRestriction: false, classes: [] };
   }
 
+  // Collect all classes the teacher has access to
+  const teachingClasses = user.classes || [];
+  const formClass = user.form_class || user.classAssigned;
+
+  // Combine teaching classes with form class (remove duplicates)
+  const allClasses = [...new Set([...teachingClasses, ...(formClass ? [formClass] : [])])];
+
   // Return the teacher's assigned classes for filtering
   return {
     hasRestriction: true,
-    classes: user.classes || []
+    classes: allClasses
   };
 }
 

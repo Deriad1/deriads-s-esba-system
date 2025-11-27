@@ -94,6 +94,13 @@ const FormMasterPage = () => {
   const getFormClass = () => {
     const formClass = user?.form_class || user?.classAssigned;
 
+    console.log('🔍 getFormClass Debug:', {
+      user_form_class: user?.form_class,
+      user_classAssigned: user?.classAssigned,
+      resolved_formClass: formClass,
+      user_object: user
+    });
+
     if (!formClass) {
       console.warn('⚠️ Form Master has no assigned form class');
       return [];
@@ -1006,18 +1013,27 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
 
     // Handle print class change
     const handlePrintClassChange = async (className) => {
+      console.log('🖨️ handlePrintClassChange called with className:', className);
       setPrintClass(className);
       if (className) {
         try {
+          console.log('📡 Fetching students and subjects for class:', className);
           // Fetch both students and subjects for the class
           const [studentsResponse, subjectsResponse] = await Promise.all([
             getStudentsByClass(className),
             getClassSubjects(className)
           ]);
 
+          console.log('📊 API Responses:', {
+            studentsResponse,
+            subjectsResponse
+          });
+
           if (studentsResponse.status === 'success') {
+            console.log(`✅ Got ${studentsResponse.data?.length || 0} students`);
             setPrintClassStudents(studentsResponse.data || []);
           } else {
+            console.warn('❌ Failed to get students:', studentsResponse);
             setPrintClassStudents([]);
           }
 
@@ -1032,6 +1048,7 @@ ${student.name} | ${student.present} | ${student.absent} | ${student.late} | ${s
             subjects = user?.subjects || [];
           }
 
+          console.log(`✅ Got ${subjects.length} subjects`);
           setPrintClassSubjects(subjects);
 
           setSelectedPrintStudents([]);

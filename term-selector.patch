@@ -1,0 +1,55 @@
+diff --git a/src/pages/FormMasterPage.jsx b/src/pages/FormMasterPage.jsx
+index 1234567..abcdefg 100644
+--- a/src/pages/FormMasterPage.jsx
++++ b/src/pages/FormMasterPage.jsx
+@@ -10,7 +10,7 @@ import TeacherLeaderboard from "../components/TeacherLeaderboard";
+ import ManageClassView from "../components/formmaster/ManageClassView";
+ import EnterScoresView from "../components/formmaster/EnterScoresView";
+ import PromoteStudentsModal from "../components/PromoteStudentsModal";
+-import { DEFAULT_TERM } from "../constants/terms";
++import { DEFAULT_TERM, AVAILABLE_TERMS } from "../constants/terms";
+ import { useGlobalSettings } from "../context/GlobalSettingsContext";
+ 
+ const FormMasterPage = () => {
+@@ -75,6 +75,12 @@ const FormMasterPage = () => {
+   const [allClasses, setAllClasses] = useState([]);
+   const [allSubjects, setAllSubjects] = useState([]);
+   const [availableSubjects, setAvailableSubjects] = useState([]); // Subjects available for the selected class
++  const [selectedTerm, setSelectedTerm] = useState(() => {
++    return localStorage.getItem('formMaster_selectedTerm') || settings.term || DEFAULT_TERM;
++  });
++
++  // Persist selectedTerm to localStorage
++  useEffect(() => {
++    localStorage.setItem('formMaster_selectedTerm', selectedTerm);
++  }, [selectedTerm]);
+ 
+   // Get all classes (not filtered by user)
+   const getUserClasses = () => {
+@@ -1818,6 +1824,23 @@ const FormMasterPage = () => {
+       <div className="p-6">
+         <h1 className="text-2xl font-bold mb-6 text-white">Form Master Dashboard</h1>
+ 
++        {/* Term Selector - Glass Morphism */}
++        <div className="mb-6 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
++          <h2 className="text-sm font-semibold text-white/80 mb-3">Select Term</h2>
++          <div className="flex gap-3 flex-wrap">
++            {AVAILABLE_TERMS.map((term) => (
++              <button
++                key={term}
++                onClick={() => setSelectedTerm(term)}
++                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
++                  selectedTerm === term
++                    ? 'bg-blue-500/80 backdrop-blur-lg text-white shadow-xl border border-blue-300/50 scale-105'
++                    : 'bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20 hover:scale-102'
++                }`}
++              >
++                {term}
++              </button>
++            ))}
++          </div>
++        </div>
++
+         {/* Main View Switcher - Glass Morphism */}
+         <div className="mb-6 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6">
+           <div className="flex gap-4 flex-wrap">
